@@ -1,0 +1,36 @@
+Scripts
+========
+
+This folder contains some auxiliary tools used to explore, prepare and preprocess
+the data. They don't take part in the parsing process itself.
+
+- configure.py    Create variables configuration from a list of values.
+                  This script is used to help in the creation of large
+                  configuration for a datasource.
+
+- discover.py     Discover all possible values of a given field.
+                  This script is used to explore the data values of a field.
+
+- filter.py       Filter data.
+                  This script is used to select data records fulfilling certain
+                  condition, reducing the noise and size of the data.
+
+- search.py       Search fields values in datasources.
+                  This script is used to explore the data looking for specific
+                  values.
+                  
+- splitData.py    Split data by time intervals.
+                  This script is used to divide data into temporal batches to 
+                  emulate the online sampling.
+                  
+- select.py       Select data entries.
+                  This script is used to select data records of a given value,
+                  similar to the SQL SELECT function.
+
+- addID.py	  Add flow ID to a csv file, as a last argument. This is required
+                  as a preprocessing step for datasets that lack of flow ID.
+
+- swapPorts.py    Correct direction of the flows, following the heuristic: 
+                  When source port is lower than 1024 and the protocol is UDP
+                  or TCP, swap direction of the flow (IPs and ports).
+                  
