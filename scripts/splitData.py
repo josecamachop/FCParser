@@ -126,7 +126,7 @@ def main():
 				linecount = 0
 				openedStreams = {}
 				order = []
-				line = instream.readline().strip()
+				line = instream.readline()
 
 				while line:
 					if not line.startswith('#') and line.strip():

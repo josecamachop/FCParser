@@ -35,13 +35,13 @@ DataSources:
     data: ./data_split/Netflow*
     data_raw: ./Examples_data/nf*
 
-  # IDS:
-  #   config: ./config/snort_unstructured.yaml
-  #   data: ./data_split/IDS*
-  #   data_raw: ./Examples_data/ids_raw*
+  IDS:
+    config: ./config/snort_unstructured.yaml
+    data: ./data_split/IDS*
+    data_raw: ./Examples_data/ids_raw*
   
 
-Keys:
+Keys: 
  
 Output:
   dir: ./OUTPUT/

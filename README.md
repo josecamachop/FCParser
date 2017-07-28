@@ -24,26 +24,36 @@ To this end, FaaC parser library is highly configurable. All this setup is easil
 through configuration files in YAML format. These files can be found in the 'config'
 folder. The format of the config files is explained in the beggining of each file.
 
-
+																							
 ## Getting Started
-
+														
+### Parsing
 
 1.- Configuration. First step is generate configuration.yaml according to datasources and 
 split setting. See /config/configuration.yaml for more info. Configuration files are 
 set for example data by default.
 
 
-2.- Split data (otpional). Usually, sampling the input data is required, for this task, the 
-script splitData.py is used. The sampling configuration and datasources are defined 
-in configuration.yaml. Example:
+2.- Split data (otpional). Usually, sampling the input data is required, to acomplish that,
+use splitData script. The sampling configuration and datasources are defined in 
+configuration.yaml. Example:
 
 	$ python scripts/splitData.py config/configuration.yaml 
 
-3.- Parse data. Extract observations of features from sampled data. 
+3.- Parse data. Extract observations from sampled data. 
 Example usage:
 
-	$ python parser.py config/configuration.yaml 
+	$ python parser/parser.py config/configuration.yaml 
 
+### Deparsing
+
+1.- Configuration. The deparsing program use the same configuration file used in parsing 
+process, see /config/configuration.yaml for more info.
+
+2.- Deparse. Extract the logs related to anomalies. It takes as input features and timestams.
+See example deparsing_input to see format of the file.
+
+	$ python deparser/deparser.py config/configuration.yaml deparser/deparsing_input 
 
 
 ## Installation Requirements
@@ -60,10 +70,11 @@ install the following packages:
 
 ## Summary
 
-The present repository is organized as follows.
-- faaclib.py    Python Module with all of the API classes.
-- parser.py        Main script to run FlowParser.
-- config/          Example of configuration files for the parser and for several datasources.
+The present repository is organized as follows:
+
+- parser/ 		   Python Module with all of the lib classes and main script to parser process.
+- deparser/        Python script and example input for deparsing process.
+- config/          Example of configuration files for the parser and some datasources configuration files.
 - scripts/         Scripts used to preprocess and prepare the data before the parsing.
 - Examples_data/   Data for example configuration.
 
