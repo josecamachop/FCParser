@@ -62,7 +62,7 @@ def main():
 		OUTW = output['weights']
 	except (KeyError, TypeError):
 		OUTW = 'weights.dat'
-		print " ** Default weights file: '%s'" %(OUTW)
+		# print " ** Default weights file: '%s'" %(OUTW)
 		
 	# Sources settings	
 	SOURCES = {}
@@ -99,18 +99,14 @@ def main():
 	# If there are split parameters, perform split procedure
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
 		
-		print "SPLITTING DATA\n\n\n"
+		print "\n\nSPLITTING DATA\n\n"
 		os.system('python parser/splitData.py '+ args.config)
 		
-
 		for source in dataSources:
-			print source
-			print str(parserConfig['SPLIT']['Output']) + source + "*" 
-
 		 	SOURCES[source]['FILES'] = glob.glob(str(parserConfig['SPLIT']['Output']) + source + "*" )
 
 	else:
-		print "**WARNING**: No split configuration, or split missconfiguration"
+		print "\n\n**WARNING**: No split configuration, or split missconfiguration\n\n"
 
 
 
@@ -442,14 +438,16 @@ def main():
 
 	print "\n-----------------------------------------------------------------------\n"
 	print "Writing outputs...\n"
-	print "Elapsed: %s" %(prettyTime(time.time() - startTime))	
+	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
+
+	outstream = open(OUTDIR + 'headers.dat', 'w')
+	out_observations.itervalues().next().writeLabels(outstream)
 
 	if not Keys:
 		for tag in out_observations:
 			if out_observations[tag]:
 				outpath = OUTDIR + 'output-' + tag + '.dat'
 				outstream = open(outpath, 'w')
-				out_observations[tag].writeLabels(outstream)
 				out_observations[tag].writeValues(outstream)
 				outstream.close()
 			else:
@@ -461,7 +459,6 @@ def main():
 			if out_observations[tag]:
 				outpath = OUTDIR + 'output-' + tag + '.dat'
 				outstream = open(outpath, 'w')
-				out_observations[tag].values()[0].writeLabels(outstream)
 
 				outstream.write('\n KEYS: ' + str(Keys) + '\n\n')
 
