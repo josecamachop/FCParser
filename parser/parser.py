@@ -9,7 +9,7 @@ FaaC parser library.
 Authors: Alejandro Perez Villegas (alextoni@gmail.com)
 		 Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
 		 
-Last Modification: 20/Jul/2017
+Last Modification: 21/Sep/2017
 
 """
 
@@ -98,9 +98,9 @@ def main():
 
 	# If there are split parameters, perform split procedure
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
-
+		
 		print "SPLITTING DATA\n\n\n"
-		os.system('python parser/splitData.py config/configuration.yaml')
+		os.system('python parser/splitData.py '+ args.config)
 		
 
 		for source in dataSources:
@@ -435,7 +435,7 @@ def main():
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
 
 		print "\n\n\nRemoving temporal files..."
-		shutil.rmtree('./data_split/')
+		shutil.rmtree(parserConfig['SPLIT']['Output'])
 
 	# Write outputs
 	# ==============

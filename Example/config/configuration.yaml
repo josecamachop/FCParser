@@ -6,20 +6,19 @@
 # DataSources:
 #   Source1:   DataSource name
 #     config:    Configuration file for this datasource.
-#     data:      Input files.
+#     data:      Input files (csv format).
 #   Source2:
 #     ...
 #   SourceN:
 #     ...
 #
-# Key:         Key variable to aggregate datasources. 
-#              No key for no aggregation.
+# Key:         Key variable to fuse dataSources
 #
 # Output:
 #   dir:       Output directory to write the output files.
 #   stats:     Log file to write the stats (lines, records, matches).
 #
-# SPLIT:        split params for temporal samplig
+# SPLIT:        split info for temporal samplig
 #   Time:
 #     window:   time windows for sampling
 #     start:    start and end time for sampling interval
@@ -31,20 +30,24 @@
 
 DataSources:
 
-  datasource_name:
-    config: 
-    data: 
+  netflow:
+    config: ./Example/config/netflow.yaml
+    data: ./Example/Examples_data/nf*
 
+  ids:
+    config: ./Example/config/snort_unstructured.yaml
+    data: ./Example/Examples_data/ids*
+ 
 Keys: 
  
 Output:
-  dir: 
-  stats: 
+  dir: ./Example/OUTPUT/
+  stats: stats.log
  
 SPLIT: 
   Time:
-    window: 
-    start:
-    end:   
+    window: 60
+    start: 2015-1-1 00:00:00
+    end: 2015-12-31 00:00:00
     
-  Output: 
+  Output: ./Example/data_split/

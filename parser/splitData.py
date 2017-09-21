@@ -24,6 +24,7 @@ def main():
 	except yaml.scanner.ScannerError as e:
 		print "Incorrect config file '%s' (%s)" %(args.config, e.message)
 		exit(1)
+	print parserConfig
 	try:
 		timeWindow = timedelta(seconds=int(parserConfig['SPLIT']['Time']['window']))
 		startTime  = parserConfig['SPLIT']['Time']['start']
