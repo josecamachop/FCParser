@@ -17,8 +17,8 @@ import argparse
 import glob
 import os
 import re
-import sys
 import time
+import shutil
 import yaml
 
 import faaclib
@@ -43,6 +43,7 @@ def main():
 	except KeyError as e:
 		print "Missing config key: %s" %(e.message)
 		exit(1)
+
 
 	# Output settings
 	try:
@@ -93,6 +94,25 @@ def main():
 		FEATURES[source] = SOURCES[source]['CONFIG']['FEATURES']
 		STRUCTURED[source] = SOURCES[source]['CONFIG']['structured']
 		SEPARATOR[source] = SOURCES[source]['CONFIG']['separator']	
+
+
+	# If there are split parameters, perform split procedure
+	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
+
+		print "SPLITTING DATA\n\n\n"
+		os.system('python parser/splitData.py config/configuration.yaml')
+		
+
+		for source in dataSources:
+			print source
+			print str(parserConfig['SPLIT']['Output']) + source + "*" 
+
+		 	SOURCES[source]['FILES'] = glob.glob(str(parserConfig['SPLIT']['Output']) + source + "*" )
+
+	else:
+		print "**WARNING**: No split configuration, or split missconfiguration"
+
+
 
 	# Print a summary of loaded parameters
 	print "-----------------------------------------------------------------------"
@@ -256,7 +276,7 @@ def main():
 
 		currentTime = time.time()
 
-		print "\n---------------------------------------------------------------------------------------------------\n"
+		print "\n-----------------------------------------------------------------------\n"
 		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
 
 		# Iterate through files.
@@ -408,13 +428,21 @@ def main():
 			out_observations[tag].zeroPadding(features)
 
 
+
+	# Delete temporal files
+	# =====================
+
+	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
+
+		print "\n\n\nRemoving temporal files..."
+		shutil.rmtree('./data_split/')
+
 	# Write outputs
 	# ==============
 
-	print "\n---------------------------------------------------------------------------------------------------\n"
+	print "\n-----------------------------------------------------------------------\n"
 	print "Writing outputs...\n"
 	print "Elapsed: %s" %(prettyTime(time.time() - startTime))	
-
 
 	if not Keys:
 		for tag in out_observations:
@@ -445,7 +473,7 @@ def main():
 				outstream.close()
 
 
-	print "\n---------------------------------------------------------------------------------------------------\n"
+	print "\n-----------------------------------------------------------------------\n"
 	print "Finished: " + str(count_total) + " files analyzed "
 
 
