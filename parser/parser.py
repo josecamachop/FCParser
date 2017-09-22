@@ -341,11 +341,18 @@ def main():
 								# for each log generate one record and convert into observation
 								logExtract = log.split(SEPARATOR[source])[0]
 								record = faaclib.Record(logExtract,SOURCES[source]['CONFIG']['VARIABLES'], STRUCTURED[source])
-								# print record
+								
+								aggregate_bool = True
+								for key in Keys:
+									if (record.variables[key] == None): 
+										aggregate_bool = False
 
-								# Generate and aggregate observation
-								obs = faaclib.AggregatedObservation(record, FEATURES[source], Keys)
-								obsBatch.add(obs)
+								if aggregate_bool:
+
+									# Generate and aggregate observation
+									obs = faaclib.AggregatedObservation(record, FEATURES[source], Keys)
+									obsBatch.add(obs)
+
 
 								log = ""
 								for n in logExtract.split(SEPARATOR[source])[1::]:
@@ -357,10 +364,17 @@ def main():
 						# Add the last log after the last separator.
 						log += line
 						record = faaclib.Record(log,SOURCES[source]['CONFIG']['VARIABLES'], STRUCTURED[source])
+						
+						aggregate_bool = True
+						for key in Keys:
+							if (record.variables[key] == None): 
+								aggregate_bool = False
 
-						# Generate and aggregate observation
-						obs = faaclib.AggregatedObservation(record, FEATURES[source], Keys)
-						obsBatch.add(obs)
+						if aggregate_bool:
+
+							# Generate and aggregate observation
+							obs = faaclib.AggregatedObservation(record, FEATURES[source], Keys)
+							obsBatch.add(obs)
 
 
 			# Save output in a dictionary of dictionaries
@@ -440,10 +454,15 @@ def main():
 	print "Writing outputs...\n"
 	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
 
-	outstream = open(OUTDIR + 'headers.dat', 'w')
-	out_observations.itervalues().next().writeLabels(outstream)
 
 	if not Keys:
+
+		# Write headers file with features.
+		outstream = open(OUTDIR + 'headers.dat', 'w')
+		out_observations.itervalues().next().writeLabels(outstream)
+		outstream.close()
+		
+		# Write observation arrays
 		for tag in out_observations:
 			if out_observations[tag]:
 				outpath = OUTDIR + 'output-' + tag + '.dat'
@@ -455,6 +474,12 @@ def main():
 
 	else:
 
+		# Write headers file with features.
+		outstream = open(OUTDIR + 'headers.dat', 'w')
+		print out_observations.itervalues().next().itervalues().next().writeLabels(outstream)
+		outstream.close()
+
+		# Write observation arrays		
 		for tag in out_observations:
 			if out_observations[tag]:
 				outpath = OUTDIR + 'output-' + tag + '.dat'

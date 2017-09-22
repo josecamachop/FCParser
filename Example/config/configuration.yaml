@@ -12,7 +12,7 @@
 #   SourceN:
 #     ...
 #
-# Key:         Key variable to fuse dataSources
+# Key:         Key variable to aggregate dataSources
 #
 # Output:
 #   dir:       Output directory to write the output files.
@@ -46,8 +46,8 @@ Output:
  
 SPLIT: 
   Time:
-    window: 
-    start: 
-    end: 
+    window: 60
+    start: 2015-1-1 00:00:00
+    end: 2015-12-31 00:00:00
     
   Output: ./Example/data_split/
