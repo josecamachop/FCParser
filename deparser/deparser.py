@@ -6,7 +6,7 @@ data related to anomalies in comparison to masive amounts of extracted data
 
 Authors: Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
 		 
-Last Modification: 04/Jul/2017
+Last Modification: 22/Sep/2017
 
 """
 
@@ -20,18 +20,14 @@ from datetime import datetime
 import re
 from IPy import IP
 
-# import flowparser
 
 
 def main():
 
-
 	startTime = time.time()
 
 	# get config file from input arguments
-
 	args = getArguments()
-
 
 	# Check the config in yaml format
 
@@ -54,28 +50,21 @@ def main():
 
 	# Sources settings	
 
-	sources = {}
+	sources_files = {}
 	sources_config = {}
 	tags = {}
-	dateformats = {}
-	dateregexp = {}
-	SEPARATOR = {}
-	
+
 	for source in dataSources:
-		sources[source] = {}
+		sources_files[source] = {}
 
 		try:
 			sources_config[source] = getConfiguration(dataSources[source]['config'])
-			sources[source]['files'] = glob.glob(dataSources[source]['data_raw'])	
+			sources_files[source]['files'] = glob.glob(dataSources[source]['data'])	
 			tags[source] = sources_config[source]['tag']
-			dateformats[source] = sources_config[source]['timestamp_format']
-			dateregexp[source] = sources_config[source]['timestamp_regexp']
-			SEPARATOR[source] = sources_config[source]['separator']
 
 		except:
-			print "Configuration file error" 
+			print "Configuration file load error" 
 			exit(1)
-
 
 	# Dictionary of dictionaries with all the features from all the data sources.
 
@@ -88,7 +77,6 @@ def main():
 		VARIABLES[source] = {}
 		structured[source] = sources_config[source]['structured']
  		for feature in sources_config[source]['FEATURES']:
- 			
  			try:
 				FEATURES[source][feature['name']] = feature
 			except:
@@ -104,8 +92,21 @@ def main():
 				exit(1)
 
 
-	# Output settings
+	lines = {}
+	for source in dataSources:
 
+		lines[source] = 0
+		
+		if structured[source]:
+			for file in sources_files[source]['files']:
+				lines[source] += file_len(file)
+
+		else:
+			for file in sources_files[source]['files']:
+				lines[source] += file_log_len(file,sources_config[source]['separator'])
+
+
+	# Output settings
 	try:
 		OUTDIR = output['dir']
 		if not OUTDIR.endswith('/'):
@@ -144,8 +145,8 @@ def main():
 
 	# Check if the source files exist and are readable
 
-	for source in sources:
-		for source_file in sources[source]['files']:
+	for source in sources_files:
+		for source_file in sources_files[source]['files']:
 			if source_file:
 				try:
 					stream = open(source_file,'r')
@@ -198,8 +199,8 @@ def main():
 	# Print a summary of loaded parameters
 	print "-------------------------------------------------------------------------------------------------"
 	print "Data Sources:"
-	for source in sources:
-				print "	- " + str(tags[source]) + " --> Files: " + str(sources[source]['files'])
+	for source in sources_files:
+				print "	- " + str(tags[source]) + " --> Files: " + str(sources_files[source]['files'])
 
 	print "FEATURES:"
 	print " TOTAL " + (str(len(features))) + " features:  \n" + str(features) + "\n"
@@ -217,143 +218,134 @@ def main():
 	print "\n-------------------------------------------------------------------------------------------------\n"
 
 
+	# if not features:
 
-	if not features:
-
-		sourcepath = sources[absouteSource]['files']
-		tag = tags[absouteSource]
-		dateFormat = dateformats[absouteSource]
-		count_nf, count_cat, count_unstructured = logsByTimestamp(structured[absouteSource], timestamps, tag, sourcepath, dateFormat, OUTDIR, SEPARATOR[absouteSource], dateregexp[absouteSource])
-
-		stats(count_nf,count_cat,count_unstructured, OUTDIR, OUTSTATS, startTime)
+	# 	sourcepath = sources_files[absouteSource]['files']
+	# 	tag = tags[absouteSource]
+	# 	dateFormat = sources_config[absouteSource]['timestamp_format']
+	# 	count_nf, count_cat, count_unstructured = logsByTimestamp(structured[absouteSource], timestamps, tag, sourcepath, OUTDIR, sources_config)
+																																			
+	# 	stats(count_nf,count_cat,count_unstructured, OUTDIR, OUTSTATS, startTime)
 	
+
+
 	# Generate outputs
 	########################################################
 
 	# NFDUMP QUERIES FOR NETFLOW SOURCES
 
-	else:	
-		count_nf = 0
-		
-		if 'netflow' in inverse_tags.keys():
-			sFeatures = []	
-			feat_delete = []  # list of already deparsed features 
+	count_nf = 0
+	
+	if 'netflow' in inverse_tags.keys():
+		sFeatures = []	
+		feat_delete = []  # list of already deparsed features 
 
-			print "Generating and resolving nfdump queries...\n"
+		print "Nfdump queries...\n"
 
-			for feature in features:
+		for feature in features:
 
-				if feature in FEATURES[inverse_tags['netflow']].keys():	
-					sFields_nfdump(FEATURES[inverse_tags['netflow']],sFeatures,feature)
-					feat_delete.append(feature)	
+			if feature in FEATURES[inverse_tags['netflow']].keys():	
+				sFields_nfdump(FEATURES[inverse_tags['netflow']],sFeatures,feature)
+				feat_delete.append(feature)	
 
+				# delete already deparsed features form features list.
 
-			# delete already deparsed features form features list.
+		for f in feat_delete:
+			features.remove(f)
 
-			for f in feat_delete:
-				features.remove(f)
+		# append all the Variables with the conector and.
 
+		Variables = ""
+		for i in range(len(sFeatures) - 1):
+			Variables +=  sFeatures[i] + " and " 
 
-			# append all the Variables with the conector and.
+		if sFeatures:
+			Variables += sFeatures[-1]
 
-			Variables = ""
-			for i in range(len(sFeatures) - 1):
-				Variables +=  sFeatures[i] + " and " 
+		# for each timestamp, generate the nfdump query with de filtering option extracted from the yaml file.
+		for timestamp in timestamps:
+			for file in  sources_files[inverse_tags['netflow']]['files']:
+				if Variables:
 
-			if sFeatures:
-				Variables += sFeatures[-1]
+					count_nf += 1
+					date = parsedate(timestamp,sources_config[inverse_tags['netflow']]['timestamp_format'])
+					query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + " >> " + OUTDIR + "output_" + tags[inverse_tags['netflow']] 
 
+					os.system(query)
+	
+		dataSources.pop(inverse_tags['netflow'],None)
 
+	else:
+		print "No nfdump queries..."
 
-			# for each timestamp, generate the nfdump query with de filtering option extracted from the yaml file.
-
-			for timestamp in timestamps:
-				for file in  sources[inverse_tags['netflow']]['files']:
-					if Variables:
-
-						count_nf += 1
-						date = parsedate(timestamp,dateformats[inverse_tags['netflow']])
-						query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + "' >> " + OUTDIR + "output_" + tags[inverse_tags['netflow']] 
-
-						print query
-						os.system(query)
-		
-			dataSources.pop(inverse_tags['netflow'],None)
-
-		else:
-			print "No nfdump queries..."
-
-		print "\n-------------------------------------------------------------------------------------------------\n"
-		print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-		print "\n-------------------------------------------------------------------------------------------------\n"
+	print "\n-------------------------------------------------------------------------------------------------\n"
+	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
+	print "\n-------------------------------------------------------------------------------------------------\n"
 
 		
+	##################################################################################################################################################################
+	# NON NETFLOW SOURCES
 
 
-		##################################################################################################################################################################
+	count_cat = 0
 
-		# NON NETFLOW SOURCES
+	# iterate through features and timestams
+	if features:
+		for source in dataSources:
+			count_unstructured = 0
+			print source
 
-
-		# iterate through features and timestams
-
-		count_cat = 0
-		count_unstructured = 0
-
-		if features:
-			for source in dataSources:
-				print source
-
-				tag = tags[source]
-				sourcepath = sources[source]['files']
-				formated_timestamps = format_timestamps(timestamps,dateformats[source])
-
-				# If the source is structured, generate cat queries 
-				if structured[source]:
-
-					print "Generating and resolving Cat queries...\n"
-
-					for feature in features:
-						if feature in FEATURES[source].keys():
-							
-							patern = sFields_cat(feature, FEATURES[source], VARIABLES[source])
-
-							# if the variable is regexp type, it is dealt with multiple grep pipe
-							# and the function return both regexp paterns
-
-							if len(patern) > 1:
-								for timestamp in formated_timestamps:	
-									for file in sourcepath:
-										count_cat += 1
-
-										query = "cat " + file + " | grep '" + timestamp + "' | grep -E '" + patern[1] + "' | grep -E '" + patern[0] + "' "  + " >> " + OUTDIR + "output_" + tag 	
-										
-										print query 
-										os.system(query)
-
-							else:
-								for timestamp in formated_timestamps:	
-									for file in sourcepath:
-										count_cat += 1
-
-										query = "cat " + file + " | grep '" + timestamp + "' | grep -E '" + patern[0] + "'" + " >> " + OUTDIR + "output_" + tag 	
-
-										print query
-										os.system(query)
-
-					print "\n-------------------------------------------------------------------------------------------------\n"
-					print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-					print "\n-------------------------------------------------------------------------------------------------\n"
+			tag = tags[source]
+			sourcepath = sources_files[source]['files']
+			formated_timestamps = format_timestamps(timestamps,sources_config[source]['timestamp_format'])
 
 
-				# Unstructured sources
+			# If the source is structured, generate cat queries 
+			if structured[source]:
 
-				else:
+				print "Generating and resolving Cat queries...\n"
 
-					print "Dealing with unstructured sources...\n"
+				for feature in features:
+					if feature in FEATURES[source].keys():
+						
+						patern = sFields_cat(feature, FEATURES[source], VARIABLES[source])
 
-					output_file = open(OUTDIR + "output_" + tag,'w')
+						# if the variable is regexp type, it is dealt with multiple grep pipe
+						# and the function return both regexp paterns
 
+						if len(patern) > 1:
+							for timestamp in formated_timestamps:	
+								for file in sourcepath:
+									count_cat += 1
+
+									query = "cat " + file + " | grep '" + timestamp + "' | grep -E '" + patern[1] + "' | grep -E '" + patern[0] + "' "  + " >> " + OUTDIR + "output_" + tag 	
+									
+									print query 
+									os.system(query)
+
+						else:
+							for timestamp in formated_timestamps:	
+								for file in sourcepath:
+									count_cat += 1
+
+									query = "cat " + file + " | grep '" + timestamp + "' | grep -E '" + patern[0] + "'" + " >> " + OUTDIR + "output_" + tag 	
+
+									print query
+									os.system(query)
+
+				print "\n-------------------------------------------------------------------------------------------------\n"
+				print "Elapsed: %s" %(prettyTime(time.time() - startTime))
+				print "\n-------------------------------------------------------------------------------------------------\n"
+
+
+			# Unstructured sources
+
+			else:
+
+				output_file = open(OUTDIR + "output_" + tag,'w')
+				features_needed = len(features)
+	
+				while count_unstructured < lines[source]*0.01 and (not features_needed <= 0) : 
 					for file in sourcepath:
 						input_file = open(file,'r')
 						line = input_file.readline()
@@ -362,29 +354,30 @@ def main():
 						if line:
 
 							log = "" + line 	
-
 							while line:
 
 								log += line 
 								
-								if len(log.split(SEPARATOR[source])) > 1:
-									logExtract = log.split(SEPARATOR[source])[0]
+								if len(log.split(sources_config[source]['separator'])) > 1:
+									logExtract = log.split(sources_config[source]['separator'])[0]
 
 									# For each log, extract timestamp with regular expresions and check if it is in the 
 									# input timestamps
 
 									try:
-										t = getUnstructuredTime(logExtract,dateregexp[source],dateformats[source])
-										if str(t).strip() in formated_timestamps:
-								
-											# Check if features appear in the log to writhe in the file.
-											count_unstructured = search_feature(FEATURES,VARIABLES,logExtract,features,output_file, source, count_unstructured)
+										if count_unstructured < lines[source]*0.01 and (not features_needed <= 0) : 
+											t = getUnstructuredTime(logExtract, sources_config[source]['timestamp_regexp'], sources_config[source]['timestamp_format'])
+																									#,dateregexp[source], dateformats[source])
+											if str(t).strip() in formated_timestamps:
+											
+												# Check if features appear in the log to writhe in the file.
+												count_unstructured = search_feature(FEATURES,VARIABLES,logExtract,features,output_file, source, count_unstructured, features_needed)
 
 									except:
 										pass
 													
 									log = ""
-									for n in logExtract.split(SEPARATOR[source])[1::]:
+									for n in logExtract.split(sources_config[source]['separator'])[1::]:
 										log += n
 				
 
@@ -394,24 +387,27 @@ def main():
 							log += line
 
 							try:								
-								t = getUnstructuredTime(log,dateregexp[source],dateformats[source])
+								t = getUnstructuredTime(log, sources_config[source]['timestamp_regexp'], sources_config[source]['timestamp_format'])
 								if str(t) in timestamps:
-									count_unstructured = search_feature(FEATURES,VARIABLES,log,features,output_file, source, count_unstructured)
+									count_unstructured = search_feature(FEATURES,VARIABLES,log,features,output_file, source, count_unstructured, features_needed)
 						
 							except:
 								pass
-			
-						input_file.close()
-						output_file.close()
- 
- 
-		stats(count_nf, count_cat, count_unstructured, OUTDIR, OUTSTATS, startTime)
 
-		# EXAMPLE QUERY CAT
-		# query = cat home/administrador/CSV/ids | grep '4/5/2012 21:48' | grep -E 'misc'
+					features_needed -= 1
 
-		# EXAMPLE QUERY NFDUMP
-		# query  = nfdump -r <nfcapd.file> -t <timestamp> 'flags A and packets < 4 and bytes < 151 and flags S and dst port = 25'
+
+				input_file.close()
+				output_file.close()
+
+
+	stats(count_nf, count_cat, count_unstructured, OUTDIR, OUTSTATS, startTime)
+
+	# EXAMPLE QUERY CAT
+	# query = cat home/administrador/CSV/ids | grep '4/5/2012 21:48' | grep -E 'misc'
+
+	# EXAMPLE QUERY NFDUMP
+	# query  = nfdump -r <nfcapd.file> -t <timestamp> 'flags A and packets < 4 and bytes < 151 and flags S and dst port = 25'
 
 	
 
@@ -429,6 +425,7 @@ def stats(count_nf, count_cat, count_unstructured, OUTDIR, OUTSTATS, startTime):
 
 	# Write stats in stats.log file.
 
+
 	try:
 		stats_file = open(OUTDIR + OUTSTATS,'w')
 		stats_file.write("STATS:\n")
@@ -438,18 +435,62 @@ def stats(count_nf, count_cat, count_unstructured, OUTDIR, OUTSTATS, startTime):
 		stats_file.write(" total queries: " + str(count_nf + count_cat) + "\n")
 		stats_file.write(" unstructured logs found: " + str(count_unstructured))
 
+
+
 	except IOError as e:
 		print "Stats file error: " + e.msg()
 
 
+
+def file_len(fname):
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1
+
+
+def file_log_len(fname, separator):
+
+	input_file = open(fname,'r')
+	line = input_file.readline()
+	count_log = 0
+
+	if line:
+		log ="" + line
+
+		while line:
+			log += line 
+
+			if len(log.split(separator)) > 1:
+				logExtract = log.split(separator)[0]
+				count_log += 1		
+				log = ""
+
+				for n in logExtract.split(separator)[1::]:
+					log += n
+
+			line = input_file.readline()
+		log += line
+		
+		if not log == "":
+			count_log += 1 
+
+	return count_log			
+
+
+
 # Fuction to extract all logs from the datasource specified and timestamps.
 
-def logsByTimestamp(structured, timestamps, tag, sourcepath, dateformat, OUTDIR, separator, dateregexp):
+def logsByTimestamp(structured, timestamps, tag, sourcepath, OUTDIR, sources_config):
 
 	print "\n#####################################################################################\n"
 	print "No features especified, extracting all the logs of the timestamps and source especified "
 	print "\n#####################################################################################\n\n\n"
 
+	dateformat = sources_config[absouteSource]['timestamp_format']
+	separator = sources_config[absouteSource]['separator']
+	dateregexp = sources_config[absouteSource]['timestamp_regexp']
+	
 	count_cat = 0
 	count_nf = 0
 	count_unstructured = 0
@@ -519,17 +560,20 @@ def logsByTimestamp(structured, timestamps, tag, sourcepath, dateformat, OUTDIR,
 
 
 
-def search_feature(FEATURES,VARIABLES,logExtract,features,output_file,source,count_unstructured):
+def search_feature(FEATURES,VARIABLES,logExtract,features,output_file,source,count_unstructured, features_needed):
 
 	# Iterate through features, if all features of the given source appear in the log,
 	# write the log in the output file.
+
+	feature_count = 0
+	list_timetamps = []
+	varBol = False		
 
 	for feature in FEATURES[source].keys():	
 		if feature in features:			
 
 			fVariable = FEATURES[source][feature]['variable']
 		
-			varBol = False
 
 			fValue = FEATURES[source][feature]['value']		
 			fType = FEATURES[source][feature]['type']		
@@ -543,27 +587,32 @@ def search_feature(FEATURES,VARIABLES,logExtract,features,output_file,source,cou
 
 				if fType == "regexp":
 					if re.search(fValue, match):
+						feature_count += 1
 						varBol = True
 
-				elif fType == "single":	
-						if str(fValue) == match:
-							varBol = True
+				if fType == "single":	
+					if str(fValue) == match:
+						feature_count += 1
+						varBol = True
 
-				elif fType == "multiple":
+				if fType == "multiple":
 					if int(match) in fValue:
+						feature_count += 1
 						varBol = True
 
-				elif fType == "range":
+				if fType == "range":
 					if int(match) >= fValue[0] and int(match) <= fValue[1]:
+						feature_count += 1
 						varBol = True
 
-			if varBol:
-					output_file.write(logExtract + "\n\n")						
-					count_unstructured += 1
-					return count_unstructured
+	if varBol:
+		if feature_count == features_needed:
+			output_file.write(logExtract + "\n\n")						
+			count_unstructured += 1
+			return count_unstructured
+
 
 	return count_unstructured
-
 
 # Fuction to parse date into YYYY-MM-DD hh:mm:ss 
 
@@ -575,7 +624,6 @@ def parsedate(timestamp, dateformat):
 	# output format. 
 	# YYYY-MM-DD hh:mm:ss 		Example: 2012-04-05 23:31:00
 	
-
 	inDateformat = "%Y-%m-%d %H:%M:%S"
 	return datetime.strptime(timestamp.strip(), inDateformat).strftime(dateformat)
 
@@ -589,6 +637,7 @@ def format_timestamps(timestamps, format2):
 		timestamps_formated.append(str(datetime.strptime(t, format1).strftime(format2)))
 
 	return timestamps_formated
+
 
 def getArguments():
 

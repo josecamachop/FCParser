@@ -42,9 +42,9 @@ structured: True
 
 timestamp_format: "%Y/%m/%d.%H:%M:%S"
 
-timestamp_regexp:  
+# timestamp_regexp:  
   
-separator:  
+# separator:  
 
 timearg: 0
 

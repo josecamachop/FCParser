@@ -48,17 +48,22 @@ def main():
 
 	for source in parserConfig['DataSources']:
 		data[source] = {}
-
+		print source
+		
 		try:
 			config = getConfiguration(parserConfig['DataSources'][source]['config'])
 			data[source]['input'] = parserConfig['DataSources'][source]['data']
 			data[source]['output'] = str(parserConfig['SPLIT']['Output'])
-			data[source]['col'] = config['timearg']
 			data[source]['tag'] = config['tag']
-			data[source]['struc'] = config['structured']
-			data[source]['timestamp_regexp'] = config['timestamp_regexp']
 			data[source]['timestamp_format'] = config['timestamp_format']
-			SEPARATOR[source] = config['separator']
+			data[source]['struc'] = config['structured']
+			
+			if not data[source]['struc']:
+				SEPARATOR[source] = config['separator']
+				data[source]['timestamp_regexp'] = config['timestamp_regexp']
+			
+			else:
+				data[source]['col'] = config['timearg']
 
 		except KeyError as e:
 			print "Missing config key in %s (%s)" %(source, e.message)

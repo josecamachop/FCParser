@@ -90,11 +90,18 @@ def main():
 	FEATURES = {}
 	STRUCTURED = {}
 	SEPARATOR = {}
-	for source in SOURCES:
-		FEATURES[source] = SOURCES[source]['CONFIG']['FEATURES']
-		STRUCTURED[source] = SOURCES[source]['CONFIG']['structured']
-		SEPARATOR[source] = SOURCES[source]['CONFIG']['separator']	
 
+	try:
+		for source in SOURCES:
+			FEATURES[source] = SOURCES[source]['CONFIG']['FEATURES']
+			STRUCTURED[source] = SOURCES[source]['CONFIG']['structured']
+			
+			if not STRUCTURED[source]:
+				SEPARATOR[source] = SOURCES[source]['CONFIG']['separator']	
+
+	except KeyError as e:
+		print "Missing config key: %s" %(e.message)
+		exit(1)
 
 	# If there are split parameters, perform split procedure
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
@@ -343,9 +350,13 @@ def main():
 								record = faaclib.Record(logExtract,SOURCES[source]['CONFIG']['VARIABLES'], STRUCTURED[source])
 								
 								aggregate_bool = True
-								for key in Keys:
-									if (record.variables[key] == None): 
-										aggregate_bool = False
+								
+								if Keys:
+									if not isinstance(Keys,list):
+										Keys = [Keys]
+									for key in Keys:
+										if (record.variables[key] == None): 
+											aggregate_bool = False
 
 								if aggregate_bool:
 
@@ -366,9 +377,13 @@ def main():
 						record = faaclib.Record(log,SOURCES[source]['CONFIG']['VARIABLES'], STRUCTURED[source])
 						
 						aggregate_bool = True
-						for key in Keys:
-							if (record.variables[key] == None): 
-								aggregate_bool = False
+
+						if Keys:
+							if not isinstance(Keys,list):
+								Keys = [Keys]
+							for key in Keys:
+								if (record.variables[key] == None): 
+									aggregate_bool = False
 
 						if aggregate_bool:
 
