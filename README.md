@@ -30,30 +30,28 @@ folder. The format of the config files is explained in the beggining of each fil
 ### Parsing
 
 1.- Configuration. First step is generate configuration.yaml according to datasources and 
-split setting. See /config/configuration.yaml for more info. Configuration files are 
-set for example data by default.
+split setting. See /config/configuration.yaml for more info. There are example configuration 
+files in Example directory.
 
+2.- Split data (otpional). Usually, sampling the input data is required.
+The sampling configuration and datasources are defined in configuration.yaml. 
+If split parameters are not determined, the data won't be sampled.
 
-2.- Split data (otpional). Usually, sampling the input data is required, to acomplish that,
-use splitData script. The sampling configuration and datasources are defined in 
-configuration.yaml. Example:
+3.- Parse data. Extract observations from data.
 
-	$ python scripts/splitData.py config/configuration.yaml 
+In the example, data is sampled every 60s. Example usage:
 
-3.- Parse data. Extract observations from sampled data. 
-Example usage:
-
-	$ python parser/parser.py config/configuration.yaml 
+	$ python parser/parser.py Example/config/configuration.yaml 
 
 ### Deparsing
 
 1.- Configuration. The deparsing program use the same configuration file used in parsing 
 process, see /config/configuration.yaml for more info.
 
-2.- Deparse. Extract the logs related to anomalies. It takes as input features and timestams.
-See example deparsing_input to see format of the file.
+2.- Deparsing. Extract the logs related to anomalies. It takes as input features and timestamps.
+See Example to see format of the file.
 
-	$ python deparser/deparser.py config/configuration.yaml deparser/deparsing_input 
+	$ python deparser/deparser.py Example/config/configuration.yaml Example/deparsing_input 
 
 
 ## Installation Requirements
@@ -72,12 +70,11 @@ install the following packages:
 
 The present repository is organized as follows:
 
-- parser/ 		   Python Module with all of the lib classes and main script to parser process.
-- deparser/        Python script and example input for deparsing process.
-- config/          Example of configuration files for the parser and some datasources configuration files.
-- scripts/         Scripts used to preprocess and prepare the data before the parsing.
-- Examples_data/   Data for example configuration.
-
-
+- parser/ 		          Python Module with all of the lib classes and main script to parser process.
+- deparser/               Python script for deparsing process.
+- config/                 Empty configuration files. 
+- Example/		          Data and configuration for an example example.
+	- Examples_data       Structured and unstructured data to test the tool.
+	- config 			  Configuration files adapted to the provided data.
 
 
