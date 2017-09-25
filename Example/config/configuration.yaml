@@ -37,7 +37,6 @@ DataSources:
     config: ./Example/config/netflow.yaml
     data: ./Example/Examples_data/nf.csv
     data_raw: ./Example/Examples_data/nfcap*
-
   ids:
     config: ./Example/config/snort_unstructured.yaml
     data: ./Example/Examples_data/ids*
