@@ -4,23 +4,26 @@
 #
 #-----------------------------------------------------------------------
 # DataSources:
-#   Source1:   DataSource name
-#     config:    Configuration file for this datasource.
-#     data:      Input files (csv format).
+#   Source1:     DataSource name
+#     config:      Configuration file for this datasource.
+#     data:        Input files (csv format).
 #   Source2:
 #     ...
 #   SourceN:
 #     ...
 #
-# Key:         Key variable to aggregate dataSources
+# Key:          Key variable to aggregate dataSources
 #
 # Output:
-#   dir:       Output directory to write the output files.
-#   stats:     Log file to write the stats (lines, records, matches).
+#   dir:        Output directory to write the output parsed data.
+#   stats:      Log file to write the stats (lines, records, matches).
+#
+# Deparsing_output: 
+#  dir:          Output directory for deparsing process
 #
 # SPLIT:        split info for temporal samplig
-#   Time:
-#     window:   time windows for sampling
+#   Time:        
+#     window    time windows for sampling
 #     start:    start and end time for sampling interval
 #     end:  
 #   

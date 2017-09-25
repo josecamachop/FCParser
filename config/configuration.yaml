@@ -19,6 +19,9 @@
 #   dir:       Output directory to write the output files.
 #   stats:     Log file to write the stats (lines, records, matches).
 #
+# Deparsing_output: 
+#  dir:          Output directory for deparsing process
+#
 # SPLIT:        split params for temporal samplig
 #   Time:
 #     window:   time windows for sampling
