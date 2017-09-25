@@ -30,7 +30,6 @@ def main():
 	args = getArguments()
 
 	# Check the config in yaml format
-
 	try:
 		deParserConfig = getConfiguration(args.config)
 	except IOError:
@@ -43,7 +42,7 @@ def main():
 		exit(1)
 	try:
 		dataSources = deParserConfig['DataSources']
-		output = deParserConfig['Output']
+		output = deParserConfig['Deparsing_output']
 	except KeyError as e:
 		print "Missing config key: %s" %(e.message)
 		exit(1)
@@ -59,12 +58,19 @@ def main():
 
 		try:
 			sources_config[source] = getConfiguration(dataSources[source]['config'])
-			sources_files[source]['files'] = glob.glob(dataSources[source]['data'])	
+			sources_files[source]['files'] = glob.glob(dataSources[source]['data'])
 			tags[source] = sources_config[source]['tag']
 
 		except:
 			print "Configuration file load error" 
 			exit(1)
+
+		try:
+			if source == 'netflow':
+				nfcapd_files = glob.glob(dataSources[source]['data_raw'])
+	
+		except:
+			print "No raw netflow files to deparse"
 
 	# Dictionary of dictionaries with all the features from all the data sources.
 
@@ -264,13 +270,14 @@ def main():
 
 		# for each timestamp, generate the nfdump query with de filtering option extracted from the yaml file.
 		for timestamp in timestamps:
-			for file in  sources_files[inverse_tags['netflow']]['files']:
+			for file in  nfcapd_files:
 				if Variables:
 
 					count_nf += 1
 					date = parsedate(timestamp,sources_config[inverse_tags['netflow']]['timestamp_format'])
 					query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + " >> " + OUTDIR + "output_" + tags[inverse_tags['netflow']] 
 
+					print query
 					os.system(query)
 	
 		dataSources.pop(inverse_tags['netflow'],None)
@@ -283,9 +290,9 @@ def main():
 	print "\n-------------------------------------------------------------------------------------------------\n"
 
 		
-	##################################################################################################################################################################
-	# NON NETFLOW SOURCES
 
+	##################################################################################################################################################################
+	# Not Netflow datasources
 
 	count_cat = 0
 

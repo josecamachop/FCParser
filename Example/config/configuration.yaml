@@ -32,7 +32,8 @@ DataSources:
 
   netflow:
     config: ./Example/config/netflow.yaml
-    data: ./Example/Examples_data/nf*
+    data: ./Example/Examples_data/nf.csv
+    data_raw: ./Example/Examples_data/nfcap*
 
   ids:
     config: ./Example/config/snort_unstructured.yaml
@@ -44,6 +45,9 @@ Output:
   dir: ./Example/OUTPUT/
   stats: stats.log
  
+Deparsing_output:
+  dir: ./Example/Deparsing_output/
+
 SPLIT: 
   Time:
     window: 60
