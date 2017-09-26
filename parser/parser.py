@@ -20,6 +20,7 @@ import re
 import time
 import shutil
 import yaml
+import subprocess
 
 import faaclib
 
@@ -107,7 +108,22 @@ def main():
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
 		
 		print "\n\nSPLITTING DATA\n\n"
-		os.system('python parser/splitData.py '+ args.config)
+
+
+
+		retcode = subprocess.call("python parser/splitData.py "+ args.config, shell=True)
+
+		if retcode == 0:
+			pass  # No exception, all is good!
+		else:
+			print "Error splitting data"
+			exit(1)
+		
+		# try:
+		# 	os.system('python parser/splitData.py '+ args.config)
+		# except: 
+		# 	print "Error splitting data"
+		# 	exit(1)
 		
 		for source in dataSources:
 		 	SOURCES[source]['FILES'] = glob.glob(str(parserConfig['SPLIT']['Output']) + source + "*" )

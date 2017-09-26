@@ -41,7 +41,7 @@ DataSources:
     config: ./Example/config/snort_unstructured.yaml
     data: ./Example/Examples_data/ids*
  
-Keys: 
+Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
 
 Output:
   dir: ./Example/OUTPUT/

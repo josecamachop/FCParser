@@ -135,7 +135,7 @@ def main():
 
 				while line:
 					if not line.startswith('#') and line.strip():
-						t = getRecordTime(line, data[source]['col'])
+						t = getRecordTime(line, data[source]['col'], data[source]['timestamp_format'])
 						pos = searchBin(timeBins, t)
 
 						if pos is not None:
@@ -160,7 +160,7 @@ def main():
 				print "   Elapsed: %s" %(prettyTime(time.time() - init))
 
 			else:
-				pass
+
 				logcount = 0
 				openedStreams = {}
 				order = []
@@ -234,10 +234,10 @@ def searchBin(bins, t):
 	pos = bisect_right(bins, t) - 1
 	return pos if t >= bins[0] and t<=bins[-1] else None
 
-def getRecordTime(line, col):
+def getRecordTime(line, col, dateFormat):
 	valueList = line.split(',')
 	rawTime = valueList[col].split('.')[0]
-	time = datetime.strptime(rawTime, '%Y-%m-%d %H:%M:%S')
+	time = datetime.strptime(rawTime, dateFormat)
 	return time
 
 def getUnstructuredTime (log, patern, dateFormat):
