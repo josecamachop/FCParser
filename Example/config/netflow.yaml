@@ -20,7 +20,7 @@
 # VARIABLES:
 #   - name:      Variable name.
 #     type:      Variable type {string, number, counter, ip, time, duration}.
-#     arg:       Position of the field in the line (starts with 0).
+#     where:       Position of the field in the line (starts with 0).
 #
 #   - ...
 #
@@ -53,46 +53,46 @@ timearg: 0
 VARIABLES:
 - name: duration
   type: number
-  arg: 2
+  where: 2
 - name: src_ip
   type: ip
-  arg: 3
+  where: 3
 - name: dst_ip
   type: ip
-  arg: 4
+  where: 4
 - name: src_port
   type: number
-  arg: 5
+  where: 5
 - name: dst_port
   type: number
-  arg: 6
+  where: 6
 - name: protocol
   type: string
-  arg: 7
+  where: 7
 - name: tcp_flags
   type: string
-  arg: 8
+  where: 8
 - name: src_tos
   type: number
-  arg: 10
+  where: 10
 - name: in_packets
   type: number
-  arg: 11
+  where: 11
 - name: in_bytes
   type: number
-  arg: 12
+  where: 12
 - name: out_packets
   type: number
-  arg: 13
+  where: 13
 - name: out_bytes
   type: number
-  arg: 14
+  where: 14
 - name: in_interface
   type: number
-  arg: 15
+  where: 15
 - name: out_interface
   type: number
-  arg: 16
+  where: 16
 
 
 ## Features Section
@@ -151,7 +151,7 @@ FEATURES:
   variable: src_port
   type: single
   value: 17
-- name: sport_chargen
+- name: sport_chwhereen
   variable: src_port
   type: single
   value: 19
@@ -371,7 +371,7 @@ FEATURES:
   variable: dst_port
   type: single
   value: 17
-- name: dport_chargen
+- name: dport_chwhereen
   variable: dst_port
   type: single
   value: 19

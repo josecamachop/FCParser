@@ -542,7 +542,7 @@ def search_feature(FEATURES,VARIABLES,logExtract,features,source):
 			fType = FEATURES[source][feature]['type']		
 
 
-			match = re.search(VARIABLES[source][fVariable]['arg'],logExtract)
+			match = re.search(VARIABLES[source][fVariable]['where'],logExtract)
 
 			if match:
 				match = match.group(0)
@@ -672,7 +672,7 @@ def search_amount_features(line,features,FEATURES,VARIABLES):
 			fType = FEATURES[feature]['type']
 			fValue = FEATURES[feature]['value']
 			variable = VARIABLES[fVariable]
-			pos = variable['arg']
+			pos = variable['where']
 
 			line_split = line.split(',')
 

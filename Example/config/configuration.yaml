@@ -41,8 +41,8 @@ DataSources:
     config: ./Example/config/snort_unstructured.yaml
     data: ./Example/Examples_data/ids*
  
-Keys:
- 
+Keys: 
+
 Output:
   dir: ./Example/OUTPUT/
   stats: stats.log

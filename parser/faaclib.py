@@ -322,7 +322,7 @@ class Record(object):
 				try:
 					vType = v['type']
 					vName = v['name']
-					vArg  = v['arg']
+					vWhere  = v['where']
 				except KeyError as e:
 					raise ConfigError(self, "VARIABLES: missing config key (%s)" %(e.message))	
 				try:
@@ -338,10 +338,10 @@ class Record(object):
 
 				# Validate arg
 				try:
-					if isinstance(vArg, list) and len(vArg) == 2:
-						vValue = [raw_values[vArg[0]], raw_values[vArg[1]]]
+					if isinstance(vWhere, list) and len(vWhere) == 2:
+						vValue = [raw_values[vWhere[0]], raw_values[vWhere[1]]]
 					else:
-						vValue = raw_values[vArg]
+						vValue = raw_values[vWhere]
 				except (TypeError, IndexError) as e:
 					raise ConfigError(self, "VARIABLES: illegal arg in '%s' (%s)" %(vName, e.message))
 
@@ -378,7 +378,7 @@ class Record(object):
 				try:
 					vType = v['type']
 					vName = v['name']
-					vArg = v['arg']
+					vWhere = v['where']
 					vMatchType = v['matchtype']
 
 				except KeyError as e:
@@ -391,8 +391,8 @@ class Record(object):
 					raise ConfigError(self, "VARIABLE: empty id in variable")
 
 				# Validate name
-				if vArg:
-					vArg = str(vArg)
+				if vWhere:
+					vWhere = str(vWhere)
 				else:
 					raise ConfigError(self, "VARIABLE: empty arg in variable; regular expresion expected")
 
@@ -400,7 +400,7 @@ class Record(object):
 				if vType == 'regexp':
 
 					try:
-						p = re.search(vArg,line)
+						p = re.search(vWhere,line)
 						vValue = p.group(0)
 
 						if vMatchType == 'string':
