@@ -20,7 +20,7 @@
 # VARIABLES:
 #   - name:      Variable name.
 #     type:      Variable type {string, number, counter, ip, time, duration}.
-#     arg:       Position of the field in the line (starts with 0).
+#     where:       Position of the field in the line (starts with 0).
 #
 #   - ...
 #

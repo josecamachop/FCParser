@@ -89,7 +89,6 @@ def main():
 				exit(1)
 
  		for variable in sources_config[source]['VARIABLES']:
- 			
  			try:
 				VARIABLES[source][variable['name']] = variable
 			except:
@@ -99,7 +98,6 @@ def main():
 
 	lines = {}
 	for source in dataSources:
-
 		lines[source] = 0
 		
 		if structured[source]:
@@ -163,12 +161,9 @@ def main():
 	
 
 	#reverse tag dictionary to map tags into datasource files.
-
 	inverse_tags = {v: k for k, v in tags.items()}
 	
-
 	#Extract features and timestams from the input file.
-	
 	line = input_file.readline()
 
 	features = []
@@ -177,7 +172,6 @@ def main():
 	timeBol = False
 
 	while line:
-
 		if "features:" in line :
 			featuresBol = True
 
@@ -200,27 +194,45 @@ def main():
 		line = input_file.readline()
 
 
-
 	# Print a summary of loaded parameters
-	print "----------------------------------------------------------------------------------"
+	print "------------------------------------------------------------------------"
 	print "Data Sources:"
 	for source in sources_files:
 				print "	- " + str(tags[source]) + " --> Files: " + str(sources_files[source]['files'])
 
 	print "FEATURES:"
 	print " TOTAL " + (str(len(features))) + " features:  \n" + str(features) + "\n"
-	print "----------------------------------------------------------------------------------\n"
+	print "------------------------------------------------------------------------\n"
 
 	print "TIMESTAMPS"
 	print " TOTAL " + (str(len(timestamps))) + " timestamps:  \n" + str(timestamps) + "\n"
-	print "----------------------------------------------------------------------------------\n"
+	print "------------------------------------------------------------------------\n"
 	
 	print "Output:"
 	print "  Directory: %s" %(OUTDIR)
 	print "  Stats file: %s" %(OUTSTATS)
-	print "\n----------------------------------------------------------------------------------\n"
+	print "\n------------------------------------------------------------------------\n"
 	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-	print "\n----------------------------------------------------------------------------------\n"
+	print "\n------------------------------------------------------------------------\n"
+
+
+
+	# Change timestamps to search depending on the sampling frecuency
+	try:
+		sample_rate = deParserConfig['SPLIT']['Time']['window']
+
+	except:
+		print "Error configuration file: SPLIT"
+
+	if not (sample_rate == 60  or sample_rate == None):
+		temp = []
+		for timestamp in timestamps:
+			for i in range(sample_rate/60 ):
+				t = datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S")
+				t = t.replace(minute = t.minute + i)
+				temp.append(str(t))
+
+		timestamps = temp
 
 
 	# Generate outputs
@@ -238,7 +250,6 @@ def main():
 		print " ** WARNING, errors may appear with nfdump queries, ignore that errors \n\n"
 
 		for feature in features:
-
 			if feature in FEATURES[inverse_tags['netflow']].keys():	
 				sFields_nfdump(FEATURES[inverse_tags['netflow']],sFeatures,feature)
 				feat_delete.append(feature)	
@@ -261,7 +272,6 @@ def main():
 		for timestamp in timestamps:
 			for file in  nfcapd_files:
 				if Variables:
-
 					count_nf += 1
 					date = parsedate(timestamp,sources_config[inverse_tags['netflow']]['timestamp_format'])
 					query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + " >> " + OUTDIR + "output_" + tags[inverse_tags['netflow']] 
@@ -278,7 +288,6 @@ def main():
 	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
 	print "\n---------------------------------------------------------------------------\n"
 
-	
 
 	##################################################################################################################################################################
 	# Not Netflow datasources
@@ -290,26 +299,22 @@ def main():
 	# iterate through features and timestams
 	if features:
 		for source in dataSources:
+			print source
 			
 			count_source = 0
-			print source
-
 			tag = tags[source]
 			sourcepath = sources_files[source]['files']
 			formated_timestamps = format_timestamps(timestamps,sources_config[source]['timestamp_format'])
-
 
 			# Structured sources
 			# =========================================
 
 			if structured[source]:
 				output_file = open(OUTDIR + "output_" + tag,'w')
-	
 				# while count_source < lines[source]*0.01 and (not features_needed <= 0) : 
 				feat_appear = {}
 				for file in sourcepath:
 					feat_appear[file] = []
-
 					input_file = open(file,'r')
 					line = input_file.readline()
 
@@ -327,7 +332,6 @@ def main():
 						line = input_file.readline()
 					input_file.close()
 
-
 				# Obtain number of features needed to extract the log
 				features_needed = len(features)
 				count = 0
@@ -343,7 +347,6 @@ def main():
 					input_file.seek(0)
 					line = input_file.readline()
 						
-					
 					while line:
 						try:
 							t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])													
@@ -358,7 +361,6 @@ def main():
 							pass
 						
 						line = input_file.readline()
-
 					input_file.close()
 				output_file.close()
 
@@ -373,7 +375,6 @@ def main():
 				feat_appear = {}
 				for file in sourcepath:
 					feat_appear[file] = []
-
 					input_file = open(file,'r')
 					line = input_file.readline()
 
@@ -415,7 +416,7 @@ def main():
 				# Obtain number of features needed to extract the log
 				features_needed = len(features)
 				count = 0
-				while count < lines[source]*0.001 and (not features_needed <= 0):
+				while count < lines[source]*0.01 and (not features_needed <= 0):
 					for file in feat_appear:
 						count += feat_appear[file].count(int(features_needed))
 					features_needed -= 1

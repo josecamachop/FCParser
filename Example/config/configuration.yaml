@@ -23,7 +23,7 @@
 #
 # SPLIT:        split info for temporal samplig
 #   Time:        
-#     window    time windows for sampling
+#     window    time windows for sampling in seconds
 #     start:    start and end time for sampling interval
 #     end:  
 #   
