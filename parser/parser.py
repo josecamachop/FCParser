@@ -119,12 +119,6 @@ def main():
 			print "Error splitting data"
 			exit(1)
 		
-		# try:
-		# 	os.system('python parser/splitData.py '+ args.config)
-		# except: 
-		# 	print "Error splitting data"
-		# 	exit(1)
-		
 		for source in dataSources:
 		 	SOURCES[source]['FILES'] = glob.glob(str(parserConfig['SPLIT']['Output']) + source + "*" )
 
@@ -250,13 +244,12 @@ def main():
 		if unused_sources:
 			print "\n\n###################################################################################################"
 			print "                                                                                                       "
-			print "                     WARNING: DATASOURCES UNUSED DUE TO CHOOSEN KEY                                    "
-			print "                     UNUSED DATASOURCES:     " +str(unused_sources) +"                                 "
-			print "                     PERCENTAGE OF USED ENRIES: " +str(float(total_lines - unused_lines)*100/total_lines) 
+			print "                   WARNING: DATASOURCES UNUSED DUE TO CHOOSEN KEY                                      "
+			print "                   UNUSED DATASOURCES:     " +str(unused_sources) +"                                   "
+			print "                   PERCENTAGE OF USED ENRIES: " +str(float(total_lines - unused_lines)*100/total_lines) 
 			print "                                                                                                       "
 			print "###################################################################################################\n\n"
 			
-
 
 			statsLine = "#------------------------------------------------\n"
 			statsStream.write(statsLine)

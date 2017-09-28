@@ -114,7 +114,8 @@ def main():
 		if inputFiles[source] == []:
 			data.pop(source)		
 
-
+	print startTime
+	current_year = startTime.year
 	# Process of splitting 
 
 	for source in data:
@@ -177,7 +178,7 @@ def main():
 							logExtract = log.split(SEPARATOR[source])[0] 
 
 							try:
-								t = getUnstructuredTime(logExtract,data[source]['timestamp_regexp'],data[source]['timestamp_format'] )
+								t = getUnstructuredTime(logExtract,data[source]['timestamp_regexp'],data[source]['timestamp_format'], current_year )
 								pos = searchBin(timeBins,t)
 							except:
 								pos = None
@@ -207,7 +208,7 @@ def main():
 
 			    # Process last log:
 				try:
-					t = getUnstructuredTime(log,data[source]['timestamp_regexp'],data[source]['timestamp_format'] )
+					t = getUnstructuredTime(log,data[source]['timestamp_regexp'],data[source]['timestamp_format'], current_year)
 					pos = searchBin(timeBins,t)
 
 				except:
@@ -240,7 +241,7 @@ def getRecordTime(line, col, dateFormat):
 	time = datetime.strptime(rawTime, dateFormat)
 	return time
 
-def getUnstructuredTime (log, patern, dateFormat):
+def getUnstructuredTime (log, patern, dateFormat, current_year):
 
 	p = re.search(patern,log)
 	date_string = p.group(0)
@@ -248,7 +249,7 @@ def getUnstructuredTime (log, patern, dateFormat):
 	d = datetime.strptime(date_string,dateFormat)
 	if d.year == 1900:
 	# 	d = d.replace(year = datetime.now().year)
-		d = d.replace(year = 2015)
+		d = d.replace(year = current_year)
 
 	return d
 
