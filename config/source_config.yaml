@@ -19,7 +19,7 @@
 #
 # VARIABLES:
 #   - name:      Variable name.
-#     type:      Variable type {string, number, counter, ip, time, duration}.
+#     matchtype:      Variable matchtype {string, number, counter, ip, time, duration}.
 #     where:       Position of the field in the line (starts with 0).
 #
 #   - ...
@@ -27,12 +27,12 @@
 # FEATURES:
 #   - name:      Feature name.
 #     variable:  Feature from which the feature is calculated.
-#     type:      Feature type {single, multiple, range, default}
+#     matchtype: Feature matchtype {single, multiple, range, default}
 #     value:     Value of the field that defines the feature.
-#                If the type is 'single' use a single value.
-#                If the type is 'multiple', use a list of values.
-#                If the type is 'range', use a list of two values.
-#                If the type is 'default', the value must be empty.
+#                If the matchtype is 'single' use a single value.
+#                If the matchtype is 'multiple', use a list of values.
+#                If the matchtype is 'range', use a list of two values.
+#                If the matchtype is 'default', the value must be empty.
 #   - ...
 #-----------------------------------------------------------------------
 
@@ -55,11 +55,11 @@ timearg:
 VARIABLES:
 
 - name: 
-  type: 
+  matchtype: 
   where: 
 
 - name: 
-  type: 
+  matchtype: 
   where: 
 
 
@@ -70,11 +70,11 @@ FEATURES:
 
 - name: 
   variable: 
-  type: 
+  matchtype: 
   value: 
 
 - name: 
   variable: 
-  type: 
+  matchtype: 
   value: 
 

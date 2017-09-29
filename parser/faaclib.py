@@ -8,7 +8,7 @@ See README file to learn how to use FaaC parser library.
 Authors: Alejandro Perez Villegas (alextoni@gmail.com)
 		 Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
 
-Last Modification: 20/Jul/2017
+Last Modification: 29/Jul/2017
 
 """
 
@@ -26,13 +26,13 @@ class Variable(object):
 	"""Single piece of information contained in a raw record.
 	
 	This is an abstract class, and should not be directly instantiated. 
-	Instead, use one of the subclasses, defined for each type of variable:
-	- StringVariable    (type 'string')
-	- NumberVariable    (type 'number')
-	- IpVariable        (type 'ip')
-	- TimeVariable      (type 'time')
-	- TimedeltaVariable (type 'duration')
-	- MultipleVariable  (type 'multiple')
+	Instead, use one of the subclasses, defined for each matchtype of variable:
+	- StringVariable    (matchtype 'string')
+	- NumberVariable    (matchtype 'number')
+	- IpVariable        (matchtype 'ip')
+	- TimeVariable      (matchtype 'time')
+	- TimedeltaVariable (matchtype 'duration')
+	- MultipleVariable  (matchtype 'multiple')
 	
 	Class Attributes:
 		value -- The value of the variable.
@@ -155,10 +155,10 @@ class IpVariable(Variable):
 		
 	def equals(self, raw_value):
 		"""Compares this IP address to a given one, OR
-		Checks this IP address type.
-		Suported types: 'private', 'public'.
+		Checks this IP address matchtype.
+		Suported matchtypes: 'private', 'public'.
 		
-		raw_value -- Specific IP address, OR type of IP.
+		raw_value -- Specific IP address, OR matchtype of IP.
 		"""
 		if self.value is None:
 			output = False
@@ -320,7 +320,7 @@ class Record(object):
 
 			for v in variables:
 				try:
-					vType = v['type']
+					vType = v['matchtype']
 					vName = v['name']
 					vWhere  = v['where']
 				except KeyError as e:
@@ -347,7 +347,7 @@ class Record(object):
 
 				except:
 					vValue = None
-				# Validate type
+				# Validate matchtype
 				if vType == 'string':
 					variable = StringVariable(vValue)
 				elif vType == 'number':
@@ -362,7 +362,7 @@ class Record(object):
 					else:
 						raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
 				else:
-					raise ConfigError(self, "VARIABLES: illegal type in '%s' (%s)" %(vName, vType))
+					raise ConfigError(self, "VARIABLES: illegal matchtype in '%s' (%s)" %(vName, vType))
 					
 				# Add variable to the record
 				if vMult:
@@ -376,10 +376,11 @@ class Record(object):
 
 			for v in variables:
 				try:
-					vType = v['type']
 					vName = v['name']
 					vWhere = v['where']
 					vMatchType = v['matchtype']
+					if isinstance(vWhere,str):
+						vType = 'regexp'
 
 				except KeyError as e:
 					raise ConfigError(self, "VARIABLES: missing config key (%s)" %(e.message))
@@ -396,7 +397,7 @@ class Record(object):
 				else:
 					raise ConfigError(self, "VARIABLE: empty arg in variable; regular expresion expected")
 
-				# Validate type
+				# Validate matchtype
 				if vType == 'regexp':
 
 					try:
@@ -425,7 +426,7 @@ class Record(object):
 					except:
 						variable = None
 				else:
-					raise ConfigError(self, "VARIABLES: illegal type in '%s' (%s)" %(vName, vMatchType))
+					raise ConfigError(self, "VARIABLES: illegal matchtype in '%s' (%s)" %(vName, vMatchType))
 
 
 				self.variables[vName] = variable
@@ -474,7 +475,7 @@ class Observation(object):
 			try:
 				fName  = FEATURES[i]['name']
 				fVariable = FEATURES[i]['variable']
-				fType  = FEATURES[i]['type']
+				fType  = FEATURES[i]['matchtype']
 				fValue = FEATURES[i]['value']
 			except KeyError as e:
 				raise ConfigError(self, "FEATURES: missing config key (%s)" %(e.message))
@@ -493,7 +494,7 @@ class Observation(object):
 
 			# Calculate feature 
 
-			# Iterate through all the features in the conf file. For each iteration, check the type of the variable 
+			# Iterate through all the features in the conf file. For each iteration, check the matchtype of the variable 
 			# involved. Then, check the value of the variable asociated to the feature. If there is a match, the counters
 			# of the observations are increased. --> FaaC (Feature as a counter)
 
@@ -536,7 +537,7 @@ class Observation(object):
 					defaults.append(i)
 				
 				else:
-					raise ConfigError(self, "FEATURES: illegal type in '%s' (%s)" %(fName, fType))
+					raise ConfigError(self, "FEATURES: illegal matchtype in '%s' (%s)" %(fName, fType))
 				
 			# Update data lists
 			self.label[i] = fName

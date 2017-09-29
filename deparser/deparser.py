@@ -6,7 +6,7 @@ data related to anomalies in comparison to masive amounts of extracted data
 
 Authors: Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
 		 
-Last Modification: 25/Sep/2017
+Last Modification: 29/Sep/2017
 
 """
 
@@ -527,7 +527,7 @@ def file_log_len(fname, separator):
 def search_feature(FEATURES,VARIABLES,logExtract,features,source):
 
 	# Iterate through features, if all features of the given source appear in the log,
-	# write the log in the output file.
+
 
 	feature_count = 0
 	list_timetamps = []
@@ -538,9 +538,8 @@ def search_feature(FEATURES,VARIABLES,logExtract,features,source):
 
 			fVariable = FEATURES[source][feature]['variable']
 		
-
 			fValue = FEATURES[source][feature]['value']		
-			fType = FEATURES[source][feature]['type']		
+			fType = FEATURES[source][feature]['matchtype']		
 
 
 			match = re.search(VARIABLES[source][fVariable]['where'],logExtract)
@@ -670,7 +669,7 @@ def search_amount_features(line,features,FEATURES,VARIABLES):
 		try:
 			fName = FEATURES[feature]['name']
 			fVariable = FEATURES[feature]['variable']
-			fType = FEATURES[feature]['type']
+			fType = FEATURES[feature]['matchtype']
 			fValue = FEATURES[feature]['value']
 			variable = VARIABLES[fVariable]
 			pos = variable['where']
@@ -710,7 +709,7 @@ def sFields_nfdump(nf_feat,sFeatures,feature):
 
 	fName = nf_feat[feature]['name']
 	fVariable = nf_feat[feature]['variable']
-	fType = nf_feat[feature]['type']
+	fType = nf_feat[feature]['matchtype']
 	fValue = nf_feat[feature]['value']
 
 
