@@ -13,7 +13,7 @@
 #
 # timestamp_regexp: regular expresion that matches the date format of the source (only needed for unstructured sources)
 #
-# separator: chars that delimitates the log entries of the source (only needed in unstructured sources)
+# separator: chars that delimits the log entries of the source (only needed in unstructured sources)
 #
 # timearg: position of the timestamp in the log entry (only needed in structured sources)
 #
