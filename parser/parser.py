@@ -24,17 +24,23 @@ import subprocess
 
 import faaclib
 
-def main():
+def main(call='external',configfile=''):
+	
 	startTime = time.time()
 	
-	args = getArguments()
+	# if called from terminal
+	# if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
+	if call is 'external':
+		args = getArguments()
+		configfile = args.config
+		
 	try:
-		parserConfig = getConfiguration(args.config)
+		parserConfig = getConfiguration(configfile)
 	except IOError:
-		print "No such config file '%s'" %(args.config)
+		print "No such config file '%s'" %(configfile)
 		exit(1)
 	except yaml.scanner.ScannerError as e:
-		print "Incorrect config file '%s'" %(args.config)
+		print "Incorrect config file '%s'" %(configfile)
 		print e.problem
 		print e.problem_mark
 		exit(1)
@@ -111,7 +117,7 @@ def main():
 
 
 
-		retcode = subprocess.call("python parser/splitData.py "+ args.config, shell=True)
+		retcode = subprocess.call("python parser/splitData.py "+ configfile, shell=True)
 
 		if retcode == 0:
 			pass  # No exception, all is good!
@@ -622,4 +628,5 @@ def getArguments():
 
 
 if __name__ == "__main__":
+	
 	main()
