@@ -76,6 +76,7 @@ def main():
 		except KeyError:
 			data[source]['prefix'] = source
 	
+
 	print "-----------------------------------------------------------------------"
 	print " Start:  %s" %(startTime)
 	print " End:    %s" %(endTime)
@@ -104,9 +105,18 @@ def main():
 	prefix = {}
 	for source in data:
 		print "SOURCE: %s" %(source)
+	
 		try:
 			inputFiles[source] = glob.glob(data[source]['input'])
+			
+			# If the input data is in binary nfcapd, the data is preprocessed in the parsing process to obtain csv files.
+			# so change input file pointer to new csv files.
+			if 'nfcapd' in inputFiles[source][0]:
+				new_input = "/".join(data[source]['input'].split('/')[:-1]) + '/netflow*' 
+				inputFiles[source] = glob.glob(new_input)
+
 			prefix[source] = data[source]['prefix']
+		
 		except:
 			pass
 		

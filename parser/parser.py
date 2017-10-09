@@ -110,13 +110,27 @@ def main(call='external',configfile=''):
 		print "Missing config key: %s" %(e.message)
 		exit(1)
 
+	# Preprocessing nfcapd files to obtain csv files.
+	for source in dataSources:
+		out_files = SOURCES[source]['FILES']
+		for file in SOURCES[source]['FILES']:
+			if 'nfcapd' in file:
+				out_files = []
+				out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
+				os.system("nfdump -r " + file + " -o csv >>"+out_file)
+				os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
+				os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
+				out_files.append(out_file.replace('temp',source) + '.csv')
+				os.remove(out_file)
+				os.remove(out_file.replace('temp',source))
+		print out_files
+		SOURCES[source]['FILES'] = out_files
+
+
 	# If there are split parameters, perform split procedure
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
 		
 		print "\n\nSPLITTING DATA\n\n"
-
-
-
 		retcode = subprocess.call("python parser/splitData.py "+ configfile, shell=True)
 
 		if retcode == 0:
@@ -140,7 +154,7 @@ def main(call='external',configfile=''):
 		print " * %s %s variables   %s features" %((source).ljust(18), str(len(SOURCES[source]['CONFIG']['VARIABLES'])).ljust(2), str(len(SOURCES[source]['CONFIG']['FEATURES'])).ljust(3))
 	print " TOTAL %s features" %(str(sum(len(l) for l in FEATURES.itervalues())))
 	print
-	print "Key:"
+	print "Key:" 	
 	aggrStr = ', '.join(Keys) if isinstance(Keys,list) else Keys
 	print aggrStr
 	print
@@ -238,7 +252,7 @@ def main(call='external',configfile=''):
 					SOURCES.pop(source, None)
 					unused_sources.append(source)
 
-	# Count unused lies addin lines from all unused sources
+	# Count unused lines from all unused sources
 	# in order to calculate a percentage of used entries.
 		unused_lines = 0 
 		for source in unused_sources:

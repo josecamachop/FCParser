@@ -6,7 +6,7 @@
 # DataSources:
 #   Source1:     DataSource name
 #     config:      Configuration file for this datasource.
-#     data:        Input files (csv format).
+#     data:        Input files.
 #   Source2:
 #     ...
 #   SourceN:
@@ -35,8 +35,8 @@ DataSources:
 
   netflow:
     config: ./Example/config/netflow.yaml
-    data: ./Example/Examples_data/nf.csv
-    data_raw: ./Example/Examples_data/nfcap*
+    data: ./Example/Examples_data/nf*.csv
+
   ids:
     config: ./Example/config/ids.yaml
     data: ./Example/Examples_data/ids*
