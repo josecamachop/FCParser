@@ -19,7 +19,8 @@
 #   stats:      Log file to write the stats (lines, records, matches).
 #
 # Deparsing_output: 
-#  dir:          Output directory for deparsing process
+#  dir:         Output directory for deparsing process
+# treshold:     upper limit of log entries by datasource.  
 #
 # SPLIT:        split info for temporal samplig
 #   Time:        
@@ -49,6 +50,7 @@ Output:
  
 Deparsing_output:
   dir: ./Example/Deparsing_output/
+  threshold: 50
 
 SPLIT: 
   Time:

@@ -42,12 +42,14 @@ def main():
 	try:
 		dataSources = deParserConfig['DataSources']
 		output = deParserConfig['Deparsing_output']
+		threshold = output['threshold']
 	except KeyError as e:
 		print "Missing config key: %s" %(e.message)
 		exit(1)
 
 	# Sources settings	
-
+	
+	nfcapd_files = False
 	sources_files = {}
 	sources_config = {}
 	tags = {}
@@ -65,8 +67,7 @@ def main():
 			exit(1)
 
 		try:
-			if source == 'netflow':
-				nfcapd_files = glob.glob(dataSources[source]['data_raw'])
+			nfcapd_files = glob.glob(dataSources[source]['nfcapd*'])
 	
 		except:
 			print "No raw netflow files to deparse"
@@ -242,7 +243,7 @@ def main():
 
 	count_nf = 0
 	
-	if 'netflow' in inverse_tags.keys():
+	if nfcapd_files:
 		sFeatures = []	
 		feat_delete = []  # list of already deparsed features 
 
@@ -335,7 +336,7 @@ def main():
 				# Obtain number of features needed to extract the log
 				features_needed = len(features)
 				count = 0
-				while count < lines[source]*0.01 and (not features_needed <= 0):
+				while count < int(threshold) and (not features_needed <= 0):
 					for file in feat_appear:
 						count += feat_appear[file].count(int(features_needed))
 					features_needed -= 1
@@ -416,7 +417,7 @@ def main():
 				# Obtain number of features needed to extract the log
 				features_needed = len(features)
 				count = 0
-				while count < lines[source]*0.01 and (not features_needed <= 0):
+				while count < int(threshold) and (not features_needed <= 0):
 					for file in feat_appear:
 						count += feat_appear[file].count(int(features_needed))
 					features_needed -= 1
