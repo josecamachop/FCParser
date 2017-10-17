@@ -23,6 +23,8 @@ from IPy import IP
 
 def main():
 
+	delete_nfcsv = None # bool variable for netflow raw data  
+
 	startTime = time.time()
 
 	# get config file from input arguments
@@ -59,18 +61,33 @@ def main():
 
 		try:
 			sources_config[source] = getConfiguration(dataSources[source]['config'])
-			sources_files[source]['files'] = glob.glob(dataSources[source]['data'])
 			tags[source] = sources_config[source]['tag']
+			sources_files[source]['files'] = glob.glob(dataSources[source]['data'])
+
+			out_files = []
+			for file in sources_files[source]['files']:
+				if 'nfcapd' in file:
+
+					out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
+					os.system("nfdump -r " + file + " -o csv >>"+out_file)
+					os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
+					os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
+					out_files.append(out_file.replace('temp',source) + '.csv')
+					os.remove(out_file)
+					os.remove(out_file.replace('temp',source))
+
+					sources_files[source]['files'] = out_files
+					delete_nfcsv = out_files
 
 		except:
 			print "Configuration file load error" 
 			exit(1)
 
-		try:
-			nfcapd_files = glob.glob(dataSources[source]['nfcapd*'])
+		# try:
+		# 	nfcapd_files = glob.glob(dataSources[source]['nfcapd*'])
 	
-		except:
-			print "No raw netflow files to deparse"
+		# except:
+		# 	print "No raw netflow files to deparse"
 
 	# Dictionary of dictionaries with all the features from all the data sources.
 
@@ -236,58 +253,58 @@ def main():
 		timestamps = temp
 
 
-	# Generate outputs
-	########################################################
+	# # Generate outputs
+	# ########################################################
 
-	# NFDUMP QUERIES FOR NETFLOW SOURCES
+	# # NFDUMP QUERIES FOR NETFLOW SOURCES
 
-	count_nf = 0
+	# count_nf = 0
 	
-	if nfcapd_files:
-		sFeatures = []	
-		feat_delete = []  # list of already deparsed features 
+	# if nfcapd_files:
+	# 	sFeatures = []	
+	# 	feat_delete = []  # list of already deparsed features 
 
-		print "Nfdump queries... \n\n"
-		print " ** WARNING, errors may appear with nfdump queries, ignore that errors \n\n"
+	# 	print "Nfdump queries... \n\n"
+	# 	print " ** WARNING, errors may appear with nfdump queries, ignore that errors \n\n"
 
-		for feature in features:
-			if feature in FEATURES[inverse_tags['netflow']].keys():	
-				sFields_nfdump(FEATURES[inverse_tags['netflow']],sFeatures,feature)
-				feat_delete.append(feature)	
+	# 	for feature in features:
+	# 		if feature in FEATURES[inverse_tags['netflow']].keys():	
+	# 			sFields_nfdump(FEATURES[inverse_tags['netflow']],sFeatures,feature)
+	# 			feat_delete.append(feature)	
 
-				# delete already deparsed features form features list.
+	# 			# delete already deparsed features form features list.
 
-		for f in feat_delete:
-			features.remove(f)
+	# 	for f in feat_delete:
+	# 		features.remove(f)
 
-		# append all the Variables with the conector and.
+	# 	# append all the Variables with the conector and.
 
-		Variables = ""
-		for i in range(len(sFeatures) - 1):
-			Variables +=  sFeatures[i] + " and " 
+	# 	Variables = ""
+	# 	for i in range(len(sFeatures) - 1):
+	# 		Variables +=  sFeatures[i] + " and " 
 
-		if sFeatures:
-			Variables += sFeatures[-1]
+	# 	if sFeatures:
+	# 		Variables += sFeatures[-1]
 
-		# for each timestamp, generate the nfdump query with de filtering option extracted from the yaml file.
-		for timestamp in timestamps:
-			for file in  nfcapd_files:
-				if Variables:
-					count_nf += 1
-					date = parsedate(timestamp,sources_config[inverse_tags['netflow']]['timestamp_format'])
-					query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + " >> " + OUTDIR + "output_" + tags[inverse_tags['netflow']] 
+	# 	# for each timestamp, generate the nfdump query with de filtering option extracted from the yaml file.
+	# 	for timestamp in timestamps:
+	# 		for file in  nfcapd_files:
+	# 			if Variables:
+	# 				count_nf += 1
+	# 				date = parsedate(timestamp,sources_config[inverse_tags['netflow']]['timestamp_format'])
+	# 				query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + " >> " + OUTDIR + "output_" + tags[inverse_tags['netflow']] 
 
-					# print query
-					os.system(query)
+	# 				# print query
+	# 				os.system(query)
 	
-		dataSources.pop(inverse_tags['netflow'],None)
+	# 	dataSources.pop(inverse_tags['netflow'],None)
 
-	else:
-		print "No nfdump queries..."
+	# else:
+	# 	print "No nfdump queries..."
 
-	print "\n---------------------------------------------------------------------------\n"
-	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-	print "\n---------------------------------------------------------------------------\n"
+	# print "\n---------------------------------------------------------------------------\n"
+	# print "Elapsed: %s" %(prettyTime(time.time() - startTime))
+	# print "\n---------------------------------------------------------------------------\n"
 
 
 	##################################################################################################################################################################
@@ -460,16 +477,19 @@ def main():
 			print "Elapsed: %s" %(prettyTime(time.time() - startTime))
 			print "\n---------------------------------------------------------------------------\n"
 
-	stats(count_nf, count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime)
+	stats( count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime)
 
+	if delete_nfcsv:
+		for file in delete_nfcsv:
+			os.remove(file)
 
-def stats(count_nf, count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime):
+def stats( count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime):
 
 	# Print stats
 	print "\n---------------------------------------------------------------------------"	
 	print "\nSearch finished:"
 	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-	print "\n Nfdump queries: " + str(count_nf)
+	# print "\n Nfdump queries: " + str(count_nf)
 	print " Structured logs found:  " + str(count_structured)
 	print " Unstructured logs found: " + str(count_unstructured)
 	print "\n---------------------------------------------------------------------------\n"
@@ -479,7 +499,7 @@ def stats(count_nf, count_structured, count_unstructured, OUTDIR, OUTSTATS, star
 		stats_file = open(OUTDIR + OUTSTATS,'w')
 		stats_file.write("STATS:\n")
 		stats_file.write("---------------------------------------------------------------------------\n")
-		stats_file.write("Nfdump queries: " + str(count_nf) + "\n")
+		# stats_file.write("Nfdump queries: " + str(count_nf) + "\n")
 		stats_file.write(" Structured logs found: " + str(count_structured) + "\n")
 		stats_file.write(" Unstructured logs found: " + str(count_unstructured))
 
@@ -704,152 +724,152 @@ def search_amount_features(line,features,FEATURES,VARIABLES):
 	return feature_count
 
 
-def sFields_nfdump(nf_feat,sFeatures,feature):
+# def sFields_nfdump(nf_feat,sFeatures,feature):
 
-# Function to exrtact nfdump filters from features
+# 	# Function to exrtact nfdump filters from features
 
-	fName = nf_feat[feature]['name']
-	fVariable = nf_feat[feature]['variable']
-	fType = nf_feat[feature]['matchtype']
-	fValue = nf_feat[feature]['value']
-
-
-	# IP related features
-
-	if fName.startswith('src_ip'):
-
-		if fValue == "private":
-			return "(src net 10.0.0.0/8 or src net 172.16.0.0/12 or src net 192.168.0.0/16)"
-
-		if fValue == "public":
-			return "not (src net 10.0.0.0/8 or src net 172.16.0.0/12 or src net 192.168.0.0/16)"
-
-	elif fName.startswith('dst_ip'):
-
-		if fValue == "public":
-			return "not (dst net 10.0.0.0/8 or dst net 172.16.0.0/12 or dst net 192.168.0.0/16)"
-
-		if fValue == "private":
-			return "(dst net 10.0.0.0/8 or dst net 172.16.0.0/12 or dst net 192.168.0.0/16)"
+# 	fName = nf_feat[feature]['name']
+# 	fVariable = nf_feat[feature]['variable']
+# 	fType = nf_feat[feature]['matchtype']
+# 	fValue = nf_feat[feature]['value']
 
 
-	# Source port related features 
+# 	# IP related features
 
-	if fName.startswith('sport'):
+# 	if fName.startswith('src_ip'):
 
-		if fType == 'single':
-			sFeatures.append('src port '+ str(fValue))
+# 		if fValue == "private":
+# 			return "(src net 10.0.0.0/8 or src net 172.16.0.0/12 or src net 192.168.0.0/16)"
 
-		elif fType == 'multiple':
-			for f in fValue:
-				sFeatures.append('src port ' + str(f))
+# 		if fValue == "public":
+# 			return "not (src net 10.0.0.0/8 or src net 172.16.0.0/12 or src net 192.168.0.0/16)"
 
-		elif fType == 'range':
-			if isinstance(fValue, list) and len(fValue) == 2:
-				start = fValue[0]
-				end   = fValue[1]
-				for f in range(start,end + 1):
-					sFeatures.append('src port ' + str(f))
+# 	elif fName.startswith('dst_ip'):
 
+# 		if fValue == "public":
+# 			return "not (dst net 10.0.0.0/8 or dst net 172.16.0.0/12 or dst net 192.168.0.0/16)"
 
-	# Destination port related features 
-
-	elif fName.startswith('dport'):
-
-		if fType == 'single':
-			sFeatures.append('dst port '+ str(fValue))
-
-		elif fType == 'multiple':
-			for f in fValue:
-				sFeatures.append('dst port ' + str(f))
-
-		elif fType == 'range':
-			if isinstance(fValue, list) and len(fValue) == 2:
-				start = fValue[0]
-				end   = fValue[1]
-				for f in range(start,end + 1):
-					sFeatures.append('dst port ' + str(f))
+# 		if fValue == "private":
+# 			return "(dst net 10.0.0.0/8 or dst net 172.16.0.0/12 or dst net 192.168.0.0/16)"
 
 
-	# Protocol related features 
+# 	# Source port related features 
 
-	elif fName.startswith('protocol'):
+# 	if fName.startswith('sport'):
+
+# 		if fType == 'single':
+# 			sFeatures.append('src port '+ str(fValue))
+
+# 		elif fType == 'multiple':
+# 			for f in fValue:
+# 				sFeatures.append('src port ' + str(f))
+
+# 		elif fType == 'range':
+# 			if isinstance(fValue, list) and len(fValue) == 2:
+# 				start = fValue[0]
+# 				end   = fValue[1]
+# 				for f in range(start,end + 1):
+# 					sFeatures.append('src port ' + str(f))
+
+
+# 	# Destination port related features 
+
+# 	elif fName.startswith('dport'):
+
+# 		if fType == 'single':
+# 			sFeatures.append('dst port '+ str(fValue))
+
+# 		elif fType == 'multiple':
+# 			for f in fValue:
+# 				sFeatures.append('dst port ' + str(f))
+
+# 		elif fType == 'range':
+# 			if isinstance(fValue, list) and len(fValue) == 2:
+# 				start = fValue[0]
+# 				end   = fValue[1]
+# 				for f in range(start,end + 1):
+# 					sFeatures.append('dst port ' + str(f))
+
+
+# 	# Protocol related features 
+
+# 	elif fName.startswith('protocol'):
 		
-		if fType == 'single':
-			sFeatures.append('proto '+ str(fValue).lower())
+# 		if fType == 'single':
+# 			sFeatures.append('proto '+ str(fValue).lower())
 
 
-	# tcpflags  related features 
+# 	# tcpflags  related features 
 
-	elif fName.startswith('tcpflags'):
+# 	elif fName.startswith('tcpflags'):
 		
-		if fType == 'regexp': 
-			sFeatures.append('flags ' + fValue)
+# 		if fType == 'regexp': 
+# 			sFeatures.append('flags ' + fValue)
 
 
-	# Type of service  related features 
+# 	# Type of service  related features 
 
-	elif fName.startswith('srctos'):
+# 	elif fName.startswith('srctos'):
 		
-		if fType == 'single':
-			sFeatures.append('tos ' + str(fValue))
+# 		if fType == 'single':
+# 			sFeatures.append('tos ' + str(fValue))
 
 
-	# number of input and output packets related features 
+# 	# number of input and output packets related features 
 
-	elif fName.startswith('in_npackets') or fName.startswith('out_npackets'):
+# 	elif fName.startswith('in_npackets') or fName.startswith('out_npackets'):
 		
-		if fType == 'range':
+# 		if fType == 'range':
 
-			if isinstance(fValue, list) and len(fValue) == 2:
-				start = fValue[0]
-				end   = fValue[1]
+# 			if isinstance(fValue, list) and len(fValue) == 2:
+# 				start = fValue[0]
+# 				end   = fValue[1]
 				
-				if start != 0 :
-					start -1
+# 				if start != 0 :
+# 					start -1
 
-				if end == 'Inf':
-					sFeatures.append('packets > ' + str(start))
+# 				if end == 'Inf':
+# 					sFeatures.append('packets > ' + str(start))
 
-				else:
-					sFeatures.append('(packets > ' + str(start) + ' and packets < ' + str(end+1) + ')')
-
-
-	# number of input and output bytes related features 
-
-	elif fName.startswith('in_nbytes') or fName.startswith('out_nbytes'):
+# 				else:
+# 					sFeatures.append('(packets > ' + str(start) + ' and packets < ' + str(end+1) + ')')
 
 
-		if fType == 'range':
+# 	# number of input and output bytes related features 
 
-			if isinstance(fValue, list) and len(fValue) == 2:
-				start = fValue[0]
-				end   = fValue[1]
+# 	elif fName.startswith('in_nbytes') or fName.startswith('out_nbytes'):
 
-				if start != 0 :
-					start -1
+
+# 		if fType == 'range':
+
+# 			if isinstance(fValue, list) and len(fValue) == 2:
+# 				start = fValue[0]
+# 				end   = fValue[1]
+
+# 				if start != 0 :
+# 					start -1
 				
-				if end == 'Inf':
-					sFeatures.append('bytes > ' + str(start))
+# 				if end == 'Inf':
+# 					sFeatures.append('bytes > ' + str(start))
 
-				else:
-					sFeatures.append('(bytes > ' + str(start) + ' and bytes < ' + str(end+1) + ')')
+# 				else:
+# 					sFeatures.append('(bytes > ' + str(start) + ' and bytes < ' + str(end+1) + ')')
 
 
-	# input interface  related features 
+# 	# input interface  related features 
 
-	elif fName.startswith('in_interface'):
+# 	elif fName.startswith('in_interface'):
 		
-		if fType == 'single':
-			sFeatures.append('in if ' + str(fValue))
+# 		if fType == 'single':
+# 			sFeatures.append('in if ' + str(fValue))
 
 
-	# output interface  related features 
+# 	# output interface  related features 
 
-	elif fName.startswith('out_interface'):
+# 	elif fName.startswith('out_interface'):
 
-		if fType == 'single':
-			sFeatures.append('out if ' + str(fValue))
+# 		if fType == 'single':
+# 			sFeatures.append('out if ' + str(fValue))
 
 
 if __name__ == "__main__":

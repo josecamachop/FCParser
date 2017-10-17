@@ -27,13 +27,15 @@ import faaclib
 def main(call='external',configfile=''):
 	
 	startTime = time.time()
-	
 	# if called from terminal
 	# if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
 	if call is 'external':
 		args = getArguments()
 		configfile = args.config
 		
+
+	delete_nfcsv = None # variable for netflow raw data  	
+
 	try:
 		parserConfig = getConfiguration(configfile)
 	except IOError:
@@ -112,10 +114,10 @@ def main(call='external',configfile=''):
 
 	# Preprocessing nfcapd files to obtain csv files.
 	for source in dataSources:
-		out_files = SOURCES[source]['FILES']
+		out_files = []
 		for file in SOURCES[source]['FILES']:
 			if 'nfcapd' in file:
-				out_files = []
+
 				out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
 				os.system("nfdump -r " + file + " -o csv >>"+out_file)
 				os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
@@ -123,8 +125,10 @@ def main(call='external',configfile=''):
 				out_files.append(out_file.replace('temp',source) + '.csv')
 				os.remove(out_file)
 				os.remove(out_file.replace('temp',source))
-		print out_files
+
+		
 		SOURCES[source]['FILES'] = out_files
+		delete_nfcsv = out_files
 
 
 	# If there are split parameters, perform split procedure
@@ -490,6 +494,10 @@ def main(call='external',configfile=''):
 
 		print "\n\n\nRemoving temporal files..."
 		shutil.rmtree(parserConfig['SPLIT']['Output'])
+	
+	if delete_nfcsv:
+		for file in delete_nfcsv:
+			os.remove(file)
 
 	# Write outputs
 	# ==============
