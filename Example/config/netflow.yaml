@@ -763,40 +763,40 @@ FEATURES:
   - Inf
 
 
-# Input Interface
-- name: in_interface_1
-  variable: in_interface
-  matchtype: single
-  value: 1
-- name: in_interface_2
-  variable: in_interface
-  matchtype: single
-  value: 2
-- name: in_interface_3
-  variable: in_interface
-  matchtype: single
-  value: 3
-- name: in_interface_65535
-  variable: in_interface
-  matchtype: single
-  value: 65535
+# # Input Interface
+# - name: in_interface_1
+#   variable: in_interface
+#   matchtype: single
+#   value: 1
+# - name: in_interface_2
+#   variable: in_interface
+#   matchtype: single
+#   value: 2
+# - name: in_interface_3
+#   variable: in_interface
+#   matchtype: single
+#   value: 3
+# - name: in_interface_65535
+#   variable: in_interface
+#   matchtype: single
+#   value: 65535
 
-# Input Interface
-- name: out_interface_1
-  variable: out_interface
-  matchtype: single
-  value: 1
-- name: out_interface_2
-  variable: out_interface
-  matchtype: single
-  value: 2
-- name: out_interface_3
-  variable: out_interface
-  matchtype: single
-  value: 3
-- name: out_interface_65535
-  variable: out_interface
-  matchtype: single
-  value: 65535
+# # Input Interface
+# - name: out_interface_1
+#   variable: out_interface
+#   matchtype: single
+#   value: 1
+# - name: out_interface_2
+#   variable: out_interface
+#   matchtype: single
+#   value: 2
+# - name: out_interface_3
+#   variable: out_interface
+#   matchtype: single
+#   value: 3
+# - name: out_interface_65535
+#   variable: out_interface
+#   matchtype: single
+#   value: 65535
 
 
