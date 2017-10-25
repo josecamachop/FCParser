@@ -125,10 +125,11 @@ def main(call='external',configfile=''):
 				out_files.append(out_file.replace('temp',source) + '.csv')
 				os.remove(out_file)
 				os.remove(out_file.replace('temp',source))
-
 		
-		SOURCES[source]['FILES'] = out_files
-		delete_nfcsv = out_files
+				SOURCES[source]['FILES'] = out_files
+				delete_nfcsv = out_files
+
+
 
 
 	# If there are split parameters, perform split procedure
@@ -319,13 +320,12 @@ def main(call='external',configfile=''):
 
 		for i in range(len(SOURCES[source]['FILES'])):
 			input_path = SOURCES[source]['FILES'][i]
-
 			if input_path:
 				
 				count += 1
 				count_total += 1
 				tag = getTag(input_path)
-				
+
 				# Print some progress stats
 				print "%s  #%s / %s  %s" %(source, str(count), str(len(SOURCES[source]['FILES'])), tag)	
 				
@@ -429,6 +429,7 @@ def main(call='external',configfile=''):
 			OBSERVATIONS[source][tag] = obsBatch
 
 
+
 	# Fuse output observation from all datasources
 	# ============================================
 
@@ -528,7 +529,7 @@ def main(call='external',configfile=''):
 
 		# Write headers file with features.
 		outstream = open(OUTDIR + 'headers.dat', 'w')
-		print out_observations.itervalues().next().itervalues().next().writeLabels(outstream)
+		out_observations.itervalues().next().itervalues().next().writeLabels(outstream)
 		outstream.close()
 
 		# Write observation arrays		
