@@ -185,35 +185,29 @@ def main(call='external',configfile=''):
 	stats = {}
 
 
-	features = []
-	for source in SOURCES:
-		for var in SOURCES[source]['CONFIG']['FEATURES']:
-			features.append(var['name'])
 
+	features = []
+	weigthts = []
 
 	for source in FEATURES:
 		# Create weight file
-		feature_labels  = [None] * len(FEATURES[source])    # List of features names
-		feature_weights = [None] * len(FEATURES[source])    # List of features weights
-		for i in range(len(FEATURES[source])):
-			try:
-				label = FEATURES[source][i]['name']
-			except KeyError as e:
+
+		for feat in SOURCES[source]['CONFIG']['FEATURES']:
+			try:	
+				features.append(feat['name'])
+			except:
 				print "FEATURES: missing config key (%s)" %(e.message)
 				print FEATURES[source][i]
-				exit(1)
+				exit(1)				
 			try:
-				weight = FEATURES[source][i]['weight']
-			except KeyError:
-				# print "** %s default weight: 1" %(label)
-				weight = 1
-			feature_labels[i] = str(label)
-			feature_weights[i] = str(weight)
+				weigthts.append(str(feat['weight']))
+			except:
+				weigthts.append('1')
 
 	weightsPath = OUTDIR + OUTW
 	weightsStream = open(weightsPath, 'w')
-	weightsStream.write(', '.join(feature_labels) + '\n')
-	weightsStream.write(', '.join(feature_weights) + '\n')
+	weightsStream.write(', '.join(features) + '\n')
+	weightsStream.write(', '.join(weigthts) + '\n')
 	weightsStream.close()
 
 	# Count lines of datasources, for stats purposes.
