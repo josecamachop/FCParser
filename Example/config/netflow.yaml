@@ -642,25 +642,25 @@ FEATURES:
   variable: in_packets
   matchtype: range
   value:
-  - 3
+  - 4
   - 20
 - name: in_npackets_medium
   variable: in_packets
   matchtype: range
   value:
-  - 20
+  - 21
   - 100
 - name: in_npackets_high
   variable: in_packets
   matchtype: range
   value:
-  - 100
+  - 101
   - 1000
 - name: in_npackets_veryhigh
   variable: in_packets
   matchtype: range
   value:
-  - 1000
+  - 1001
   - Inf
 
 
@@ -675,25 +675,25 @@ FEATURES:
   variable: out_packets
   matchtype: range
   value:
-  - 3
+  - 4
   - 20
 - name: out_npackets_medium
   variable: out_packets
   matchtype: range
   value:
-  - 20
+  - 21
   - 100
 - name: out_npackets_high
   variable: out_packets
   matchtype: range
   value:
-  - 100
+  - 101
   - 1000
 - name: out_npackets_veryhigh
   variable: out_packets
   matchtype: range
   value:
-  - 1000
+  - 1001
   - Inf
 
 
@@ -708,25 +708,25 @@ FEATURES:
   variable: in_bytes
   matchtype: range
   value:
-  - 150
+  - 151
   - 1000
 - name: in_nbytes_medium
   variable: in_bytes
   matchtype: range
   value:
-  - 1000
+  - 1001
   - 10000
 - name: in_nbytes_high
   variable: in_bytes
   matchtype: range
   value:
-  - 10000
+  - 10001
   - 100000
 - name: in_nbytes_veryhigh
   variable: in_bytes
   matchtype: range
   value:
-  - 100000
+  - 100001
   - Inf
 
 
@@ -741,25 +741,25 @@ FEATURES:
   variable: out_bytes
   matchtype: range
   value:
-  - 150
+  - 151
   - 1000
 - name: out_nbytes_medium
   variable: out_bytes
   matchtype: range
   value:
-  - 1000
+  - 1001
   - 10000
 - name: out_nbytes_high
   variable: out_bytes
   matchtype: range
   value:
-  - 10000
+  - 10001
   - 100000
 - name: out_nbytes_veryhigh
   variable: out_bytes
   matchtype: range
   value:
-  - 100000
+  - 100001
   - Inf
 
 
