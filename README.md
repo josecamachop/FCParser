@@ -64,7 +64,7 @@ The *faaclib* library requires some extra python libraries to work properly. The
 
 #### How to install
 
-Running the following command install both the corresponding FCParser modules and the previous mentioned dependencies.
+Running the following command installs both, the corresponding FCParser modules and the previous mentioned dependencies.
 
 	$ python setup.py install
 
