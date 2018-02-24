@@ -41,7 +41,7 @@ If split parameters are not determined, the data won't be sampled.
 
 In the example, data is sampled every 60s. Example usage:
 
-	$ python parser/parser.py Example/config/configuration.yaml 
+	$ python fcparser/fcparser.py Example/config/configuration.yaml 
 
 ### Deparsing
 
@@ -53,24 +53,27 @@ See Example to see format of the file.
 
 	$ python deparser/deparser.py Example/config/configuration.yaml Example/deparsing_input 
 
+## Installation
 
-## Installation Requirements
+#### Dependencies
 
-faaclib requires some python libraries to work properly. Before using this tool,
-install the following packages:
+The *faaclib* library requires some extra python libraries to work properly. They are:
 
 - IPy - Python module for handling IPv4 and IPv6 addresses and networks
-	$ pip install IPy
-
 - PyYAML - YAML analyzer for Python
-	$ pip install PyYAML
+
+#### How to install
+
+Running the following command install both the corresponding FCParser modules and the previous mentioned dependencies.
+
+	$ python setup.py install
 
 
 ## Summary
 
 The present repository is organized as follows:
 
-- parser/ 		          Python Module with all of the lib classes and main script to parser process.
+- fcparser/ 		          Python Module with all of the lib classes and main script to parser process.
 - deparser/               Python script for deparsing process.
 - config/                 Empty configuration files. 
 - Example/		          Data and configuration for an example example.
