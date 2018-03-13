@@ -375,7 +375,6 @@ def main(call='external',configfile=''):
 								# for each log generate one record and convert into observation
 								logExtract = log.split(SEPARATOR[source])[0]
 								record = faaclib.Record(logExtract,SOURCES[source]['CONFIG']['VARIABLES'], STRUCTURED[source])
-								
 								aggregate_bool = True
 								
 								if Keys:

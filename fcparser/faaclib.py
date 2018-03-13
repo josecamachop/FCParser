@@ -402,7 +402,7 @@ class Record(object):
 
 					try:
 						p = re.search(vWhere,line)
-						vValue = p.group(0)
+						vValue = p.group('match')
 
 						if vMatchType == 'string':
 							variable = StringVariable(vValue)
