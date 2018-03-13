@@ -596,7 +596,7 @@ class Observation(object):
 		Following, the observations are written in CSV format.
 		"""
 
-		headerLine = '#' + ', '.join(self.label) + '\n'
+		headerLine = ', '.join(self.label) + '\n'
 		outstream.write(headerLine)
 
 		outstream.write(self.formatCSV())
@@ -607,7 +607,7 @@ class Observation(object):
 		   in a line of the file
 		"""
 
-		headerLine = '#' + ', '.join(self.label) + '\n'
+		headerLine = ', '.join(self.label) + '\n'
 		outstream.write(headerLine)
 	
 
