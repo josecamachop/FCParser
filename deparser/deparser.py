@@ -569,7 +569,7 @@ def search_feature(FEATURES,VARIABLES,logExtract,features,source):
 			match = re.search(VARIABLES[source][fVariable]['where'],logExtract)
 
 			if match:
-				match = match.group(0)
+				match = match.group('match')
 				matchType = VARIABLES[source][fVariable]['matchtype']
 
 				if fType == "regexp":
