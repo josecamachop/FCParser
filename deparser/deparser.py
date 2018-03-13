@@ -338,25 +338,28 @@ def main():
 
 					# First read to generate list of number of appearances
 					while line:
-						try:
-							t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])		
+						# try:
+						t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])		
 
-							if str(t).strip() in formated_timestamps:
-								# extract amount of features that appear in each line included in timestamps analyzed.
-								feat_appear[file].append(search_amount_features(line,features,FEATURES[source],VARIABLES[source]))
-						except:
-							pass
+						if str(t).strip() in formated_timestamps:
+							# extract amount of features that appear in each line included in timestamps analyzed.
+							feat_appear[file].append(search_amount_features(line,features,FEATURES[source],VARIABLES[source]))
+						# except:
+						#  	print "error"
 								
 						line = input_file.readline()
 					input_file.close()
 
+
 				# Obtain number of features needed to extract the log
 				features_needed = len(features)
 				count = 0
-				while count < int(threshold) and (not features_needed <= 0):
+				while count < int(threshold) and (not features_needed <= 1):
 					for file in feat_appear:
 						count += feat_appear[file].count(int(features_needed))
 					features_needed -= 1
+
+
 
 				# Re-read the file
 				for file in sourcepath:
@@ -367,11 +370,11 @@ def main():
 						
 					while line:
 						try:
-							t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])													
+							t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])		
 							if str(t).strip() in formated_timestamps:
-
+								
 								# Check if features appear in the log to write in the file.
-								if feat_appear[file][index] > features_needed:
+								if feat_appear[file][index] >= features_needed:
 									output_file.write(line + "\n")
 									count_structured += 1	
 								index += 1
@@ -434,7 +437,7 @@ def main():
 				# Obtain number of features needed to extract the log
 				features_needed = len(features)
 				count = 0
-				while count < int(threshold) and (not features_needed <= 0):
+				while count < int(threshold) and (not features_needed <= 1):
 					for file in feat_appear:
 						count += feat_appear[file].count(int(features_needed))
 					features_needed -= 1
@@ -458,7 +461,7 @@ def main():
 									t = getUnstructuredTime(logExtract, sources_config[source]['timestamp_regexp'], sources_config[source]['timestamp_format'])														
 									if str(t).strip() in formated_timestamps:
 										# Check if features appear in the log to write in the file.
-										if feat_appear[file][index] > features_needed:
+										if feat_appear[file][index] >= features_needed:
 											output_file.write(logExtract + "\n\n")
 											count_unstructured += 1	
 										index += 1
@@ -709,9 +712,11 @@ def search_amount_features(line,features,FEATURES,VARIABLES):
 					feature_count += 1
 
 			elif fType == 'range':		
+
 				start = fValue[0]
 				end   = fValue[1]
-				if (line_split[pos] < end) and (line_split[pos] > start):
+				
+				if (int(line_split[pos]) < end) and (int(line_split[pos]) > start):
 					feature_count += 1 
 
 			elif fType == 'multiple':
@@ -719,7 +724,7 @@ def search_amount_features(line,features,FEATURES,VARIABLES):
 					if line_split[pos] == value:
 						feature_count += 1
 		except:
-			pass
+		 	pass
 
 	return feature_count
 
