@@ -13,6 +13,7 @@ Last Modification: 21/Sep/2017
 
 """
 
+import multiprocessing as mp
 import argparse
 import glob
 import os
@@ -62,6 +63,11 @@ def main(call='external',configfile=''):
 
 	OBSERVATIONS = {}
 
+	patern = '(?<=[0-9]: )(.*?)(?= [0-9])'	
+	p = re.compile(patern)
+	pool = mp.Pool(4)
+	jobs = []
+
 	for source in config['SOURCES']:
 		OBSERVATIONS[source] = {}
 		count = 0
@@ -73,7 +79,7 @@ def main(call='external',configfile=''):
 		for i in range(len(config['SOURCES'][source]['FILES'])):
 			input_path = config['SOURCES'][source]['FILES'][i]
 			if input_path:
-
+				
 				count += 1
 				tag = getTag(input_path)
 
@@ -87,13 +93,44 @@ def main(call='external',configfile=''):
 				else:
 					print input_path.split('.')[-1]
 
+					for fragStart,fragSize in fragmentar(input_path):
+						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source)) )
+
+					for job in jobs:
+						job.get()
 
 
+	pool.close()
+	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 
+def fragmentar(file,size=1024*1024):
+	fileEnd = os.path.getsize(file)
+	with open(file,'r') as f:
+		fragEnd = f.tell()
+		while True:
+			fragkStart = fragEnd
+			f.seek(size,1)
+			f.readline()
+			fragEnd = f.tell()
+			yield fragkStart, fragEnd - fragkStart
+			if fragEnd > fileEnd:
+				break
 
+def process_wrapper(file, fragStart, fragSize,config, source):
+	with open(file) as f:
+		f.seek(fragStart)
+		lines = f.read(fragSize).splitlines()
+		for line in lines:
+			process_line(line,config, source)
 
+def process_line(line,config, source):
+	
+	record = faaclib.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
+	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
+	# obsBatch.add(obs)
 
+	return 
 
 def check_unused_sources(config, stats):
 
