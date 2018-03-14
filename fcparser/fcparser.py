@@ -136,7 +136,7 @@ def main(call='external',configfile=''):
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
 		
 		print "\n\nSPLITTING DATA\n\n"
-		retcode = subprocess.call("python fcparser/splitData.py "+ configfile, shell=True)
+		retcode = subprocess.call("python "+ os.path.dirname(__file__) +"/splitData.py "+ configfile, shell=True)
 
 		if retcode == 0:
 			pass  # No exception, all is good!

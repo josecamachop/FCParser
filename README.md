@@ -1,81 +1,79 @@
 
 # FCParser
 
+Parser for data streams composed of variate (structured and unstructured) sources.
+
+Contact persons: José Camacho Páez (josecamacho@ugr.es)
+		José Manuel García Jiménez (jgarciag@ugr.es)
+
+Last modification of this document: 14/Mar/18
+
 
 ## Presentation
 
-
 The FaaC parser library allows a comfortable, general and highly configurable parsing
 of network data originating from different sources. It has been designed to transform
-large amounts of heterogeneus network data into a single matrix of data observations
-suitable for multivariate analysis, without losing relevant information in the process.
+large amounts of heterogeneus network data into a single time-resolved stream of data 
+suitable for the analysis with multivariate techniques and machine learning, hopefully
+without losing relevant information in the process.
 
-The parsing process performs mainly 3 actions over the data:
+The parsing process is based on five steps:
 
-1. CONVERT variables into observatios of features to facilitate the further analysis. In this case, 
-features work as a counter (FaaC, feature as a couter).
-2. AGGREGATE observations according to specific criteria.
-3. FUSE observations from different datasources.
+1. SAMPLING the sources of data in user defined time intervals.
+2. TRANSFORM the raw data into structured records with a number of variables.
+3. AGGREGATE records according to specific criteria, defined by one or multiple aggre-
+gation keys.If no key is specified, we aggregate all records per sampling interval and 
+data source.
+4. TRANSFORM aggregated record into observations, following the Feature as a Counter
+approach, so that variables are tranformed into features defined as counters.
+5. FUSE observations from different datasources.
    
 To reach these goals, the analyst must provide expert knowledge on the data she wants
-to analyze. The analyst must decide which datasources include, which information is
-relevant, which criteria use for the aggregation and define the output features.
-To this end, FaaC parser library is highly configurable. All this setup is easily configurable
-through configuration files in YAML format. These files can be found in the 'config'
-folder. The format of the config files is explained in the beggining of each file.
+to analyze. The analyst must decide: which datasources to include and the sampling rate, 
+which information is relevant to be stored as variables, which criteria should be used 
+for the aggregation, what counters (features) should be defined. To this end, the FaaC 
+parser library is highly configurable through configuration files in YAML format. Tem-
+plates for these files can be found in the 'config' folder. 
 
 																							
 ## Getting Started
+
+We recommend adding the fcparser and deparser folders to the path. Please, have a look 
+at the installation notes in the INSTALL file.
 														
 ### Parsing
 
-1.- Configuration. First step is generate configuration.yaml according to datasources and 
-split setting. See /config/configuration.yaml for more info. There are example configuration 
-files in Example directory.
+1.- Configuration. First step is to build a configuration.yaml specifying the datasources 
+and split setting. If split parameters are not determined, the data won't be sampled. See 
+/config/configuration.yaml for more info. You can find a sampling configuration filts in 
+folder Example.
 
-2.- Split data (otpional). Usually, sampling the input data is required.
-The sampling configuration and datasources are defined in configuration.yaml. 
-If split parameters are not determined, the data won't be sampled.
-
-3.- Parse data. Extract observations from data.
+2.- Parse data. Extract observations from data.
 
 In the example, data is sampled every 60s. Example usage:
 
-	$ python fcparser/fcparser.py Example/config/configuration.yaml 
+	$ python <INSTALL_DIR>/fcparser/fcparser.py Example/config/configuration.yaml 
 
 ### Deparsing
 
-1.- Configuration. The deparsing program use the same configuration file used in parsing 
+1.- Configuration. The deparsing program uses the same configuration file used in the parsing 
 process, see /config/configuration.yaml for more info.
 
-2.- Deparsing. Extract the logs related to anomalies. It takes as input features and timestamps.
-See Example to see format of the file.
+2.- Deparsing. Extracts the logs related to anomalies. It takes as input features and timestamps.
+See Example/deparsing_input to see the format of the input file.
 
-	$ python deparser/deparser.py Example/config/configuration.yaml Example/deparsing_input 
+	$ python <INSTALL_DIR>/deparser/deparser.py Example/config/configuration.yaml Example/deparsing_input 
 
-## Installation
-
-#### Dependencies
-
-The *faaclib* library requires some extra python libraries to work properly. They are:
-
-- IPy - Python module for handling IPv4 and IPv6 addresses and networks
-- PyYAML - YAML analyzer for Python
-
-#### How to install
-
-Running the following command installs both, the corresponding FCParser modules and the previous mentioned dependencies.
-
-	$ python setup.py install
 
 
 ## Summary
 
 The present repository is organized as follows:
 
+- INSTALL                 Intallation notes.
 - fcparser/ 		          Python Module with all of the lib classes and main script to parser process.
-- deparser/               Python script for deparsing process.
-- config/                 Empty configuration files. 
+- deparser/               Python script for the deparsing process.
+- config/                 Templates of configuration files. 
 - Example/		          Data and configuration for an example example.
 	- Examples_data       Structured and unstructured data to test the tool.
 	- config 			  Configuration files adapted to the provided data.
