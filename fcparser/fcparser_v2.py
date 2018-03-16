@@ -22,6 +22,7 @@ import time
 import shutil
 import yaml
 import subprocess
+from operator import add
 
 import faaclib
 
@@ -61,15 +62,14 @@ def main(call='external',configfile=''):
 
 	# processing files
 
-	OBSERVATIONS = {}
+	manager = mp.Manager()
 
-	patern = '(?<=[0-9]: )(.*?)(?= [0-9])'	
-	p = re.compile(patern)
-	pool = mp.Pool(4)
+	observations = manager.dict()
+
+	pool = mp.Pool(8)
 	jobs = []
 
 	for source in config['SOURCES']:
-		OBSERVATIONS[source] = {}
 		count = 0
 
 		currentTime = time.time()
@@ -93,44 +93,69 @@ def main(call='external',configfile=''):
 				else:
 					print input_path.split('.')[-1]
 
-					for fragStart,fragSize in fragmentar(input_path):
-						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source)) )
+					for fragStart,fragSize in frag(input_path):
+						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source, observations,tag)) )
 
 					for job in jobs:
 						job.get()
 
 
 	pool.close()
+	print observations
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 
-def fragmentar(file,size=1024*1024):
-	fileEnd = os.path.getsize(file)
-	with open(file,'r') as f:
-		fragEnd = f.tell()
+def frag(fname):
+	separator = "\r\n"
+	fileEnd = os.path.getsize(fname)
+
+	with open(fname, 'r') as f:
+		end = f.tell()
+		size = 16*1024*1024
+		cont = True
+
 		while True:
-			fragkStart = fragEnd
-			f.seek(size,1)
-			f.readline()
-			fragEnd = f.tell()
-			yield fragkStart, fragEnd - fragkStart
-			if fragEnd > fileEnd:
+			start = end
+			asdf = f.read(size)
+
+			i = asdf.rfind(separator)
+
+			if end >= fileEnd or i == -1:
 				break
 
-def process_wrapper(file, fragStart, fragSize,config, source):
+			f.seek(start+i+1)
+			end = f.tell()
+
+
+			yield start, end-start
+
+
+def process_wrapper(file, fragStart, fragSize,config, source, observations,tag):
 	with open(file) as f:
 		f.seek(fragStart)
 		lines = f.read(fragSize).splitlines()
+		log = ''
 		for line in lines:
-			process_line(line,config, source)
+			log += line + "\r\n"
+			i = log.find("\r\n")
 
-def process_line(line,config, source):
-	
+			if i != -1:
+
+				process_line(log,config, source, observations,tag)
+				log = ''	
+			
+
+def process_line(line,config, source, observations,tag):
+	 
 	record = faaclib.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
-	# obsBatch.add(obs)
+	
+	if tag in observations.keys():
+		observations[tag] = map(add, observations[tag], obs.data)
+	
+	else:
+		observations[tag] = obs.data
 
-	return 
 
 def check_unused_sources(config, stats):
 
