@@ -23,14 +23,24 @@ import shutil
 import yaml
 import subprocess
 from operator import add
-import numpy as np
 import faaclib
 
+class Observation(object):
+	"""docstring for Observation"""
+	def __init__(self):
+		self.obsList = None
+
+	def add(self,obs):
+		if self.obsList:
+			self.obsList = map(add, obs, self.obsList)
+		else:
+			self.obsList = obs
+
+	def printt(self):
+		print self.obsList
+		
 
 def main(call='external',configfile=''):
-	
-	delete_nfcsv = None # variable for netflow raw data  	
-	
 
 
 	startTime = time.time()
@@ -66,9 +76,9 @@ def main(call='external',configfile=''):
 
 	observations = manager.dict()
 
-	pool = mp.Pool(8)
+	pool = mp.Pool(1)
 	jobs = []
-
+	results = []
 	for source in config['SOURCES']:
 		count = 0
 
@@ -94,19 +104,29 @@ def main(call='external',configfile=''):
 					print input_path.split('.')[-1]
 
 					for fragStart,fragSize in frag(input_path):
-						 jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source)) )
+						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source)) )
 
 					for job in jobs:
-						results = job.get()
+						results.append(job.get())
 
 
 	pool.close()
-	print results
-	# print observations
-	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+	# print results
+	# outObs = [0]*len(next(results.iteritems())[1])
+	# print len(results.keys())
+	# for key, obs in results.iteritems():
+	# 	outObs = map(add, outObs, obs)
 
-def result(obs):
-	return obs
+
+	# print outObs
+	# print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+
+	final_res = Observation()
+	for result in results:
+		final_res.add(result.obsList)
+
+	print final_res.printt()
+
 
 def frag(fname):
 	separator = "\r\n"
@@ -114,7 +134,7 @@ def frag(fname):
 
 	with open(fname, 'r') as f:
 		end = f.tell()
-		size = 16*1024*1024
+		size = 2048
 		cont = True
 
 		while True:
@@ -135,25 +155,24 @@ def frag(fname):
 
 def process_wrapper(file, fragStart, fragSize,config, source):
 
-	obsDict = {}
+	obsDict = Observation()
 	with open(file) as f:
 		f.seek(fragStart)
-		lines = f.read(fragSize).splitlines()
+		lines = f.read(fragSize)
+
 		log = ''
 		for line in lines:
-			log += line + "\r\n"
-			i = log.find("\r\n")
+			log += line 
 
-			if i != -1:
+			if "\r\n" in log:
+
 				tag, obs = process_log(log,config, source)
-
-				if tag:
-					if tag.strip() in obsDict.keys():
-
-						obs = map(add, observations[tag], obs)
-					
-					obsDict[tag] = obs
+				obsDict.add(obs)
 				log = ''	
+
+		tag, obs = process_log(log,config, source)
+		obsDict.add(obs)
+	print obsDict.printt()
 	return obsDict
 
 def process_log(log,config, source):
@@ -161,9 +180,6 @@ def process_log(log,config, source):
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
 	return str(record.variables['timestamp']), obs.data
-
-
-
 
 def check_unused_sources(config, stats):
 
