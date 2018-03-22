@@ -25,16 +25,16 @@ import subprocess
 from operator import add
 import faaclib
 
-class Observation(object):
+class obsDict(object):
 	"""docstring for Observation"""
 	def __init__(self):
-		self.obsList = None
+		self.obsList = {}
 
-	def add(self,obs):
-		if self.obsList:
-			self.obsList = map(add, obs, self.obsList)
+	def add(self,obs,tag):
+		if tag in self.obsList.keys():
+			self.obsList[tag] = map(add, obs, self.obsList[tag])
 		else:
-			self.obsList = obs
+			self.obsList[tag] = obs
 
 	def printt(self):
 		print self.obsList
@@ -72,11 +72,7 @@ def main(call='external',configfile=''):
 
 	# processing files
 
-	manager = mp.Manager()
-
-	observations = manager.dict()
-
-	pool = mp.Pool(1)
+	pool = mp.Pool(8)
 	jobs = []
 	results = []
 	for source in config['SOURCES']:
@@ -111,21 +107,13 @@ def main(call='external',configfile=''):
 
 
 	pool.close()
-	# print results
-	# outObs = [0]*len(next(results.iteritems())[1])
-	# print len(results.keys())
-	# for key, obs in results.iteritems():
-	# 	outObs = map(add, outObs, obs)
 
+	final_res = results[0].obsList
+	for result in results[1:]:
+		final_res = combine_results(final_res, result.obsList)
 
-	# print outObs
-	# print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
-
-	final_res = Observation()
-	for result in results:
-		final_res.add(result.obsList)
-
-	print final_res.printt()
+	print final_res
+	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 
 def frag(fname):
@@ -134,7 +122,7 @@ def frag(fname):
 
 	with open(fname, 'r') as f:
 		end = f.tell()
-		size = 2048
+		size = 16*1024*1024
 		cont = True
 
 		while True:
@@ -155,7 +143,7 @@ def frag(fname):
 
 def process_wrapper(file, fragStart, fragSize,config, source):
 
-	obsDict = Observation()
+	obsDictp = obsDict()
 	with open(file) as f:
 		f.seek(fragStart)
 		lines = f.read(fragSize)
@@ -167,19 +155,37 @@ def process_wrapper(file, fragStart, fragSize,config, source):
 			if "\r\n" in log:
 
 				tag, obs = process_log(log,config, source)
-				obsDict.add(obs)
+				obsDictp.add(obs,tag)
 				log = ''	
 
 		tag, obs = process_log(log,config, source)
-		obsDict.add(obs)
-	print obsDict.printt()
-	return obsDict
+		obsDictp.add(obs,tag)
+	return obsDictp
 
 def process_log(log,config, source):
 	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
 	return str(record.variables['timestamp']), obs.data
+
+def combine_results(dict1, dict2):
+	### Combine results of parsing from multiple process,
+	### Results are dicts with observations. The combination consist on 
+	### mergind dicts, if a key is in both dicts, observations are added.
+	dict3 = {}
+
+	for key in dict1:
+		if key in dict2:
+			dict3[key] = map(add, dict1[key], dict2[key])
+		else:
+			dict3[key] = dict1[key]
+
+	for key in dict2:
+		if not (key in dict3):
+			dict3[key] = dict2[key]
+
+	return dict3
+
 
 def check_unused_sources(config, stats):
 
