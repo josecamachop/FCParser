@@ -17,6 +17,7 @@ Last Modification: 21/Sep/2017
 import multiprocessing as mp
 import argparse
 import glob
+import datetime
 import os
 import re
 import time
@@ -59,6 +60,7 @@ def main(call='external',configfile=''):
 
 	# Print configuration summary
 	configSummary(config)
+
 
 	# Output Weights
 	outputWeight(config)
@@ -111,9 +113,42 @@ def main(call='external',configfile=''):
 		for result in results[source][1:]:
 			final_res[source] = combine_results(final_res, result.obsList)
 
-	print final_res
+	print fuseObs(final_res, config)
+
+
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
+
+def fuseObs(resultado, config):
+
+	fused_res = {}
+	features = []
+
+	for source in resultado:
+
+		for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+			features.append(feat['name'])
+
+		arbitrary_len2 = len(next(iter(resultado[source].values())))
+		try:
+			arbitrary_len = len(next(iter(fused_res.values())))
+		except:
+			arbitrary_len = 0
+
+
+		for date in resultado[source]:
+
+			if date in fused_res:
+				fused_res[date] = fused_res[date] + resultado[source][date] 
+			else:
+				fused_res[date] = [0]*arbitrary_len + resultado[source][date] 
+
+		for date2 in fused_res:
+
+			if date2 not in resultado[source]:
+				fused_res[date2] = fused_res[date2] + [0]*arbitrary_len2
+
+	return fused_res, features
 
 def frag(fname,separator):
 	fileEnd = os.path.getsize(fname)
@@ -162,7 +197,16 @@ def process_log(log,config, source):
 	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
-	return str(record.variables['timestamp']), obs.data
+	return normalize_timestamps(str(record.variables['timestamp']),config['SOURCES'][source]['CONFIG']['timestamp_format']), obs.data
+	# return str(record.variables['timestamp']), obs.data
+
+def normalize_timestamps(timestamp, input_format):
+	try:
+		t = datetime.datetime.strptime(timestamp, input_format)
+		t = t.replace(year = 2012)
+		return t
+	except:
+		return 0
 
 def combine_results(dict1, dict2):
 	### Combine results of parsing from multiple process,
@@ -338,7 +382,6 @@ def loadConfig(output, dataSources, parserConfig):
 	except (KeyError, TypeError):
 		# print " ** Default weights file: '%s'" %(Configuration['OUTW'])
 		Configuration['OUTW'] = 'weights.dat'
-
 
 	# Sources settgins
 
