@@ -110,12 +110,13 @@ def main(call='external',configfile=''):
 
 	for source in results:
 		final_res[source] = results[source][0].obsList
+		
 		for result in results[source][1:]:
-			final_res[source] = combine_results(final_res, result.obsList)
+
+			final_res[source] = combine_results(final_res[source], result.obsList)
+
 
 	print fuseObs(final_res, config)
-
-
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 
