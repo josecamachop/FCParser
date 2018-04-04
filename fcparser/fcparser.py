@@ -6,8 +6,9 @@ data and preparing it for further multivariate analysis using
 FaaC parser library.
 
 
-Authors: Alejandro Perez Villegas (alextoni@gmail.com)
-		 Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
+Authors:    Jose Manuel Garcia Gimenez (jgarciag@ugr.es) 
+			Alejandro Perez Villegas (alextoni@gmail.com)
+		 
 		 
 Last Modification: 21/Sep/2017
 
@@ -39,7 +40,6 @@ class obsDict(object):
 	def printt(self):
 		print self.obsList
 		
-
 def main(call='external',configfile=''):
 
 
@@ -64,18 +64,19 @@ def main(call='external',configfile=''):
 	outputWeight(config)
 	stats = create_stats(config)
 
-
 	# Count data entries
 	stats = count_entries(config,stats) 
 	stats = check_unused_sources(config, stats)
 
-
 	# processing files
+	results = {}
+	final_res = {}
 
-	pool = mp.Pool(8)
-	jobs = []
-	results = []
 	for source in config['SOURCES']:
+
+		pool = mp.Pool(8)
+		jobs = []
+		results[source] = []
 		count = 0
 
 		currentTime = time.time()
@@ -85,41 +86,37 @@ def main(call='external',configfile=''):
 		for i in range(len(config['SOURCES'][source]['FILES'])):
 			input_path = config['SOURCES'][source]['FILES'][i]
 			if input_path:
-				
 				count += 1
 				tag = getTag(input_path)
 
 				#Print some progress stats
 				print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
 				
-
 				if config['STRUCTURED'][source]:
 					print input_path.split('.')[-1]
 
 				else:
 					print input_path.split('.')[-1]
 
-					for fragStart,fragSize in frag(input_path):
-						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source)) )
+					for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source]):
+						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
 
 					for job in jobs:
-						results.append(job.get())
+						results[source].append(job.get())
 
+		pool.close()
 
-	pool.close()
-
-	final_res = results[0].obsList
-	for result in results[1:]:
-		final_res = combine_results(final_res, result.obsList)
+	for source in results:
+		final_res[source] = results[source][0].obsList
+		for result in results[source][1:]:
+			final_res[source] = combine_results(final_res, result.obsList)
 
 	print final_res
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 
-def frag(fname):
-	separator = "\r\n"
+def frag(fname,separator):
 	fileEnd = os.path.getsize(fname)
-
 	with open(fname, 'r') as f:
 		end = f.tell()
 		size = 16*1024*1024
@@ -140,8 +137,7 @@ def frag(fname):
 
 			yield start, end-start
 
-
-def process_wrapper(file, fragStart, fragSize,config, source):
+def process_wrapper(file, fragStart, fragSize,config, source,separator):
 
 	obsDictp = obsDict()
 	with open(file) as f:
@@ -152,7 +148,7 @@ def process_wrapper(file, fragStart, fragSize,config, source):
 		for line in lines:
 			log += line 
 
-			if "\r\n" in log:
+			if separator in log:
 
 				tag, obs = process_log(log,config, source)
 				obsDictp.add(obs,tag)
@@ -185,7 +181,6 @@ def combine_results(dict1, dict2):
 			dict3[key] = dict2[key]
 
 	return dict3
-
 
 def check_unused_sources(config, stats):
 
@@ -483,7 +478,6 @@ def getArguments():
 	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
 	args = parser.parse_args()
 	return args
-
 
 if __name__ == "__main__":
 	
