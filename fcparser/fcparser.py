@@ -197,17 +197,25 @@ def process_log(log,config, source):
 	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
-	return normalize_timestamps(str(record.variables['timestamp']),config['SOURCES'][source]['CONFIG']['timestamp_format'], config['Time']['start']), obs.data
+	return normalize_timestamps(str(record.variables['timestamp']),config, source), obs.data
 	# return str(record.variables['timestamp']), obs.data
 
-def normalize_timestamps(timestamp, input_format, start):
+def normalize_timestamps(timestamp, config, source):
 	try:
+		input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
+		start = config['Time']['start']
+		window = config['Time']['window']
+
 		t = datetime.datetime.strptime(timestamp, input_format)
+		new_minute = t.minute - t.minute % window  
+
+		t = t.replace(minute = new_minute)
 		if t.year == 1900:
 			t = t.replace(year = start.year)
-		return t
 
+		return t
 	except:
+		
 		return 0
 
 def combine_results(dict1, dict2):
