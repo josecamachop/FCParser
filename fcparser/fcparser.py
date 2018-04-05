@@ -119,7 +119,6 @@ def main(call='external',configfile=''):
 	print fuseObs(final_res, config)
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
-
 def fuseObs(resultado, config):
 
 	fused_res = {}
@@ -198,14 +197,16 @@ def process_log(log,config, source):
 	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
-	return normalize_timestamps(str(record.variables['timestamp']),config['SOURCES'][source]['CONFIG']['timestamp_format']), obs.data
+	return normalize_timestamps(str(record.variables['timestamp']),config['SOURCES'][source]['CONFIG']['timestamp_format'], config['Time']['start']), obs.data
 	# return str(record.variables['timestamp']), obs.data
 
-def normalize_timestamps(timestamp, input_format):
+def normalize_timestamps(timestamp, input_format, start):
 	try:
 		t = datetime.datetime.strptime(timestamp, input_format)
-		t = t.replace(year = 2012)
+		if t.year == 1900:
+			t = t.replace(year = start.year)
 		return t
+
 	except:
 		return 0
 
@@ -384,8 +385,17 @@ def loadConfig(output, dataSources, parserConfig):
 		# print " ** Default weights file: '%s'" %(Configuration['OUTW'])
 		Configuration['OUTW'] = 'weights.dat'
 
-	# Sources settgins
+	try: 
+		Configuration['Time'] = parserConfig['SPLIT']['Time']
 
+	except:
+		##
+		## TO DO
+		##
+		pass
+
+
+	# Sources settgins
 	Configuration['SOURCES'] = {}
 	for source in dataSources:
 		Configuration['SOURCES'][source] = {}
