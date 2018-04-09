@@ -76,7 +76,7 @@ def main(call='external',configfile=''):
 
 	for source in config['SOURCES']:
 
-		pool = mp.Pool(8)
+		pool = mp.Pool(config['Cores'])
 		jobs = []
 		results[source] = []
 		count = 0
@@ -100,7 +100,7 @@ def main(call='external',configfile=''):
 				else:
 					print input_path.split('.')[-1]
 
-					for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source]):
+					for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
 						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
 
 					for job in jobs:
@@ -150,11 +150,10 @@ def fuseObs(resultado, config):
 
 	return fused_res, features
 
-def frag(fname,separator):
+def frag(fname,separator, size):
 	fileEnd = os.path.getsize(fname)
 	with open(fname, 'r') as f:
 		end = f.tell()
-		size = 16*1024*1024
 		cont = True
 
 		while True:
@@ -399,6 +398,24 @@ def loadConfig(output, dataSources, parserConfig):
 	except:
 		##
 		## TO DO
+		##
+		pass
+
+	try: 
+		Configuration['Cores'] = int(parserConfig['Processes'])
+
+	except:
+		##
+		## TO DO
+		##
+		pass
+
+	try: 
+		Configuration['Csize'] = int(parserConfig['Chunk_size'])
+
+	except:
+		##
+		##
 		##
 		pass
 

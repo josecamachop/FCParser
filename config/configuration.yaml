@@ -12,8 +12,9 @@
 #   SourceN:
 #     ...
 #
-# Key:         Key variable to aggregate datasources. 
-#              No key for no aggregation.
+# Processes:    Number of processes used by the program
+#
+# Chunk_size:   Size of the chunk of files that are being processed at the same time
 #
 # Output:
 #   dir:       Output directory to write the output files.
@@ -32,6 +33,11 @@
 #    Output:    Output directory for split data      
 #
 #-----------------------------------------------------------------------
+
+
+
+
+
 
 DataSources:
 
