@@ -76,37 +76,12 @@ def main(call='external',configfile=''):
 
 	for source in config['SOURCES']:
 
-		pool = mp.Pool(config['Cores'])
-		jobs = []
 		results[source] = []
-		count = 0
-
 		currentTime = time.time()
 		print "\n-----------------------------------------------------------------------\n"
 		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
 		
-		for i in range(len(config['SOURCES'][source]['FILES'])):
-			input_path = config['SOURCES'][source]['FILES'][i]
-			if input_path:
-				count += 1
-				tag = getTag(input_path)
-
-				#Print some progress stats
-				print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
-				
-				if config['STRUCTURED'][source]:
-					print input_path.split('.')[-1]
-
-				else:
-					print input_path.split('.')[-1]
-
-					for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
-						jobs.append( pool.apply_async(process_wrapper,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-
-					for job in jobs:
-						results[source].append(job.get())
-
-		pool.close()
+		results[source] = process_unstr(config, source)
 
 	for source in results:
 		final_res[source] = results[source][0].obsList
@@ -115,9 +90,43 @@ def main(call='external',configfile=''):
 
 			final_res[source] = combine_results(final_res[source], result.obsList)
 
-
 	print fuseObs(final_res, config)
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+
+
+
+def process_unstr(config, source):
+	results = []
+	count = 0
+	pool = mp.Pool(config['Cores'])
+	jobs = []
+
+	for i in range(len(config['SOURCES'][source]['FILES'])):
+		input_path = config['SOURCES'][source]['FILES'][i]
+		if input_path:
+			count += 1
+			tag = getTag(input_path)
+
+			#Print some progress stats
+			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
+			
+			if config['STRUCTURED'][source]:
+				print input_path.split('.')[-1]
+
+			else:
+				print input_path.split('.')[-1]
+
+				for fragStart,fragSize in frag_unstr(input_path,config['SEPARATOR'][source], config['Csize']):
+					jobs.append( pool.apply_async(process_wrapper_unstr,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+
+				for job in jobs:
+					results.append(job.get())
+
+		pool.close()
+	return results
+
+def process_str():
+	pass
 
 def fuseObs(resultado, config):
 
@@ -150,7 +159,7 @@ def fuseObs(resultado, config):
 
 	return fused_res, features
 
-def frag(fname,separator, size):
+def frag_unstr(fname,separator, size):
 	fileEnd = os.path.getsize(fname)
 	with open(fname, 'r') as f:
 		end = f.tell()
@@ -171,7 +180,67 @@ def frag(fname,separator, size):
 
 			yield start, end-start
 
-def process_wrapper(file, fragStart, fragSize,config, source,separator):
+def frag_str(fname,separator, size):
+
+
+	# ###################################################################
+
+		# TO DO
+
+	#####################################################################
+
+
+
+	fileEnd = os.path.getsize(fname)
+	with open(fname, 'r') as f:
+		end = f.tell()
+		cont = True
+
+		while True:
+			start = end
+			asdf = f.read(size)
+
+			i = asdf.rfind(separator)
+
+			if end >= fileEnd or i == -1:
+				break
+
+			f.seek(start+i+1)
+			end = f.tell()
+
+
+			yield start, end-start
+
+def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
+
+	obsDictp = obsDict()
+	with open(file) as f:
+		f.seek(fragStart)
+		lines = f.read(fragSize)
+
+		log = ''
+		for line in lines:
+			log += line 
+
+			if separator in log:
+
+				tag, obs = process_log(log,config, source)
+				obsDictp.add(obs,tag)
+				log = ''	
+
+		tag, obs = process_log(log,config, source)
+		obsDictp.add(obs,tag)
+	return obsDictp
+
+def process_wrapper_str(file, fragStart, fragSize,config, source,separator):
+
+
+	# ###################################################################
+
+		# TO DO
+
+	#####################################################################
+
 
 	obsDictp = obsDict()
 	with open(file) as f:
@@ -411,7 +480,7 @@ def loadConfig(output, dataSources, parserConfig):
 		pass
 
 	try: 
-		Configuration['Csize'] = int(parserConfig['Chunk_size'])
+		Configuration['Csize'] = 1024 * int(parserConfig['Chunk_size'])
 
 	except:
 		##
