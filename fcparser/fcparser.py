@@ -26,21 +26,7 @@ import yaml
 import subprocess
 from operator import add
 import faaclib
-
-class obsDict(object):
-	"""docstring for Observation"""
-	def __init__(self):
-		self.obsList = {}
-
-	def add(self,obs,tag):
-		if tag in self.obsList.keys():
-			self.obsList[tag] = map(add, obs, self.obsList[tag])
-		else:
-			self.obsList[tag] = obs
-
-	def printt(self):
-		print self.obsList
-		
+	
 def main(call='external',configfile=''):
 
 
@@ -76,12 +62,23 @@ def main(call='external',configfile=''):
 
 	for source in config['SOURCES']:
 
-		results[source] = []
-		currentTime = time.time()
-		print "\n-----------------------------------------------------------------------\n"
-		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
-		
-		results[source] = process_unstr(config, source)
+		if config['SOURCES'][source]['CONFIG']['structured']:
+
+			results[source] = []
+			currentTime = time.time()
+			print "\n-----------------------------------------------------------------------\n"
+			print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
+			
+			results[source] = process_str(config, source)
+
+		else:
+			results[source] = []
+			currentTime = time.time()
+			print "\n-----------------------------------------------------------------------\n"
+			print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
+			
+			results[source] = process_unstr(config, source)
+
 
 	for source in results:
 		final_res[source] = results[source][0].obsList
@@ -98,10 +95,10 @@ def main(call='external',configfile=''):
 def process_unstr(config, source):
 	results = []
 	count = 0
-	pool = mp.Pool(config['Cores'])
-	jobs = []
 
 	for i in range(len(config['SOURCES'][source]['FILES'])):
+		pool = mp.Pool(config['Cores'])
+		jobs = []
 		input_path = config['SOURCES'][source]['FILES'][i]
 		if input_path:
 			count += 1
@@ -109,25 +106,45 @@ def process_unstr(config, source):
 
 			#Print some progress stats
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
-			
-			if config['STRUCTURED'][source]:
-				print input_path.split('.')[-1]
+		
+			print input_path.split('.')[-1]
 
-			else:
-				print input_path.split('.')[-1]
+			for fragStart,fragSize in frag_unstr(input_path,config['SEPARATOR'][source], config['Csize']):
+				jobs.append( pool.apply_async(process_wrapper_unstr,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
 
-				for fragStart,fragSize in frag_unstr(input_path,config['SEPARATOR'][source], config['Csize']):
-					jobs.append( pool.apply_async(process_wrapper_unstr,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-
-				for job in jobs:
-					results.append(job.get())
+			for job in jobs:
+				results.append(job.get())
 
 		pool.close()
 	return results
 
-def process_str():
-	pass
+def process_str(config, source):
 
+	results = []
+	count = 0
+	
+	jobs = []
+
+	for i in range(len(config['SOURCES'][source]['FILES'])):
+		pool = mp.Pool(config['Cores'])
+		input_path = config['SOURCES'][source]['FILES'][i]
+		if input_path:
+			count += 1
+			tag = getTag(input_path)
+
+			#Print some progress stats
+			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
+			print input_path.split('.')[-1]
+
+			for fragStart,fragSize in frag_str(input_path, config['Csize']):
+				jobs.append( pool.apply_async(process_wrapper_str,(input_path,fragStart,fragSize,config, source)))
+
+			for job in jobs:
+				results.append(job.get())
+
+		pool.close()
+	return results
+	
 def fuseObs(resultado, config):
 
 	fused_res = {}
@@ -180,34 +197,21 @@ def frag_unstr(fname,separator, size):
 
 			yield start, end-start
 
-def frag_str(fname,separator, size):
-
-
-	# ###################################################################
-
-		# TO DO
-
-	#####################################################################
-
-
-
+def frag_str(fname, size):
+	separator = "\n"
 	fileEnd = os.path.getsize(fname)
 	with open(fname, 'r') as f:
 		end = f.tell()
 		cont = True
-
 		while True:
 			start = end
 			asdf = f.read(size)
-
 			i = asdf.rfind(separator)
-
 			if end >= fileEnd or i == -1:
 				break
 
 			f.seek(start+i+1)
 			end = f.tell()
-
 
 			yield start, end-start
 
@@ -232,41 +236,25 @@ def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 		obsDictp.add(obs,tag)
 	return obsDictp
 
-def process_wrapper_str(file, fragStart, fragSize,config, source,separator):
+def process_wrapper_str(file, fragStart, fragSize,config, source):
 
-
-	# ###################################################################
-
-		# TO DO
-
-	#####################################################################
-
-
+	separator = "\n" 
 	obsDictp = obsDict()
 	with open(file) as f:
 		f.seek(fragStart)
-		lines = f.read(fragSize)
+		lines = f.read(fragSize).splitlines()
 
-		log = ''
 		for line in lines:
-			log += line 
+			tag, obs = process_log(line,config, source)
+			obsDictp.add(obs,tag)
 
-			if separator in log:
-
-				tag, obs = process_log(log,config, source)
-				obsDictp.add(obs,tag)
-				log = ''	
-
-		tag, obs = process_log(log,config, source)
-		obsDictp.add(obs,tag)
 	return obsDictp
 
 def process_log(log,config, source):
 	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
-	return normalize_timestamps(str(record.variables['timestamp']),config, source), obs.data
-	# return str(record.variables['timestamp']), obs.data
+	return normalize_timestamps(record.variables['timestamp'],config, source), obs.data
 
 def normalize_timestamps(timestamp, config, source):
 	try:
@@ -274,10 +262,11 @@ def normalize_timestamps(timestamp, config, source):
 		start = config['Time']['start']
 		window = config['Time']['window']
 
-		t = datetime.datetime.strptime(timestamp, input_format)
+		t = datetime.datetime.strptime(str(timestamp), input_format)
+
 		new_minute = t.minute - t.minute % window  
 
-		t = t.replace(minute = new_minute)
+		t = t.replace(minute = new_minute, second = 0)
 		if t.year == 1900:
 			t = t.replace(year = start.year)
 
@@ -626,6 +615,21 @@ def getArguments():
 	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
 	args = parser.parse_args()
 	return args
+
+class obsDict(object):
+	"""docstring for Observation"""
+	def __init__(self):
+		self.obsList = {}
+
+	def add(self,obs,tag):
+		if tag in self.obsList.keys():
+			self.obsList[tag] = map(add, obs, self.obsList[tag])
+		else:
+			self.obsList[tag] = obs
+
+	def printt(self):
+		print self.obsList
+	
 
 if __name__ == "__main__":
 	
