@@ -29,24 +29,23 @@ import faaclib
 	
 def main(call='external',configfile=''):
 
-
 	startTime = time.time()
+
 	# if called from terminal
 	# if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
 	if call is 'external':
 		args = getArguments()
 		configfile = args.config
 
-
 	# Get configuration
 	parserConfig = getConfiguration(configfile)
+	online = parserConfig['Online']
 	dataSources = parserConfig['DataSources']
 	output = parserConfig['Output']
 	config = loadConfig(output, dataSources, parserConfig)
 
 	# Print configuration summary
 	configSummary(config)
-
 
 	# Output Weights
 	outputWeight(config)
@@ -57,6 +56,56 @@ def main(call='external',configfile=''):
 	stats = check_unused_sources(config, stats)
 
 	# processing files
+	if online:
+		data = online_parsing(config)
+		output,headers = fuseObs_online(data, config)
+
+	else:
+		data = offline_parsing(config, startTime)
+		output,headers = fuseObs_offline(data, config)
+
+	print output
+	print headers
+
+	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+
+def online_parsing(config):
+
+	results = {}
+
+	for source in config['SOURCES']:
+
+
+		if config['SOURCES'][source]['CONFIG']['structured']:
+			for fname in config['SOURCES'][source]['FILES']:
+				obsDict = obsDict_online()
+				with open(fname, 'r') as f:
+					lines = f.readlines()
+					for line in lines:
+						tag, obs = process_log(line,config, source)
+						obsDict.add(obs)
+		else:
+			separator = config['SEPARATOR'][source]
+			for fname in config['SOURCES'][source]['FILES']:
+				obsDict = obsDict_online()
+				with open(fname, 'r') as f:
+					lines = f.read()
+					log = ''
+					for line in lines:
+						log += line 
+						if separator in log:
+							tag, obs = process_log(log,config, source)
+							obsDict.add(obs)
+							log = ''	
+
+					tag, obs = process_log(log,config, source)
+					obsDict.add(obs)
+
+		results[source] = obsDict
+	return results
+
+def offline_parsing(config,startTime):
+
 	results = {}
 	final_res = {}
 
@@ -82,15 +131,10 @@ def main(call='external',configfile=''):
 
 	for source in results:
 		final_res[source] = results[source][0].obsList
-		
 		for result in results[source][1:]:
-
 			final_res[source] = combine_results(final_res[source], result.obsList)
 
-	print fuseObs(final_res, config)
-	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
-
-
+	return final_res
 
 def process_unstr(config, source):
 	results = []
@@ -145,7 +189,7 @@ def process_str(config, source):
 		pool.close()
 	return results
 	
-def fuseObs(resultado, config):
+def fuseObs_offline(resultado, config):
 
 	fused_res = {}
 	features = []
@@ -173,6 +217,20 @@ def fuseObs(resultado, config):
 
 			if date2 not in resultado[source]:
 				fused_res[date2] = fused_res[date2] + [0]*arbitrary_len2
+
+	return fused_res, features
+	
+def fuseObs_online(resultado, config):
+
+	fused_res = []
+	features = []
+
+	for source in resultado:
+
+		for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+			features.append(feat['name'])
+
+		fused_res = fused_res + resultado[source].obsList
 
 	return fused_res, features
 
@@ -217,7 +275,7 @@ def frag_str(fname, size):
 
 def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 
-	obsDictp = obsDict()
+	obsDict = obsDict_offline()
 	with open(file) as f:
 		f.seek(fragStart)
 		lines = f.read(fragSize)
@@ -229,26 +287,26 @@ def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 			if separator in log:
 
 				tag, obs = process_log(log,config, source)
-				obsDictp.add(obs,tag)
+				obsDict.add(obs,tag)
 				log = ''	
 
 		tag, obs = process_log(log,config, source)
-		obsDictp.add(obs,tag)
-	return obsDictp
+		obsDict.add(obs,tag)
+	return obsDict
 
 def process_wrapper_str(file, fragStart, fragSize,config, source):
 
 	separator = "\n" 
-	obsDictp = obsDict()
+	obsDict = obsDict_offline()
 	with open(file) as f:
 		f.seek(fragStart)
 		lines = f.read(fragSize).splitlines()
 
 		for line in lines:
 			tag, obs = process_log(line,config, source)
-			obsDictp.add(obs,tag)
+			obsDict.add(obs,tag)
 
-	return obsDictp
+	return obsDict
 
 def process_log(log,config, source):
 	 
@@ -616,7 +674,7 @@ def getArguments():
 	args = parser.parse_args()
 	return args
 
-class obsDict(object):
+class obsDict_offline(object):
 	"""docstring for Observation"""
 	def __init__(self):
 		self.obsList = {}
@@ -630,6 +688,19 @@ class obsDict(object):
 	def printt(self):
 		print self.obsList
 	
+class obsDict_online(object):
+	"""docstring for Observation"""
+	def __init__(self):
+		self.obsList = []
+
+	def add(self,obs):
+		if self.obsList:
+			self.obsList = map(add, obs, self.obsList)
+		else:
+			self.obsList = obs
+
+	def printt(self):
+		print self.obsList
 
 if __name__ == "__main__":
 	
