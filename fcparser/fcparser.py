@@ -60,17 +60,23 @@ def main(call='external',configfile=''):
 		data = online_parsing(config)
 		output,headers = fuseObs_online(data, config)
 
+	# process offline 
 	else:
 		data = offline_parsing(config, startTime)
 		output,headers = fuseObs_offline(data, config)
 
+	# Output results
 	print output
 	print headers
 
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 def online_parsing(config):
-
+'''
+Main process for online parsing. In this case, the program generates one output for the 
+the input file, wich means, no time splitting. Online parsing is designed to be integrated
+in other program with would be in charge of the input management. 
+'''
 	results = {}
 
 	for source in config['SOURCES']:
@@ -105,7 +111,11 @@ def online_parsing(config):
 	return results
 
 def offline_parsing(config,startTime):
-
+'''
+Main process for offline parsing. In this case, the program is in charge of temporal sampling.
+Also, it is multiprocess for processing large files faster. Number of cores used and chunk sizes
+to divide files for the different processes. 
+'''
 	results = {}
 	final_res = {}
 
@@ -137,6 +147,12 @@ def offline_parsing(config,startTime):
 	return final_res
 
 def process_unstr(config, source):
+'''
+processing files procedure for unstructured sources in offline parsing. In this function the pool 
+of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
+Each process is assigned a chunk of file to be processed.
+The results of each process are gathered to be postprocessed. 
+'''
 	results = []
 	count = 0
 
@@ -163,7 +179,12 @@ def process_unstr(config, source):
 	return results
 
 def process_str(config, source):
-
+'''
+processing files procedure for structured sources in offline parsing. In this function the pool 
+of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
+Each process is assigned a chunk of file to be processed.
+The results of each process are gathered to be postprocessed. 
+'''
 	results = []
 	count = 0
 	
@@ -190,7 +211,11 @@ def process_str(config, source):
 	return results
 	
 def fuseObs_offline(resultado, config):
-
+'''
+Function to fuse all the results obtained from all the processes to form a single matrix
+of observations with the information from all the input data. The program generated one observation
+for each time interval defined in the configuration file. 
+'''
 	fused_res = {}
 	features = []
 
@@ -221,7 +246,10 @@ def fuseObs_offline(resultado, config):
 	return fused_res, features
 	
 def fuseObs_online(resultado, config):
-
+'''
+Function to fuse all the results obtained from all the processes to form a single observation in 
+array form.
+'''
 	fused_res = []
 	features = []
 
@@ -235,6 +263,9 @@ def fuseObs_online(resultado, config):
 	return fused_res, features
 
 def frag_unstr(fname,separator, size):
+'''
+Function to fragment files in chunks to be parallel processed for unstructured files
+'''
 	fileEnd = os.path.getsize(fname)
 	with open(fname, 'r') as f:
 		end = f.tell()
@@ -251,11 +282,12 @@ def frag_unstr(fname,separator, size):
 
 			f.seek(start+i+1)
 			end = f.tell()
-
-
 			yield start, end-start
 
 def frag_str(fname, size):
+'''
+Function to fragment files in chunks to be parallel processed for structured files by lines
+'''
 	separator = "\n"
 	fileEnd = os.path.getsize(fname)
 	with open(fname, 'r') as f:
@@ -274,7 +306,10 @@ def frag_str(fname, size):
 			yield start, end-start
 
 def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
-
+'''
+Function that uses each process to get data entries from unstructured data using the separator defined
+in configuration files that will be transformed into observations. This is used only in offline parsing. 
+'''
 	obsDict = obsDict_offline()
 	with open(file) as f:
 		f.seek(fragStart)
@@ -285,7 +320,6 @@ def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 			log += line 
 
 			if separator in log:
-
 				tag, obs = process_log(log,config, source)
 				obsDict.add(obs,tag)
 				log = ''	
@@ -295,9 +329,13 @@ def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 	return obsDict
 
 def process_wrapper_str(file, fragStart, fragSize,config, source):
-
+'''
+Function that uses each process to get data entries from structured data lines.
+Lines will be transformed into observations. This is used only in offline parsing. 
+'''
 	separator = "\n" 
 	obsDict = obsDict_offline()
+
 	with open(file) as f:
 		f.seek(fragStart)
 		lines = f.read(fragSize).splitlines()
@@ -305,28 +343,31 @@ def process_wrapper_str(file, fragStart, fragSize,config, source):
 		for line in lines:
 			tag, obs = process_log(line,config, source)
 			obsDict.add(obs,tag)
-
 	return obsDict
 
 def process_log(log,config, source):
-	 
+'''
+Function take on data entry as input an transform it into a preliminary observation
+'''	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
 	return normalize_timestamps(record.variables['timestamp'],config, source), obs.data
 
 def normalize_timestamps(timestamp, config, source):
+'''
+Function that transform timestamps of data entries to a normalized format. It also do the 
+time sampling using the time window defined in the configuration file.
+'''	
 	try:
 		input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
-		start = config['Time']['start']
 		window = config['Time']['window']
 
 		t = datetime.datetime.strptime(str(timestamp), input_format)
-
 		new_minute = t.minute - t.minute % window  
 
 		t = t.replace(minute = new_minute, second = 0)
 		if t.year == 1900:
-			t = t.replace(year = start.year)
+			t = t.replace(year = datetime.now().year)
 
 		return t
 	except:
@@ -334,9 +375,11 @@ def normalize_timestamps(timestamp, config, source):
 		return 0
 
 def combine_results(dict1, dict2):
-	### Combine results of parsing from multiple process,
-	### Results are dicts with observations. The combination consist on 
-	### mergind dicts, if a key is in both dicts, observations are added.
+'''
+Combine results of parsing from multiple process,
+Results are dicts with observations. The combination consist on 
+mergind dicts, if a key is in both dicts, observations are added.
+'''
 	dict3 = {}
 
 	for key in dict1:
@@ -352,6 +395,11 @@ def combine_results(dict1, dict2):
 	return dict3
 
 def check_unused_sources(config, stats):
+'''
+Legacy function - not ussed at the moment.
+For aggregation feature that was removed.
+'''
+
 
 	# Get a dictionary with all de var names 
 	# to check if sources are unused due to choosen key
@@ -421,8 +469,10 @@ def check_unused_sources(config, stats):
 	return stats
 
 def create_stats(config):
+'''
+Legacy function - To be updated
+'''
 	stats = {}
-	# Create log files
 	statsPath = config['OUTDIR'] + config['OUTSTATS']
 	statsStream = open(statsPath, 'w')
 	statsStream.write("STATS\n")
@@ -433,7 +483,10 @@ def create_stats(config):
 	return stats
 
 def count_entries(config,stats):
-
+'''
+Function to get the amount of data entries for each data source
+TO BE UPDATED
+'''
 	lines = {}
 	for source in config['SOURCES']:
 		lines[source] = 0
@@ -458,7 +511,9 @@ def count_entries(config,stats):
 	return stats
 
 def outputWeight(config):
-
+'''
+Generate output file with the weights assigned to each feature.
+'''
 	weightsPath = config['OUTDIR'] + config['OUTW']
 	weightsStream = open(weightsPath, 'w')
 	weightsStream.write(', '.join(config['features']) + '\n')
@@ -466,8 +521,10 @@ def outputWeight(config):
 	weightsStream.close()
 
 def configSummary(config):
-	
-	# Print a summary of loaded parameters
+'''
+Print a summary of loaded parameters
+'''
+
 	print "-----------------------------------------------------------------------"
 	print "Data Sources:"
 	for source in config['SOURCES']:
@@ -485,8 +542,9 @@ def configSummary(config):
 	print "-----------------------------------------------------------------------\n"
 	
 def loadConfig(output, dataSources, parserConfig):
-
-
+'''
+Function to load configuration from the config files
+'''
 	Configuration = {}
 	# Output settings 
 
@@ -610,6 +668,9 @@ def loadConfig(output, dataSources, parserConfig):
 	return Configuration
 
 def getTag(filename):
+'''
+TO BE UPDATED
+'''
 	tagSearch = re.search("(\w*)\.\w*$", filename)
 	if tagSearch:
 		return tagSearch.group(1)
@@ -617,7 +678,9 @@ def getTag(filename):
 		return None
 
 def file_uns_len(fname, separator):
-
+'''
+TO BE UPDATED -- CHECK count entries fuction
+'''
 	input_file = open(fname,'r')
 	line = input_file.readline()
 	count_log = 0
@@ -645,6 +708,9 @@ def file_uns_len(fname, separator):
 	return count_log			
 	
 def prettyTime(elapsed):
+'''
+TO BE UPDATED
+'''
 	hours = int(elapsed // 3600)
 	minutes = int(elapsed // 60 % 60)
 	seconds = int(elapsed % 60)
@@ -656,18 +722,27 @@ def prettyTime(elapsed):
 	return pretty
 
 def getConfiguration(config_file):
+'''
+TO BE UPDATED -- INTEGRATE WITH LOAD CONFIG FUNCTION
+'''
 	stream = file(config_file, 'r')
 	conf = yaml.load(stream)
 	stream.close()
 	return conf
 
 def file_len(fname):
+'''
+TO BE UPDATED
+'''
     with open(fname) as f:
         for i, l in enumerate(f):
             pass
     return i + 1
 
 def getArguments():
+'''
+TO BE UPDATED
+'''
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
 	description='''Multivariate Analysis Parsing Tool.''')
 	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
@@ -675,7 +750,9 @@ def getArguments():
 	return args
 
 class obsDict_offline(object):
-	"""docstring for Observation"""
+"""docstring for Observation
+TO BE UPDATED
+"""
 	def __init__(self):
 		self.obsList = {}
 
@@ -689,7 +766,9 @@ class obsDict_offline(object):
 		print self.obsList
 	
 class obsDict_online(object):
-	"""docstring for Observation"""
+"""docstring for Observation
+TO BE UPDATED
+"""
 	def __init__(self):
 		self.obsList = []
 
