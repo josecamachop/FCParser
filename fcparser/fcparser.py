@@ -182,9 +182,9 @@ def process_str(config, source):
 	'''
 	results = []
 	count = 0
-	jobs = []
 	
 	for i in range(len(config['SOURCES'][source]['FILES'])):
+		jobs = []
 		pool = mp.Pool(config['Cores'])
 		input_path = config['SOURCES'][source]['FILES'][i]
 		if input_path:
