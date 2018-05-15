@@ -89,6 +89,7 @@ def main():
 
 	##################################################################################################################################################################
 	
+	print config['dataSources']
 
 	# Not Netflow datasources
 	count_structured = 0
@@ -106,14 +107,15 @@ def main():
 
 			# Structured sources
 			if config['structured'][source]:
-				count_structured += stru_deparsing(config['OUTDIR'], sourcepath, config['sources_config'], config['FEATURES'], config['VARIABLES'], deparsInput['features'],tag, source, config['threshold'],formated_timestamps)
+				count_structured += stru_deparsing(config, sourcepath, deparsInput, tag, source,formated_timestamps)
 
 			# Unstructured sources
 			else:
-				count_unstructured += unstr_deparsing(config['OUTDIR'], sourcepath, config['sources_config'], config['FEATURES'], config['VARIABLES'], deparsInput['features'],tag, source, config['threshold'],formated_timestamps)
-				print "\n---------------------------------------------------------------------------\n"
-				print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-				print "\n---------------------------------------------------------------------------\n"
+				count_unstructured += unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timestamps)
+
+			print "\n---------------------------------------------------------------------------\n"
+			print "Elapsed: %s" %(prettyTime(time.time() - startTime))
+			print "\n---------------------------------------------------------------------------\n"
 
 	stats(count_structured, count_unstructured, config['OUTDIR'], config['OUTSTATS'], startTime)
 
@@ -336,11 +338,18 @@ def loadConfig(configfile):
 
 	return config
 
-def stru_deparsing(OUTDIR, sourcepath, sources_config, FEATURES, VARIABLES, features,tag, source, threshold,formated_timestamps):
+def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timestamps):
 	'''
 	Deparsing process for structured data sources like csv.
 	'''
+	sources_config = config['sources_config']
+	OUTDIR = config['OUTDIR']
+	FEATURES = config['FEATURES']
+	VARIABLES = config['VARIABLES']
+	features = deparsInput['features']
+	threshold = config['threshold']
 
+	count_structured = 0
 	output_file = open(OUTDIR + "output_" + tag,'w')
 	feat_appear = {}
 	for file in sourcepath:
@@ -394,10 +403,16 @@ def stru_deparsing(OUTDIR, sourcepath, sources_config, FEATURES, VARIABLES, feat
 
 	return count_structured
 
-def unstr_deparsing(OUTDIR, sourcepath, sources_config, FEATURES, VARIABLES, features,tag, source, threshold,formated_timestamps):
+def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timestamps):
 	'''
 	Deparsing process for unstructured text based data sources like a log file.
 	'''
+	sources_config = config['sources_config']
+	OUTDIR = config['OUTDIR']
+	FEATURES = config['FEATURES']
+	VARIABLES = config['VARIABLES']
+	features = deparsInput['features']
+	threshold = config['threshold']
 
 	count_unstructured = 0
 	output_file = open(OUTDIR + "output_" + tag,'w')
@@ -696,7 +711,6 @@ def getStructuredTime(line, pos, dateFormat):
 	time = datetime.strptime(rawTime, dateFormat)
 	time = time.replace(second = 00)
 	return time
-
 
 # def sFields_nfdump(nf_feat,sFeatures,feature):
 
