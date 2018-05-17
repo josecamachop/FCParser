@@ -10,7 +10,7 @@ Authors:    Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
 			Alejandro Perez Villegas (alextoni@gmail.com)
 		 
 		 
-Last Modification: 21/Sep/2017
+Last Modification: 14/May/2018
 
 """
 
@@ -344,7 +344,7 @@ def process_log(log,config, source):
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
-	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], config['Keys'])
+	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], None)
 	return normalize_timestamps(record.variables['timestamp'],config, source), obs.data
 
 def normalize_timestamps(timestamp, config, source):
@@ -450,10 +450,6 @@ def configSummary(config):
 		print " * %s %s variables   %s features" %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2), str(len(config['SOURCES'][source]['CONFIG']['FEATURES'])).ljust(3))
 	print " TOTAL %s features" %(str(sum(len(l) for l in config['FEATURES'].itervalues())))
 	print
-	print "Key:" 	
-	aggrStr = ', '.join(config['Keys']) if isinstance(config['Keys'],list) else config['Keys']
-	print aggrStr
-	print
 	print "Output:"
 	print "  Directory: %s" %(config['OUTDIR'])
 	print "  Stats file: %s" %(config['OUTSTATS'])
@@ -499,29 +495,22 @@ def loadConfig(output, dataSources, parserConfig):
 		Configuration['Time'] = parserConfig['SPLIT']['Time']
 
 	except:
-		##
-		## TO DO
-		##
-		pass
+		print "**ERROR** Config file error: Time fields"
+		exit(1)	
 
 	try: 
 		Configuration['Cores'] = int(parserConfig['Processes'])
 
 	except:
-		##
-		## TO DO
-		##
-		pass
+		print "**ERROR** Config file error: Processes fields"
+		exit(1)
 
 	try: 
 		Configuration['Csize'] = 1024 * int(parserConfig['Chunk_size'])
 
 	except:
-		##
-		##
-		##
-		pass
-
+		print "**ERROR** Config file error: Chunk_size fields"
+		exit(1)	
 
 	# Sources settgins
 	Configuration['SOURCES'] = {}
@@ -530,16 +519,9 @@ def loadConfig(output, dataSources, parserConfig):
 		Configuration['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
 		Configuration['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['data'])
 
-	try:
-		Configuration['Keys'] = parserConfig['Keys']
-	except KeyError as e:
-		Configuration['Keys'] = None 
-
-
 	Configuration['FEATURES'] = {}
 	Configuration['STRUCTURED'] = {}
 	Configuration['SEPARATOR'] = {}
-
 
 	for source in Configuration['SOURCES']:
 		Configuration['FEATURES'][source] = Configuration['SOURCES'][source]['CONFIG']['FEATURES']
@@ -571,7 +553,6 @@ def loadConfig(output, dataSources, parserConfig):
 				out_files.append(out_file.replace('temp',source) + '.csv')
 				os.remove(out_file)
 				os.remove(out_file.replace('temp',source))
-		
 				Configuration['SOURCES'][source]['FILES'] = out_files
 				delete_nfcsv = out_files
 
@@ -587,7 +568,6 @@ def loadConfig(output, dataSources, parserConfig):
 				Configuration['features'].append(feat['name'])
 			except:
 				print "FEATURES: missing config key (%s)" %(e.message)
-				print Configuration['FEATURES'][source][i]
 				exit(1)				
 			try:
 				Configuration['weigthts'].append(str(feat['weight']))
@@ -598,7 +578,7 @@ def loadConfig(output, dataSources, parserConfig):
 
 def getTag(filename):
 	'''
-	TO BE UPDATED
+	function to identify data source by the input file
 	'''
 	tagSearch = re.search("(\w*)\.\w*$", filename)
 	if tagSearch:
@@ -608,7 +588,7 @@ def getTag(filename):
 
 def file_uns_len(fname, separator):
 	'''
-	TO BE UPDATED -- CHECK count entries fuction
+	Function determine de number of logs for a unstructured file 
 	'''
 	input_file = open(fname,'r')
 	line = input_file.readline()
@@ -638,7 +618,7 @@ def file_uns_len(fname, separator):
 	
 def prettyTime(elapsed):
 	'''
-	TO BE UPDATED
+	Function to format time for print.
 	'''
 	hours = int(elapsed // 3600)
 	minutes = int(elapsed // 60 % 60)
@@ -652,7 +632,7 @@ def prettyTime(elapsed):
 
 def getConfiguration(config_file):
 	'''
-	TO BE UPDATED -- INTEGRATE WITH LOAD CONFIG FUNCTION
+	Function to load config file
 	'''
 	stream = file(config_file, 'r')
 	conf = yaml.load(stream)
@@ -661,7 +641,7 @@ def getConfiguration(config_file):
 
 def file_len(fname):
 	'''
-	TO BE UPDATED
+	Function to get lines from a file
 	'''
 	with open(fname) as f:
 		for i, l in enumerate(f):
@@ -670,7 +650,7 @@ def file_len(fname):
 
 def getArguments():
 	'''
-	TO BE UPDATED
+	Function to get input arguments from configuration file
 	'''
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
 	description='''Multivariate Analysis Parsing Tool.''')
@@ -701,8 +681,10 @@ def write_output(output, headers, config):
 			f.write(','.join(map(str,output)))
 
 class obsDict_offline(object):
-	"""docstring for Observation
-	TO BE UPDATED
+	"""
+	Class to store observations of parsed data in offline mode. This class include 
+	methods to add new partial observation to an absolute observation and a other 
+	method for visual representation.
 	"""
 	def __init__(self):
 		self.obsList = {}
@@ -717,8 +699,10 @@ class obsDict_offline(object):
 		print self.obsList
 	
 class obsDict_online(object):
-	"""docstring for Observation
-	TO BE UPDATED
+	"""
+	Class to store observations of parsed data in online  mode. This class include 
+	methods to add new partial observation to an absolute observation and a other 
+	method for visual representation.
 	"""
 	def __init__(self):
 		self.obsList = []

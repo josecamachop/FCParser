@@ -14,8 +14,10 @@
 #
 # Processes:    Number of processes used by the program
 #
-# Chunk_size:   Size of the chunk of files that are being processed at the same time
+# Online: 	Boolean variable to determine if online or offline mode
 #
+# Chunk_size:   Size of the chunk of files that are being processed at 
+# 	        the same time (Kilobytes)
 # Output:
 #   dir:       Output directory to write the output files.
 #   stats:     Log file to write the stats (lines, records, matches).
