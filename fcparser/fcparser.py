@@ -487,7 +487,7 @@ def main(call='external',configfile=''):
 	if not (parserConfig['SPLIT']['Time']['window'] == None or parserConfig['SPLIT']['Time']['start'] == None or parserConfig['SPLIT']['Time']['end'] == None):
 
 		print "\n\n\nRemoving temporal files..."
-		shutil.rmtree(parserConfig['SPLIT']['Output'])
+		shutil.rmtree(parserConfig['SPLIT']['Output'], ignore_errors=True)
 	
 	if delete_nfcsv:
 		for file in delete_nfcsv:
