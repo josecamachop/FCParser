@@ -12,7 +12,7 @@ $ pip install PyYAML
 
 Alternatively, running the following command installs both, the corresponding FCParser modules and the previous mentioned dependencies.
 
-$ python <INSTALL_DIR>/setup.py install
+$ python <CURRENT_DIR>/setup.py install
 
 Note: In order to work with netflow data in nfcapd format, the netflow processing tool Nfdump is also required.
 
