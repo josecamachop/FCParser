@@ -15,7 +15,7 @@ import yaml
 import json
 
 
-def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%d-%H:%M:%S',tregexp='[0-9]{1,2}/[0-9]{1,2}-([0-9]{1,2}:){2}[0-9]{2}',sep='\\n\\n',targ=1):
+def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%d-%H:%M:%S',tregexp='[0-9]{1,2}/[0-9]{1,2}-([0-9]{1,2}:){2}[0-9]{2}',sep='"\n\n"',targ=1):
 	
 	# if called from terminal
 	# if not, the parser must be called in this way: createconf.main(call='internal',jsonfile='<route_to_json_file>',yamlfile='<name_output_file>',structured='<True for structured source>, tformat='<timestamp format>',tregexp='<regular expression for timestamp>',separator='<separator between logs>',targ='<time argument in structured sources')
@@ -68,7 +68,11 @@ def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%
 		interm = dict();
 		interm['name'] = str(varis)
 		interm['matchtype'] = 'string'
-		interm['where'] = str(varis)
+		#interm['where'] =  "\'" + str(varis) + "\'"
+		#contentv['VARIABLES'].append(interm)
+		#interm['name'] = varis
+		#interm['matchtype'] = 'string'
+		interm['where'] =  str(varis)
 		contentv['VARIABLES'].append(interm)
 
 
@@ -78,9 +82,14 @@ def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%
 	for varis in datastore:
 		interm = dict();
 		interm['name'] = str(varis)
-		interm['variables'] = str(varis)
+		interm['variable'] = str(varis)
 		interm['matchtype'] = 'regexp'
-		interm['where'] = str(varis)
+		#interm['value'] = "\'" + str(varis) + "\'"
+		#contentf['FEATURES'].append(interm)
+		#interm['name'] = varis
+		#interm['variable'] = varis
+		#interm['matchtype'] = 'regexp'
+		interm['value'] = str(varis)
 		contentf['FEATURES'].append(interm)
 
 
@@ -110,7 +119,7 @@ def getArguments():
 	parser.add_argument('yaml', metavar='yamlfile', help='The name for the output yaml configuration file.')
 	parser.add_argument('-tf', dest='tformat', metavar='tformat', help='Timestamp format.', default='%m/%d-%H:%M:%S')
 	parser.add_argument('-tr', dest='tregexp', metavar='tregexp', help='Regular expression for timestamp.', default='[0-9]{1,2}/[0-9]{1,2}-([0-9]{1,2}:){2}[0-9]{2}')
-	parser.add_argument('-se', dest='separator', metavar='separator', help='Separator between logs.', default='\\n\\n')
+	parser.add_argument('-se', dest='separator', metavar='separator', help='Separator between logs.', default="\"\\n\\n\"")
 	parser.add_argument('-ta', dest='targ', metavar='targ', help='Time argument in structured sources.', default=1)
 	parser.add_argument('-s', action='store_true', help='Structured source.')
 	return parser.parse_args()

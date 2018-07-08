@@ -312,6 +312,7 @@ def main(call='external',configfile=''):
 
 		# Iterate through files.
 
+
 		for i in range(len(SOURCES[source]['FILES'])):
 			input_path = SOURCES[source]['FILES'][i]
 			if input_path:
@@ -353,6 +354,7 @@ def main(call='external',configfile=''):
 					# Start reading the file
 					input_file = open(input_path,'r')
 					line = input_file.readline()
+
 
 					if line:
 						# Create observation batch

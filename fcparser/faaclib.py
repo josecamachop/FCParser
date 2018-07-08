@@ -401,8 +401,9 @@ class Record(object):
 				if vType == 'regexp':
 
 					try:
+						
 						p = re.search(vWhere,line)
-						vValue = p.group('match')
+						vValue = p.group()
 
 						if vMatchType == 'string':
 							variable = StringVariable(vValue)
