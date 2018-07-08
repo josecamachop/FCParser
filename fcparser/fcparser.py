@@ -28,7 +28,7 @@ def main(call='external',configfile=''):
 	
 	startTime = time.time()
 	# if called from terminal
-	# if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
+	# if not, the parser must be called in this way: fcparser.main(call='internal',configfile='<route_to_config_file>')
 	if call is 'external':
 		args = getArguments()
 		configfile = args.config
