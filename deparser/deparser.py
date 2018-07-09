@@ -212,6 +212,7 @@ def main():
 		line = input_file.readline()
 
 
+
 	# Print a summary of loaded parameters
 	print "------------------------------------------------------------------------"
 	print "Data Sources:"
@@ -569,7 +570,7 @@ def search_feature(FEATURES,VARIABLES,logExtract,features,source):
 			match = re.search(VARIABLES[source][fVariable]['where'],logExtract)
 
 			if match:
-				match = match.group('match')
+				match = match.group()
 				matchType = VARIABLES[source][fVariable]['matchtype']
 
 				if fType == "regexp":
