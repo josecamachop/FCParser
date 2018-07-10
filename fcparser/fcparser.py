@@ -19,6 +19,7 @@ import argparse
 import glob
 import datetime
 import os
+import gzip
 import re
 import time
 import shutil
@@ -82,26 +83,47 @@ def online_parsing(config):
 
 		if config['SOURCES'][source]['CONFIG']['structured']:
 			for fname in config['SOURCES'][source]['FILES']:
-				with open(fname, 'r') as f:
-					lines = f.readlines()
-					for line in lines:
-						tag, obs = process_log(line,config, source)
-						obsDict.add(obs)
+				if fname.endswith('.gz'):
+					with gzip.open(fname, 'r') as f:
+						lines = f.readlines()
+						for line in lines:
+							tag, obs = process_log(line,config, source)
+							obsDict.add(obs)
+				else:
+					with open(fname, 'r') as f:
+						lines = f.readlines()
+						for line in lines:
+							tag, obs = process_log(line,config, source)
+							obsDict.add(obs)
 		else:
 			separator = config['SEPARATOR'][source]
 			for fname in config['SOURCES'][source]['FILES']:
-				with open(fname, 'r') as f:
-					lines = f.read()
-					log = ''
-					for line in lines:
-						log += line 
-						if separator in log:
-							tag, obs = process_log(log,config, source)
-							obsDict.add(obs)
-							log = ''	
+				if fname.endswith('.gz'):					
+					with gzip.open(fname, 'r') as f:
+						lines = f.read()
+						log = ''
+						for line in lines:
+							log += line 
+							if separator in log:
+								tag, obs = process_log(log,config, source)
+								obsDict.add(obs)
+								log = ''	
 
-					tag, obs = process_log(log,config, source)
-					obsDict.add(obs)
+						tag, obs = process_log(log,config, source)
+						obsDict.add(obs)
+				else: 
+					with open(fname, 'r') as f:
+						lines = f.read()
+						log = ''
+						for line in lines:
+							log += line 
+							if separator in log:
+								tag, obs = process_log(log,config, source)
+								obsDict.add(obs)
+								log = ''	
+
+						tag, obs = process_log(log,config, source)
+						obsDict.add(obs)
 
 		results[source] = obsDict
 	return results
@@ -283,20 +305,36 @@ def frag_str(fname, size):
 	'''
 	separator = "\n"
 	fileEnd = os.path.getsize(fname)
-	with open(fname, 'r') as f:
-		end = f.tell()
-		cont = True
-		while True:
-			start = end
-			asdf = f.read(size)
-			i = asdf.rfind(separator)
-			if end >= fileEnd or i == -1:
-				break
-
-			f.seek(start+i+1)
+	if fname.endswith('.gz'):					
+		with gzip.open(fname, 'r') as f:
 			end = f.tell()
+			cont = True
+			while True:
+				start = end
+				asdf = f.read(size)
+				i = asdf.rfind(separator)
+				if end >= fileEnd or i == -1:
+					break
 
-			yield start, end-start
+				f.seek(start+i+1)
+				end = f.tell()
+
+				yield start, end-start
+	else: 
+		with open(fname, 'r') as f:
+			end = f.tell()
+			cont = True
+			while True:
+				start = end
+				asdf = f.read(size)
+				i = asdf.rfind(separator)
+				if end >= fileEnd or i == -1:
+					break
+
+				f.seek(start+i+1)
+				end = f.tell()
+
+				yield start, end-start
 
 def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 	'''
@@ -304,21 +342,39 @@ def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 	in configuration files that will be transformed into observations. This is used only in offline parsing. 
 	'''
 	obsDict = obsDict_offline()
-	with open(file) as f:
-		f.seek(fragStart)
-		lines = f.read(fragSize)
 
-		log = ''
-		for line in lines:
-			log += line 
+	if file.endswith('.gz'):					
+		with gzip.open(file, 'r') as f:
+			f.seek(fragStart)
+			lines = f.read(fragSize)
 
-			if separator in log:
-				tag, obs = process_log(log,config, source)
-				obsDict.add(obs,tag)
-				log = ''	
+			log = ''
+			for line in lines:
+				log += line 
 
-		tag, obs = process_log(log,config, source)
-		obsDict.add(obs,tag)
+				if separator in log:
+					tag, obs = process_log(log,config, source)
+					obsDict.add(obs,tag)
+					log = ''	
+
+			tag, obs = process_log(log,config, source)
+			obsDict.add(obs,tag)
+	else:
+		with open(file) as f:
+			f.seek(fragStart)
+			lines = f.read(fragSize)
+
+			log = ''
+			for line in lines:
+				log += line 
+
+				if separator in log:
+					tag, obs = process_log(log,config, source)
+					obsDict.add(obs,tag)
+					log = ''	
+
+			tag, obs = process_log(log,config, source)
+			obsDict.add(obs,tag)
 	return obsDict
 
 def process_wrapper_str(file, fragStart, fragSize,config, source):
@@ -329,12 +385,20 @@ def process_wrapper_str(file, fragStart, fragSize,config, source):
 	separator = "\n" 
 	obsDict = obsDict_offline()
 
-	with open(file) as f:
-		f.seek(fragStart)
-		lines = f.read(fragSize).splitlines()
-		for line in lines:
-			tag, obs = process_log(line,config, source)
-			obsDict.add(obs,tag)
+	if file.endswith('.gz'):					
+		with gzip.open(file, 'r') as f:
+			f.seek(fragStart)
+			lines = f.read(fragSize).splitlines()
+			for line in lines:
+				tag, obs = process_log(line,config, source)
+				obsDict.add(obs,tag)
+	else:
+		with open(file) as f:
+			f.seek(fragStart)
+			lines = f.read(fragSize).splitlines()
+			for line in lines:
+				tag, obs = process_log(line,config, source)
+				obsDict.add(obs,tag)
 
 
 	return obsDict
@@ -590,7 +654,11 @@ def file_uns_len(fname, separator):
 	'''
 	Function determine de number of logs for a unstructured file 
 	'''
-	input_file = open(fname,'r')
+	if fname.endswith('.gz'):
+		input_file = gzip.open(fname,'r')
+	else:
+		input_file = open(fname,'r')
+
 	line = input_file.readline()
 	count_log = 0
 

@@ -4,6 +4,7 @@ import argparse
 import glob
 import sys
 import re
+import gzip
 import os
 import time
 import yaml
@@ -134,7 +135,11 @@ def main():
 
 		filecount = 0
 		for path in inputFiles[source]:
-			instream = open(path, 'r')
+
+			if path.endswith('.gz'):
+		    		instream = gzip.open(path,'r')
+			else:
+				instream = open(path, 'r')
 			filecount += 1
 			print "# %s/%s << %s" %(filecount, len(inputFiles[source]), os.path.split(path)[1])
 
