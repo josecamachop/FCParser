@@ -18,6 +18,7 @@ import glob
 import os
 import re
 import time
+import gzip
 import shutil
 import yaml
 import subprocess
@@ -327,8 +328,12 @@ def main(call='external',configfile=''):
 				# Loop for structured sources
 				if STRUCTURED[source]:
 
-					# Start reading the file
-					input_file = open(input_path,'r')
+					# Start reading the file		
+					if input_path.endswith('.gz'):
+		    				input_file = gzip.open(input_path,'r')
+					else:
+						input_file = open(input_path,'r')
+
 					line = input_file.readline()
 
 
@@ -352,7 +357,11 @@ def main(call='external',configfile=''):
 				else:
 
 					# Start reading the file
-					input_file = open(input_path,'r')
+					if input_path.endswith('.gz'):
+		    				input_file = gzip.open(input_path,'r')
+					else:
+						input_file = open(input_path,'r')
+
 					line = input_file.readline()
 
 
