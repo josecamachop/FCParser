@@ -559,21 +559,21 @@ def loadConfig(output, dataSources, parserConfig):
 		Configuration['Time'] = parserConfig['SPLIT']['Time']
 
 	except:
-		print "**ERROR** Config file error: Time fields"
+		print "**ERROR** Config file missing field: Time"
 		exit(1)	
 
 	try: 
 		Configuration['Cores'] = int(parserConfig['Processes'])
 
 	except:
-		print "**ERROR** Config file error: Processes fields"
+		print "**ERROR** Config file missing field: Processes"
 		exit(1)
 
 	try: 
 		Configuration['Csize'] = 1024 * int(parserConfig['Chunk_size'])
 
 	except:
-		print "**ERROR** Config file error: Chunk_size fields"
+		print "**ERROR** Config file missing field: Chunk_size"
 		exit(1)	
 
 	# Sources settgins
