@@ -410,7 +410,7 @@ def process_log(log,config, source):
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], None)
 	return normalize_timestamps(record.variables['timestamp'],config, source), obs.data
-
+	
 def normalize_timestamps(timestamp, config, source):
 	'''
 	Function that transform timestamps of data entries to a normalized format. It also do the 
@@ -419,14 +419,11 @@ def normalize_timestamps(timestamp, config, source):
 	try:
 		input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
 		window = config['Time']['window']
-
 		t = datetime.datetime.strptime(str(timestamp), input_format)
 		new_minute = t.minute - t.minute % window  
-
 		t = t.replace(minute = new_minute, second = 0)
 		if t.year == 1900:
-			t = t.replace(year = datetime.now().year)
-
+			t = t.replace(year = datetime.datetime.now().year)
 		return t
 	except:
 		
@@ -738,7 +735,7 @@ def write_output(output, headers, config):
 	if isinstance(output, dict):
 		for k in output:
 			try:
-				tag = k.strftime("%Y%m%d%H%M%S")
+				tag = k.strftime("%Y%m%d%H%M")
 			except:
 				tag = str(k)
 
