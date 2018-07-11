@@ -40,7 +40,7 @@ tag: ids
 
 structured: False
 
-timestamp_format: '%m/%d-%H:%M'
+timestamp_format: '%m/%d-%H:%M:%S'
 
 timestamp_regexp: '[0-9]{1,2}/[0-9]{1,2}-([0-9]{2}:[0-9]{2}:[0-9]{2})'
 
