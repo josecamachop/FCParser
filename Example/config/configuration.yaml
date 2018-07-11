@@ -34,9 +34,9 @@
 
 DataSources:
 
-#  netflow:
-#    config: ./Example/config/netflow.yaml
-#    data: ./Example/Examples_data/nf*.csv
+  netflow:
+    config: ./Example/config/netflow.yaml
+    data: ./Example/Examples_data/nf*.csv
 
   ids:
     config: ./Example/config/ids.yaml
