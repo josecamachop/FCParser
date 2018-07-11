@@ -40,7 +40,7 @@ tag: netflow
 
 structured: True
 
-timestamp_format: "%Y-%m-%d %H:%M"
+timestamp_format: "%Y-%m-%d %H:%M:%S"
 
 # timestamp_regexp:  
   
@@ -54,6 +54,9 @@ VARIABLES:
 - name: duration
   matchtype: number
   where: 2
+- name: timestamp
+  matchtype: string
+  where: 0
 - name: src_ip
   matchtype: ip
   where: 3
