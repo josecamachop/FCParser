@@ -408,7 +408,8 @@ def process_log(log,config, source):
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
 	record = faaclib.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
-	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], None)
+	obs = faaclib.AggregatedObservation(record, config['FEATURES'][source], None)	
+
 	return normalize_timestamps(record.variables['timestamp'],config, source), obs.data
 	
 def normalize_timestamps(timestamp, config, source):
@@ -421,7 +422,8 @@ def normalize_timestamps(timestamp, config, source):
 		window = config['Time']['window']
 		t = datetime.datetime.strptime(str(timestamp), input_format)
 		new_minute = t.minute - t.minute % window  
-		t = t.replace(minute = new_minute, second = 0)
+		t = t.replace(minute = new_minute, second = 0)	
+
 		if t.year == 1900:
 			t = t.replace(year = datetime.datetime.now().year)
 		return t

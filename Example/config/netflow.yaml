@@ -41,8 +41,6 @@ tag: netflow
 structured: True
 
 timestamp_format: "%Y-%m-%d %H:%M:%S"
-
-# timestamp_regexp:  
   
 # separator:  
 

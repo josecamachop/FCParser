@@ -68,11 +68,7 @@ def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%
 		interm = dict();
 		interm['name'] = str(varis)
 		interm['matchtype'] = 'string'
-		#interm['where'] =  "\'" + str(varis) + "\'"
-		#contentv['VARIABLES'].append(interm)
-		#interm['name'] = varis
-		#interm['matchtype'] = 'string'
-		interm['where'] =  str(varis)
+		interm['where'] = '(?P<match>' + str(varis) + ')'
 		contentv['VARIABLES'].append(interm)
 
 
@@ -84,11 +80,6 @@ def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%
 		interm['name'] = str(varis)
 		interm['variable'] = str(varis)
 		interm['matchtype'] = 'regexp'
-		#interm['value'] = "\'" + str(varis) + "\'"
-		#contentf['FEATURES'].append(interm)
-		#interm['name'] = varis
-		#interm['variable'] = varis
-		#interm['matchtype'] = 'regexp'
 		interm['value'] = str(varis)
 		contentf['FEATURES'].append(interm)
 
