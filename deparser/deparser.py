@@ -14,6 +14,7 @@ Last Modification: 29/Sep/2017
 import argparse
 import time 
 import os
+import gzip
 import yaml
 import glob
 from datetime import datetime 
@@ -190,7 +191,7 @@ def getDeparsInput(configfile,config):
 				timestamps.append(line.split("=")[1].strip())
 			except:
 				pass
-
+		
 		line = input_file.readline()
 
 	if not (config['sample_rate'] == 1  or config['sample_rate'] == None):
@@ -354,7 +355,11 @@ def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timesta
 	feat_appear = {}
 	for file in sourcepath:
 		feat_appear[file] = []
-		input_file = open(file,'r')
+		if file.endswith('.gz'):
+			input_file = gzip.open(file,'r')
+		else:
+			input_file = open(file,'r')
+
 		line = input_file.readline()
 
 		# First read to generate list of number of appearances
@@ -382,7 +387,11 @@ def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timesta
 	# Re-read the file extracting the raw data
 	for file in sourcepath:
 		index = 0
-		input_file = open(file,'r')
+		if file.endswith('.gz'):
+			input_file = gzip.open(file,'r')
+		else:
+			input_file = open(file,'r')
+
 		input_file.seek(0)
 		line = input_file.readline()
 			
@@ -420,8 +429,13 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 	# while count_source < lines[source]*0.01 and (not features_needed <= 0) : 
 	feat_appear = {}
 	for file in sourcepath:
-		feat_appear[file] = []
-		input_file = open(file,'r')
+		feat_appear[file] = []	
+
+		if file.endswith('.gz'):
+			input_file = gzip.open(file,'r')
+		else:
+			input_file = open(file,'r')
+
 		line = input_file.readline()
 
 
@@ -471,7 +485,12 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 	# Re-read the file
 	for file in sourcepath:
 		index = 0
-		input_file = open(file,'r')
+
+		if file.endswith('.gz'):
+			input_file = gzip.open(file,'r')
+		else:
+			input_file = open(file,'r')
+
 		input_file.seek(0)
 		line = input_file.readline()
 			
@@ -481,6 +500,7 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 				log += line 
 				if len(log.split(sources_config[source]['separator'])) > 1:
 					logExtract = log.split(sources_config[source]['separator'])[0]
+					
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
 					try:
@@ -537,9 +557,9 @@ def search_feature_unstr(FEATURES,VARIABLES,logExtract,features,source):
 	feature_count = 0
 	list_timetamps = []
 	varBol = False		
-
+	
 	for feature in FEATURES[source].keys():	
-		if feature in features:			
+		if feature in features:	
 
 			fVariable = FEATURES[source][feature]['variable']
 		
@@ -554,6 +574,7 @@ def search_feature_unstr(FEATURES,VARIABLES,logExtract,features,source):
 				matchType = VARIABLES[source][fVariable]['matchtype']
 
 				if fType == "regexp":
+
 					if re.search(fValue, match):
 						feature_count += 1
 						varBol = True
@@ -690,7 +711,6 @@ def getUnstructuredTime (log, patern, dateFormat):
 	'''
 	# Fuction to extrat timestamp from an unstructured source
 	'''
-
 	p = re.search(patern,log)
 	try:
 		date_string = p.group(0)

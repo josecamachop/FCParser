@@ -53,16 +53,20 @@ def main(call='external',jsonfile='',yamlfile='',structured='True',tformat='%m/%
 	content['tag'] = 'autocreated'
 	content['structured'] = structured
 	content['timestamp_format'] = tformat
+
+	contentv = dict()
+	contentv['VARIABLES'] = list()
  
 	if structured:
 		content['timearg'] = targ
 	else:
-		content['timestamp_regexp'] =  tregexp
+		interm = dict();
+		interm['name'] = 'timestamp'
+		interm['matchtype'] = 'string'
+		interm['where'] = '(?P<match>' + tregexp + ')'
+		contentv['VARIABLES'].append(interm)
 		content['separator'] = separator
 
-
-	contentv = dict()
-	contentv['VARIABLES'] = list()
 
 	for varis in datastore:
 		interm = dict();

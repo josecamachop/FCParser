@@ -381,6 +381,7 @@ class Record(object):
 					vMatchType = v['matchtype']
 					if isinstance(vWhere,str):
 						vType = 'regexp'
+						vComp = v['r_Comp']
 
 				except KeyError as e:
 					raise ConfigError(self, "VARIABLES: missing config key (%s)" %(e.message))
@@ -392,16 +393,16 @@ class Record(object):
 					raise ConfigError(self, "VARIABLE: empty id in variable")
 
 				# Validate name
-				if vWhere:
-					vWhere = str(vWhere)
-				else:
-					raise ConfigError(self, "VARIABLE: empty arg in variable; regular expresion expected")
+				#if vWhere:
+				#	vWhere = str(vWhere)
+				#else:
+				#	raise ConfigError(self, "VARIABLE: empty arg in variable; regular expresion expected")
 
 				# Validate matchtype
 				if vType == 'regexp':
 
 					try:
-						p = re.search(vWhere,line)
+						p = vComp.search(line)
 						vValue = p.group(0)
 
 						if vMatchType == 'string':
@@ -525,9 +526,8 @@ class Observation(object):
 				elif fType == 'regexp':
 					if isinstance(fValue, list):
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fName))
-					pattern = fValue
 					try:
-						matchObj = re.search(pattern, str(variable))
+						matchObj = FEATURES[i]['r_Comp'].search(str(variable))
 					except re.error as e:
 						raise ConfigError(self, "FEATURES: illegal regexp in '%s' (%s)" %(fName, e.message))
 					if matchObj:

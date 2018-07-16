@@ -424,6 +424,7 @@ def normalize_timestamps(timestamp, config, source):
 		new_minute = t.minute - t.minute % window  
 		t = t.replace(minute = new_minute, second = 0)	
 
+
 		if t.year == 1900:
 			t = t.replace(year = datetime.datetime.now().year)
 		return t
@@ -596,11 +597,10 @@ def loadConfig(output, dataSources, parserConfig):
 			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'])):
 				Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['r_Comp'] = re.compile(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where'])
 
-		else:
-			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'])):
-				Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['vType'] = Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['matchtype']
-				Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['vName'] = Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']
-				Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['vWhere']  = Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where']
+			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['FEATURES'])):
+				if Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
+					Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])
+
 
 
 	# Preprocessing nfcapd files to obtain csv files.
