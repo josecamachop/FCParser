@@ -27,70 +27,13 @@ def main():
 
 	# Get configuration
 	configfile = getArguments()
-	config = loadConfig(configfile)
+	parserConfig = getConfiguration(configfile.config)
+	
+	output = parserConfig['Deparsing_output']['dir']
+	threshold = parserConfig['Deparsing_output']['threshold']
+	dataSources = parserConfig['DataSources']
+	config = loadConfig(output, dataSources, parserConfig)
 	deparsInput = getDeparsInput(configfile,config)
-	print_loadSummary(config,deparsInput,startTime)
-
-
-	##################################################################################################################################################################
-	
-	# if netflow:
-		# # Generate outputs
-		# ########################################################
-
-		# # NFDUMP QUERIES FOR NETFLOW SOURCES
-
-		# count_nf = 0
-		
-		# if nfcapd_files:
-		# 	sFeatures = []	
-		# 	feat_delete = []  # list of already deparsed features 
-
-		# 	print "Nfdump queries... \n\n"
-		# 	print " ** WARNING, errors may appear with nfdump queries, ignore that errors \n\n"
-
-		# 	for feature in features:
-		# 		if feature in FEATURES[inverse_tags['netflow']].keys():	
-		# 			sFields_nfdump(FEATURES[inverse_tags['netflow']],sFeatures,feature)
-		# 			feat_delete.append(feature)	
-
-		# 			# delete already deparsed features form features list.
-
-		# 	for f in feat_delete:
-		# 		features.remove(f)
-
-		# 	# append all the Variables with the conector and.
-
-		# 	Variables = ""
-		# 	for i in range(len(sFeatures) - 1):
-		# 		Variables +=  sFeatures[i] + " and " 
-
-		# 	if sFeatures:
-		# 		Variables += sFeatures[-1]
-
-		# 	# for each timestamp, generate the nfdump query with de filtering option extracted from the yaml file.
-		# 	for timestamp in timestamps:
-		# 		for file in  nfcapd_files:
-		# 			if Variables:
-		# 				count_nf += 1
-		# 				date = parsedate(timestamp,sources_config[inverse_tags['netflow']]['timestamp_format'])
-		# 				query = "nfdump -r " + file + ' -t ' + date + " '" + Variables +"' " + " >> " + config['OUTDIR'] + "output_" + tags[inverse_tags['netflow']] 
-
-		# 				# print query
-		# 				os.system(query)
-		
-		# 	config['dataSources'].pop(inverse_tags['netflow'],None)
-
-		# else:
-		# 	print "No nfdump queries..."
-
-		# print "\n---------------------------------------------------------------------------\n"
-		# print "Elapsed: %s" %(prettyTime(time.time() - startTime))
-		# print "\n---------------------------------------------------------------------------\n"
-
-	##################################################################################################################################################################
-	
-	print config['dataSources']
 
 	# Not Netflow datasources
 	count_structured = 0
@@ -99,20 +42,18 @@ def main():
 
 	# iterate through features and timestams
 	if deparsInput['features']:
-		for source in config['dataSources']:
+		for source in dataSources:
 			print source
 			count_source = 0
-			tag = config['tags'][source]
-			sourcepath = config['sources_files'][source]['files']
-			formated_timestamps = format_timestamps(deparsInput['timestamps'],config['sources_config'][source]['timestamp_format'])
-
+			sourcepath = config['SOURCES'][source]['FILES']
+			formated_timestamps = format_timestamps(deparsInput['timestamps'],config['SOURCES'][source]['CONFIG']['timestamp_format'])
 			# Structured sources
-			if config['structured'][source]:
-				count_structured += stru_deparsing(config, sourcepath, deparsInput, tag, source,formated_timestamps)
+			if config['STRUCTURED'][source]:
+				count_structured += stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_timestamps)
 
 			# Unstructured sources
 			else:
-				count_unstructured += unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timestamps)
+				count_unstructured += unstr_deparsing(config,threshold, sourcepath, deparsInput,source, formated_timestamps)
 
 			print "\n---------------------------------------------------------------------------\n"
 			print "Elapsed: %s" %(prettyTime(time.time() - startTime))
@@ -120,9 +61,126 @@ def main():
 
 	stats(count_structured, count_unstructured, config['OUTDIR'], config['OUTSTATS'], startTime)
 
-	if config['delete_nfcsv']:
-		for file in config['delete_nfcsv']:
-			os.remove(file)
+	
+def loadConfig(output, dataSources, parserConfig):
+	'''
+	Function to load configuration from the config files
+	'''
+	Configuration = {}
+	# Output settings 
+
+	try:
+		Configuration['OUTDIR'] = output['dir']
+		if not Configuration['OUTDIR'].endswith('/'):
+			Configuration['OUTDIR'] = Configuration['OUTDIR'] + '/'
+	except (KeyError, TypeError):
+		Configuration['OUTDIR'] = 'OUTPUT/'
+		print " ** Default output directory: '%s'" %(Configuration['OUTDIR'])
+
+	try:
+		shutil.rmtree(Configuration['OUTDIR']+'/')
+	except:
+		pass
+
+	if not os.path.exists(Configuration['OUTDIR']):
+		os.mkdir(Configuration['OUTDIR'])
+		print "** creating directory %s" %(Configuration['OUTDIR'])
+
+	try:
+		Configuration['OUTSTATS'] = output['stats']
+	except (KeyError, TypeError):
+		Configuration['OUTSTATS'] = 'stats.log'
+		print " ** Default log file: '%s'" %(Configuration['OUTSTATS'])
+	try:
+		Configuration['OUTW'] = output['weights']
+	except (KeyError, TypeError):
+		# print " ** Default weights file: '%s'" %(Configuration['OUTW'])
+		Configuration['OUTW'] = 'weights.dat'
+
+	try: 
+		Configuration['Time'] = parserConfig['SPLIT']['Time']
+
+	except:
+		print "**ERROR** Config file missing field: Time"
+		exit(1)	
+
+	try: 
+		Configuration['Cores'] = int(parserConfig['Processes'])
+
+	except:
+		print "**ERROR** Config file missing field: Processes"
+		exit(1)
+
+	try: 
+		Configuration['Csize'] = 1024 * int(parserConfig['Chunk_size'])
+
+	except:
+		print "**ERROR** Config file missing field: Chunk_size"
+		exit(1)	
+
+	# Sources settgins
+	Configuration['SOURCES'] = {}
+	for source in dataSources:
+		Configuration['SOURCES'][source] = {}
+		Configuration['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
+		Configuration['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['data'])
+
+	Configuration['FEATURES'] = {}
+	Configuration['STRUCTURED'] = {}
+	Configuration['SEPARATOR'] = {}
+
+	for source in Configuration['SOURCES']:
+		Configuration['FEATURES'][source] = Configuration['SOURCES'][source]['CONFIG']['FEATURES']
+		Configuration['STRUCTURED'][source] = Configuration['SOURCES'][source]['CONFIG']['structured']
+		
+		if not Configuration['STRUCTURED'][source]:
+			Configuration['SEPARATOR'][source] = Configuration['SOURCES'][source]['CONFIG']['separator']	
+
+			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'])):
+				Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['r_Comp'] = re.compile(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where'])
+
+			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['FEATURES'])):
+				if Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
+					Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])
+
+
+
+	# Preprocessing nfcapd files to obtain csv files.
+	for source in dataSources:
+		out_files = []
+		for file in Configuration['SOURCES'][source]['FILES']:
+			if 'nfcapd' in file:
+
+				out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
+				os.system("nfdump -r " + file + " -o csv >>"+out_file)
+				os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
+				os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
+				out_files.append(out_file.replace('temp',source) + '.csv')
+				os.remove(out_file)
+				os.remove(out_file.replace('temp',source))
+				Configuration['SOURCES'][source]['FILES'] = out_files
+				delete_nfcsv = out_files
+
+	# Process weight and made a list of features
+	Configuration['features'] = []
+	Configuration['weigthts'] = []
+
+	for source in Configuration['FEATURES']:
+		# Create weight file
+
+		for feat in Configuration['SOURCES'][source]['CONFIG']['FEATURES']:
+			try:	
+				Configuration['features'].append(feat['name'])
+			except:
+				print "FEATURES: missing config key (%s)" %(e.message)
+				exit(1)				
+			try:
+				Configuration['weigthts'].append(str(feat['weight']))
+			except:
+				Configuration['weigthts'].append('1')
+
+	return Configuration
+
 
 def print_loadSummary(config,deparsInput,startTime):
 	'''
@@ -161,9 +219,6 @@ def getDeparsInput(configfile,config):
 		print "No such input file '%s'" %(configfile.input)
 		exit(1)
 
-	#reverse tag dictionary to map tags into datasource files.
-	inverse_tags = {v: k for k, v in config['tags'].items()}
-
 	#Extract features and timestams from the input file.
 	line = input_file.readline()
 
@@ -194,10 +249,10 @@ def getDeparsInput(configfile,config):
 		
 		line = input_file.readline()
 
-	if not (config['sample_rate'] == 1  or config['sample_rate'] == None):
+	if not (config['Time']['window'] == 1  or config['Time']['window'] == None):
 		temp = []
 		for timestamp in timestamps:
-			for i in range(config['sample_rate'] ):
+			for i in range(config['Time']['window'] ):
 				t = datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S")
 				t = t.replace(minute = t.minute + i)
 				temp.append(str(t))
@@ -209,149 +264,36 @@ def getDeparsInput(configfile,config):
 	
 	return deparsInput	
 
-def loadConfig(configfile):
-	'''
-	Load configuration parameters from the configuration file in a format adecuated for its use
-	'''		
-	config = {}
-	
-	# Load config file
-	try:
-		deParserConfig = getConfiguration(configfile.config)
-	except IOError:
-		print "No such config file '%s'" %(configfile.config)
-		exit(1)
-	except yaml.scanner.ScannerError as e:
-		print "Incorrect config file '%s'" %(configfile.config)
-		print e.problem
-		print e.problem_mark
-		exit(1)
-
-	try:
-		config['dataSources'] = deParserConfig['DataSources']
-		config['output'] = deParserConfig['Deparsing_output']
-		config['threshold'] = config['output']['threshold']
-	except KeyError as e:
-		print "Missing config key: %s" %(e.message)
-		exit(1)
-
-	#Extract sources setting
-	config['sources_files'] = {}
-	config['sources_config'] = {}
-	config['tags'] = {}
-	config['delete_nfcsv'] = None # bool variable for netflow raw data  
-
-	for source in config['dataSources']:
-		config['sources_files'][source] = {}
-
-		try:
-			config['sources_config'][source] = getConfiguration(config['dataSources'][source]['config'])
-			config['tags'][source] = config['sources_config'][source]['tag']
-			config['sources_files'][source]['files'] = glob.glob(config['dataSources'][source]['data'])
-
-			out_files = []
-			for file in config['sources_files'][source]['files']:
-				if 'nfcapd' in file:
-
-					out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
-					os.system("nfdump -r " + file + " -o csv >>"+out_file)
-					os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
-					os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
-					out_files.append(out_file.replace('temp',source) + '.csv')
-					os.remove(out_file)
-					os.remove(out_file.replace('temp',source))
-					config['sources_files'][source]['files'] = out_files
-					config['delete_nfcsv'] = out_files
-
-		except:
-			print "Configuration file load error" 
-			exit(1)
-
-
-	# Extract list of variables and features
-	config['VARIABLES'] = {}
-	config['FEATURES'] = {}
-	config['structured'] = {}
-
-	for source in config['sources_config']:
-		config['FEATURES'][source] = {}
-		config['VARIABLES'][source] = {}
-		config['structured'][source] = config['sources_config'][source]['structured']
- 		for feature in config['sources_config'][source]['FEATURES']:
- 			try:
-				config['FEATURES'][source][feature['name']] = feature
-			except:
-				print "Cofiguration file error: missing features"
-				exit(1)
-
- 		for variable in config['sources_config'][source]['VARIABLES']:
- 			try:
-				config['VARIABLES'][source][variable['name']] = variable
-			except:
-				print "Cofiguration file error: missing vriables"
-				exit(1)
-
-	# Extract output settings
-	try:
-		config['OUTDIR'] = config['output']['dir']
-		if not config['OUTDIR'].endswith('/'):
-			config['OUTDIR'] = config['OUTDIR'] + '/'
-	except (KeyError, TypeError):
-		config['OUTDIR'] = 'OUTPUT/'
-		print " ** Default output directory: '%s'" %(config['OUTDIR'])
-	try:
-		config['OUTSTATS'] = config['output']['stats']
-	except (KeyError, TypeError):
-		config['OUTSTATS'] = 'stats.log'
-		print " ** Default log file: '%s'" %(config['OUTSTATS'])
-
-
-	# Create output directory and file
-	if not os.path.exists(config['OUTDIR']):
-		os.mkdir(config['OUTDIR'])
-		print "** creating directory %s" %(config['OUTDIR'])
-
-	try:
-		for source in config['dataSources']:
-			open(config['OUTDIR'] + "output_" + config['tags'][source],'w') 
-	except:
-		print "error creating output file"
-		exit(1)
-
-
-	# Check if the source files exist and are readable
-	for source in config['sources_files']:
-		for source_file in config['sources_files'][source]['files']:
-			if source_file:
-				try:
-					stream = open(source_file,'r')
-					stream.close()
-
-				except IOError:
-					print "No such config file '%s'" %(source_file)
-					exit(1)
-
-	# Extract Time settings
-	try:
-		config['sample_rate'] = deParserConfig['SPLIT']['Time']['window']
-	except:
-		print "Error configuration file: SPLIT"
-
-	return config
-
-def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timestamps):
+def stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_timestamps):
 	'''
 	Deparsing process for structured data sources like csv.
 	'''
-	sources_config = config['sources_config']
+	sources_config = config['SOURCES']
 	OUTDIR = config['OUTDIR']
-	FEATURES = config['FEATURES']
-	VARIABLES = config['VARIABLES']
 	features = deparsInput['features']
-	threshold = config['threshold']
+
+	FEATURES = {}
+	VARIABLES = {}
+
+	for feature in config['SOURCES'][source]['CONFIG']['FEATURES']:
+		try:
+			FEATURES[feature['name']] = feature
+		except:
+			print "Cofiguration file error: missing features"
+			exit(1)
+
+	for variable in config['SOURCES'][source]['CONFIG']['VARIABLES']:
+		try:
+			VARIABLES[variable['name']] = variable
+		except:
+			print "Cofiguration file error: missing vriables"
+			exit(1)
+
+
+
 
 	count_structured = 0
-	output_file = open(OUTDIR + "output_" + tag,'w')
+	output_file = open(OUTDIR + "output_" + source,'w')
 	feat_appear = {}
 	for file in sourcepath:
 		feat_appear[file] = []
@@ -365,11 +307,11 @@ def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timesta
 		# First read to generate list of number of appearances
 		while line:
 			try:
-				t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])		
+				t = getStructuredTime(line,0,config['SOURCES'][source]['CONFIG']['timestamp_format'])		
 
 				if str(t).strip() in formated_timestamps:
 					# extract amount of features that appear in each line included in timestamps analyzed.
-					feat_appear[file].append(search_features_str(line,features,FEATURES[source],VARIABLES[source]))
+					feat_appear[file].append(search_features_str(line,features, FEATURES, VARIABLES))
 			except:
 			  	print "error deparsing source:" + source
 					
@@ -397,7 +339,7 @@ def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timesta
 			
 		while line:
 			try:
-				t = getStructuredTime(line,0,sources_config[source]['timestamp_format'])		
+				t = getStructuredTime(line,0,config['SOURCES'][source]['CONFIG']['timestamp_format'])		
 				if str(t).strip() in formated_timestamps:
 					if feat_appear[file][index] >= features_needed:
 						output_file.write(line + "\n")
@@ -412,19 +354,32 @@ def stru_deparsing(config, sourcepath, deparsInput,tag, source, formated_timesta
 
 	return count_structured
 
-def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timestamps):
+def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated_timestamps):
 	'''
 	Deparsing process for unstructured text based data sources like a log file.
 	'''
-	sources_config = config['sources_config']
 	OUTDIR = config['OUTDIR']
-	FEATURES = config['FEATURES']
-	VARIABLES = config['VARIABLES']
 	features = deparsInput['features']
-	threshold = config['threshold']
+
+	FEATURES = {}
+	VARIABLES = {}
+
+	for feature in config['SOURCES'][source]['CONFIG']['FEATURES']:
+		try:
+			FEATURES[feature['name']] = feature
+		except:
+			print "Cofiguration file error: missing features"
+			exit(1)
+
+	for variable in config['SOURCES'][source]['CONFIG']['VARIABLES']:
+		try:
+			VARIABLES[variable['name']] = variable
+		except:
+			print "Cofiguration file error: missing vriables"
+			exit(1)
 
 	count_unstructured = 0
-	output_file = open(OUTDIR + "output_" + tag,'w')
+	output_file = open(OUTDIR + "output_" + source,'w')
 
 	# while count_source < lines[source]*0.01 and (not features_needed <= 0) : 
 	feat_appear = {}
@@ -445,29 +400,30 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 			while line:
 				log += line 
 	
-				if len(log.split(sources_config[source]['separator'])) > 1:
-					logExtract = log.split(sources_config[source]['separator'])[0]
+				if len(log.split(config['SEPARATOR'][source])) > 1:
+					logExtract = log.split(config['SEPARATOR'][source])[0]
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
 					try:
-						t = getUnstructuredTime(logExtract, sources_config[source]['timestamp_regexp'], sources_config[source]['timestamp_format'])														
-						if str(t).strip() in formated_timestamps:
+
+						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])													
+						if str(t).strip() in formated_timestamps:	
 							# Check if features appear in the log to write in the file.
-							feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features, source))
+							feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features))
 					except:
 						pass
 						
 					log = ""
-					for n in logExtract.split(sources_config[source]['separator'])[1::]:
+					for n in logExtract.split(config['SEPARATOR'][source])[1::]:
 						log += n
 				line = input_file.readline()
 
 			# Deal with the last log, not processed during while loop.
 			log += line
 			try:								
-				t = getUnstructuredTime(log, sources_config[source]['timestamp_regexp'], sources_config[source]['timestamp_format'])
+				t = getUnstructuredTime(log, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])
 				if str(t) in timestamps:
-					feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features, source ))
+					feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features))
 			except:
 				pass
 
@@ -480,7 +436,6 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 		for file in feat_appear:
 			count += feat_appear[file].count(int(features_needed))
 		features_needed -= 1
-
 
 	# Re-read the file
 	for file in sourcepath:
@@ -498,13 +453,13 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 			log = "" + line 	
 			while line:
 				log += line 
-				if len(log.split(sources_config[source]['separator'])) > 1:
-					logExtract = log.split(sources_config[source]['separator'])[0]
+				if len(log.split(config['SEPARATOR'][source])) > 1:
+					logExtract = log.split(config['SEPARATOR'][source])[0]
 					
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
 					try:
-						t = getUnstructuredTime(logExtract, sources_config[source]['timestamp_regexp'], sources_config[source]['timestamp_format'])														
+						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])														
 						if str(t).strip() in formated_timestamps:
 							# Check if features appear in the log to write in the file.
 							if feat_appear[file][index] >= features_needed:
@@ -515,7 +470,7 @@ def unstr_deparsing(config, sourcepath, deparsInput,tag, source, formated_timest
 						pass
 
 					log = ""
-					for n in logExtract.split(sources_config[source]['separator'])[1::]:
+					for n in logExtract.split(config['SEPARATOR'][source])[1::]:
 						log += n
 				line = input_file.readline()
 
@@ -548,7 +503,7 @@ def stats( count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime):
 	except IOError as e:
 		print "Stats file error: " + e.msg()
 
-def search_feature_unstr(FEATURES,VARIABLES,logExtract,features,source):
+def search_feature_unstr(FEATURES,VARIABLES,logExtract,features):
 	'''
 	Function that take as an input one data record and obtain the number of features that appear in the log from the 
 	input features for unstructured data sources.	
@@ -557,21 +512,21 @@ def search_feature_unstr(FEATURES,VARIABLES,logExtract,features,source):
 	feature_count = 0
 	list_timetamps = []
 	varBol = False		
-	
-	for feature in FEATURES[source].keys():	
+
+	for feature in FEATURES:	
 		if feature in features:	
 
-			fVariable = FEATURES[source][feature]['variable']
+			fVariable = FEATURES[feature]['variable']
 		
-			fValue = FEATURES[source][feature]['value']		
-			fType = FEATURES[source][feature]['matchtype']		
+			fValue = FEATURES[feature]['value']		
+			fType = FEATURES[feature]['matchtype']		
 
 
-			match = re.search(VARIABLES[source][fVariable]['where'],logExtract)
+			match = re.search(VARIABLES[fVariable]['where'],logExtract)
 
 			if match:
 				match = match.group(0)
-				matchType = VARIABLES[source][fVariable]['matchtype']
+				matchType = VARIABLES[fVariable]['matchtype']
 
 				if fType == "regexp":
 
@@ -611,6 +566,7 @@ def search_features_str(line,features,FEATURES,VARIABLES):
 			fType = FEATURES[feature]['matchtype']
 			fValue = FEATURES[feature]['value']
 			variable = VARIABLES[fVariable]
+
 			pos = variable['where']
 
 			line_split = line.split(',')
@@ -718,6 +674,7 @@ def getUnstructuredTime (log, patern, dateFormat):
 		d = d.replace(second = 00)
 		
 		return d.strftime(dateFormat)
+
 	except:
 		return None
 
@@ -731,154 +688,6 @@ def getStructuredTime(line, pos, dateFormat):
 	time = datetime.strptime(rawTime, dateFormat)
 	time = time.replace(second = 00)
 	return time
-
-# def sFields_nfdump(nf_feat,sFeatures,feature):
-
-	# 	# Function to exrtact nfdump filters from features
-
-	# 	fName = nf_feat[feature]['name']
-	# 	fVariable = nf_feat[feature]['variable']
-	# 	fType = nf_feat[feature]['matchtype']
-	# 	fValue = nf_feat[feature]['value']
-
-
-	# 	# IP related features
-
-	# 	if fName.startswith('src_ip'):
-
-	# 		if fValue == "private":
-	# 			return "(src net 10.0.0.0/8 or src net 172.16.0.0/12 or src net 192.168.0.0/16)"
-
-	# 		if fValue == "public":
-	# 			return "not (src net 10.0.0.0/8 or src net 172.16.0.0/12 or src net 192.168.0.0/16)"
-
-	# 	elif fName.startswith('dst_ip'):
-
-	# 		if fValue == "public":
-	# 			return "not (dst net 10.0.0.0/8 or dst net 172.16.0.0/12 or dst net 192.168.0.0/16)"
-
-	# 		if fValue == "private":
-	# 			return "(dst net 10.0.0.0/8 or dst net 172.16.0.0/12 or dst net 192.168.0.0/16)"
-
-
-	# 	# Source port related features 
-
-	# 	if fName.startswith('sport'):
-
-	# 		if fType == 'single':
-	# 			sFeatures.append('src port '+ str(fValue))
-
-	# 		elif fType == 'multiple':
-	# 			for f in fValue:
-	# 				sFeatures.append('src port ' + str(f))
-
-	# 		elif fType == 'range':
-	# 			if isinstance(fValue, list) and len(fValue) == 2:
-	# 				start = fValue[0]
-	# 				end   = fValue[1]
-	# 				for f in range(start,end + 1):
-	# 					sFeatures.append('src port ' + str(f))
-
-
-	# 	# Destination port related features 
-
-	# 	elif fName.startswith('dport'):
-
-	# 		if fType == 'single':
-	# 			sFeatures.append('dst port '+ str(fValue))
-
-	# 		elif fType == 'multiple':
-	# 			for f in fValue:
-	# 				sFeatures.append('dst port ' + str(f))
-
-	# 		elif fType == 'range':
-	# 			if isinstance(fValue, list) and len(fValue) == 2:
-	# 				start = fValue[0]
-	# 				end   = fValue[1]
-	# 				for f in range(start,end + 1):
-	# 					sFeatures.append('dst port ' + str(f))
-
-
-	# 	# Protocol related features 
-
-	# 	elif fName.startswith('protocol'):
-			
-	# 		if fType == 'single':
-	# 			sFeatures.append('proto '+ str(fValue).lower())
-
-
-	# 	# tcpflags  related features 
-
-	# 	elif fName.startswith('tcpflags'):
-			
-	# 		if fType == 'regexp': 
-	# 			sFeatures.append('flags ' + fValue)
-
-
-	# 	# Type of service  related features 
-
-	# 	elif fName.startswith('srctos'):
-			
-	# 		if fType == 'single':
-	# 			sFeatures.append('tos ' + str(fValue))
-
-
-	# 	# number of input and output packets related features 
-
-	# 	elif fName.startswith('in_npackets') or fName.startswith('out_npackets'):
-			
-	# 		if fType == 'range':
-
-	# 			if isinstance(fValue, list) and len(fValue) == 2:
-	# 				start = fValue[0]
-	# 				end   = fValue[1]
-					
-	# 				if start != 0 :
-	# 					start -1
-
-	# 				if end == 'Inf':
-	# 					sFeatures.append('packets > ' + str(start))
-
-	# 				else:
-	# 					sFeatures.append('(packets > ' + str(start) + ' and packets < ' + str(end+1) + ')')
-
-
-	# 	# number of input and output bytes related features 
-
-	# 	elif fName.startswith('in_nbytes') or fName.startswith('out_nbytes'):
-
-
-	# 		if fType == 'range':
-
-	# 			if isinstance(fValue, list) and len(fValue) == 2:
-	# 				start = fValue[0]
-	# 				end   = fValue[1]
-
-	# 				if start != 0 :
-	# 					start -1
-					
-	# 				if end == 'Inf':
-	# 					sFeatures.append('bytes > ' + str(start))
-
-	# 				else:
-	# 					sFeatures.append('(bytes > ' + str(start) + ' and bytes < ' + str(end+1) + ')')
-
-
-	# 	# input interface  related features 
-
-	# 	elif fName.startswith('in_interface'):
-			
-	# 		if fType == 'single':
-	# 			sFeatures.append('in if ' + str(fValue))
-
-
-	# 	# output interface  related features 
-
-	# 	elif fName.startswith('out_interface'):
-
-	# 		if fType == 'single':
-	# 			sFeatures.append('out if ' + str(fValue))
-
 
 if __name__ == "__main__":
 	main()
