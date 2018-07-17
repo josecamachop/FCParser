@@ -29,7 +29,7 @@ def main():
 	# Get configuration
 	configfile = getArguments()
 	parserConfig = faac.getConfiguration(configfile.config)
-	output = parserConfig['Deparsing_output']['dir']
+	output = parserConfig['Deparsing_output']
 	threshold = parserConfig['Deparsing_output']['threshold']
 	dataSources = parserConfig['DataSources']
 	config = faac.loadConfig(output, dataSources, parserConfig)
@@ -261,6 +261,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 			exit(1)
 
 	count_unstructured = 0
+	print OUTDIR + "output_" + source
 	output_file = open(OUTDIR + "output_" + source,'w')
 
 	# while count_source < lines[source]*0.01 and (not features_needed <= 0) : 
