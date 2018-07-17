@@ -342,12 +342,14 @@ class Record(object):
 
 				# Validate arg
 				try:
+
 					if isinstance(vWhere, list) and len(vWhere) == 2:
 						vValue = [raw_values[vWhere[0]], raw_values[vWhere[1]]]
 					else:
 						vValue = raw_values[vWhere]
+
 				except (TypeError, IndexError) as e:
-					raise ConfigError(self, "VARIABLES: illegal arg in '%s' (%s)" %(vName, e.message))
+					raise ConfigError(self, "VARIABLES: illegal arg in \'%s\' (%s)" %(vName, e.message))
 
 				except:
 					vValue = None
@@ -366,7 +368,7 @@ class Record(object):
 					else:
 						raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
 				else:
-					raise ConfigError(self, "VARIABLES: illegal matchtype in '%s' (%s)" %(vName, vType))
+					raise ConfigError(self, "VARIABLES: illegal matchtype in \'%s\' (%s)" %(vName, vType))
 					
 				# Add variable to the record
 				if vMult:
@@ -906,7 +908,7 @@ def loadConfig(output, dataSources, parserConfig):
 				try:	
 					config['weights'].append(str(feat['weight']))
 				except:
-					config['weights'].append(1)
+					config['weights'].append('1')
 
 
 

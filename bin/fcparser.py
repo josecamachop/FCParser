@@ -176,6 +176,7 @@ def process_multifile(config, source):
 
 			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
 				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+				process_file(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])
 
 			for job in jobs:
 				results.append(job.get())
@@ -292,9 +293,9 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 				tag, obs = process_log(log,config, source)
 				obsDict.add(obs,tag)
 				log = log.split(separator)[1]
-
-		tag, obs = process_log(log,config, source)
-		obsDict.add(obs,tag)
+		if log:
+			tag, obs = process_log(log,config, source)
+			obsDict.add(obs,tag)
 
 	finally:
 		f.close()

@@ -133,9 +133,9 @@ def process_file(file, config, source,separator,instances):
 
 			if separator in log:
 				instances = process_log(log,config, source, instances)
-				log = log.split(separator)[1]	
-
-		instances = process_log(log,config, source, instances)
+				log = log.split(separator)[1]
+		if log:	
+			instances = process_log(log,config, source, instances)
 
 	finally:
 		f.close()

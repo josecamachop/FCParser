@@ -35,12 +35,12 @@
 DataSources:
 
   netflow:
-    config: ./Example/config/netflow.yaml
-    data: ./Example/Examples_data/nf*.csv
+    config: ./example/config/netflow.yaml
+    data: ./example/Examples_data/nf*.csv
 
   ids:
-    config: ./Example/config/ids.yaml
-    data: ./Example/Examples_data/ids*
+    config: ./example/config/ids.yaml
+    data: ./example/Examples_data/ids*
 
 Online: False
 
@@ -51,11 +51,11 @@ Processes: 4
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
 
 Output:
-  dir: ./Example/OUTPUT/
+  dir: ./example/OUTPUT/
   stats: stats.log
  
 Deparsing_output:
-  dir: ./Example/Deparsing_output/
+  dir: ./example/Deparsing_output/
   threshold: 50
 
 SPLIT: 
