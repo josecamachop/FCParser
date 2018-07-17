@@ -17,6 +17,7 @@ import os
 import gzip
 import yaml
 import glob
+import faac
 from datetime import datetime 
 import re
 from IPy import IP
@@ -27,13 +28,13 @@ def main():
 
 	# Get configuration
 	configfile = getArguments()
-	parserConfig = getConfiguration(configfile.config)
-	
+	parserConfig = faac.getConfiguration(configfile.config)
 	output = parserConfig['Deparsing_output']['dir']
 	threshold = parserConfig['Deparsing_output']['threshold']
 	dataSources = parserConfig['DataSources']
-	config = loadConfig(output, dataSources, parserConfig)
+	config = faac.loadConfig(output, dataSources, parserConfig)
 	deparsInput = getDeparsInput(configfile,config)
+
 
 	# Not Netflow datasources
 	count_structured = 0
@@ -62,125 +63,6 @@ def main():
 	stats(count_structured, count_unstructured, config['OUTDIR'], config['OUTSTATS'], startTime)
 
 	
-def loadConfig(output, dataSources, parserConfig):
-	'''
-	Function to load configuration from the config files
-	'''
-	Configuration = {}
-	# Output settings 
-
-	try:
-		Configuration['OUTDIR'] = output['dir']
-		if not Configuration['OUTDIR'].endswith('/'):
-			Configuration['OUTDIR'] = Configuration['OUTDIR'] + '/'
-	except (KeyError, TypeError):
-		Configuration['OUTDIR'] = 'OUTPUT/'
-		print " ** Default output directory: '%s'" %(Configuration['OUTDIR'])
-
-	try:
-		shutil.rmtree(Configuration['OUTDIR']+'/')
-	except:
-		pass
-
-	if not os.path.exists(Configuration['OUTDIR']):
-		os.mkdir(Configuration['OUTDIR'])
-		print "** creating directory %s" %(Configuration['OUTDIR'])
-
-	try:
-		Configuration['OUTSTATS'] = output['stats']
-	except (KeyError, TypeError):
-		Configuration['OUTSTATS'] = 'stats.log'
-		print " ** Default log file: '%s'" %(Configuration['OUTSTATS'])
-	try:
-		Configuration['OUTW'] = output['weights']
-	except (KeyError, TypeError):
-		# print " ** Default weights file: '%s'" %(Configuration['OUTW'])
-		Configuration['OUTW'] = 'weights.dat'
-
-	try: 
-		Configuration['Time'] = parserConfig['SPLIT']['Time']
-
-	except:
-		print "**ERROR** Config file missing field: Time"
-		exit(1)	
-
-	try: 
-		Configuration['Cores'] = int(parserConfig['Processes'])
-
-	except:
-		print "**ERROR** Config file missing field: Processes"
-		exit(1)
-
-	try: 
-		Configuration['Csize'] = 1024 * int(parserConfig['Chunk_size'])
-
-	except:
-		print "**ERROR** Config file missing field: Chunk_size"
-		exit(1)	
-
-	# Sources settgins
-	Configuration['SOURCES'] = {}
-	for source in dataSources:
-		Configuration['SOURCES'][source] = {}
-		Configuration['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
-		Configuration['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['data'])
-
-	Configuration['FEATURES'] = {}
-	Configuration['STRUCTURED'] = {}
-	Configuration['SEPARATOR'] = {}
-
-	for source in Configuration['SOURCES']:
-		Configuration['FEATURES'][source] = Configuration['SOURCES'][source]['CONFIG']['FEATURES']
-		Configuration['STRUCTURED'][source] = Configuration['SOURCES'][source]['CONFIG']['structured']
-		
-		if not Configuration['STRUCTURED'][source]:
-			Configuration['SEPARATOR'][source] = Configuration['SOURCES'][source]['CONFIG']['separator']	
-
-			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'])):
-				Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['r_Comp'] = re.compile(Configuration['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where'])
-
-			for i in range(len(Configuration['SOURCES'][source]['CONFIG']['FEATURES'])):
-				if Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
-					Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(Configuration['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])
-
-
-
-	# Preprocessing nfcapd files to obtain csv files.
-	for source in dataSources:
-		out_files = []
-		for file in Configuration['SOURCES'][source]['FILES']:
-			if 'nfcapd' in file:
-
-				out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
-				os.system("nfdump -r " + file + " -o csv >>"+out_file)
-				os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
-				os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
-				out_files.append(out_file.replace('temp',source) + '.csv')
-				os.remove(out_file)
-				os.remove(out_file.replace('temp',source))
-				Configuration['SOURCES'][source]['FILES'] = out_files
-				delete_nfcsv = out_files
-
-	# Process weight and made a list of features
-	Configuration['features'] = []
-	Configuration['weigthts'] = []
-
-	for source in Configuration['FEATURES']:
-		# Create weight file
-
-		for feat in Configuration['SOURCES'][source]['CONFIG']['FEATURES']:
-			try:	
-				Configuration['features'].append(feat['name'])
-			except:
-				print "FEATURES: missing config key (%s)" %(e.message)
-				exit(1)				
-			try:
-				Configuration['weigthts'].append(str(feat['weight']))
-			except:
-				Configuration['weigthts'].append('1')
-
-	return Configuration
-
 
 def print_loadSummary(config,deparsInput,startTime):
 	'''
