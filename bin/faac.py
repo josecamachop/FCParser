@@ -890,7 +890,7 @@ def loadConfig(output, dataSources, parserConfig):
 	
 		# Process weight and made a list of features
 		config['features'] = []
-		config['weigthts'] = []
+		config['weights'] = []
 	
 		for source in config['FEATURES']:
 			# Create weight file
@@ -900,8 +900,13 @@ def loadConfig(output, dataSources, parserConfig):
 					config['features'].append(feat['name'])
 				except:
 					print "FEATURES: missing config key (%s)" %(e.message)
-					exit(1)				
+					exit(1)	
 
+
+				try:	
+					config['weights'].append(str(feat['weight']))
+				except:
+					config['weights'].append(1)
 
 
 

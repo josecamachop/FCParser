@@ -399,7 +399,7 @@ def outputWeight(config):
 	weightsPath = config['OUTDIR'] + config['OUTW']
 	weightsStream = open(weightsPath, 'w')
 	weightsStream.write(', '.join(config['features']) + '\n')
-	weightsStream.write(', '.join(config['weigthts']) + '\n')
+	weightsStream.write(', '.join(config['weights']) + '\n')
 	weightsStream.close()
 
 def configSummary(config):
