@@ -371,7 +371,7 @@ def process_wrapper_unstr(file, fragStart, fragSize,config, source,separator):
 				if separator in log:
 					tag, obs = process_log(log,config, source)
 					obsDict.add(obs,tag)
-					log = ''	
+					log = log.split(separator)[1]	
 
 			tag, obs = process_log(log,config, source)
 			obsDict.add(obs,tag)
