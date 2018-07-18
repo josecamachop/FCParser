@@ -39,6 +39,8 @@ def main():
 	# Not Netflow datasources
 	count_structured = 0
 	count_unstructured = 0
+	count_tots = 0
+	count_totu = 0
 	count_source = 0
 
 	# iterate through features and timestams
@@ -50,17 +52,21 @@ def main():
 			formated_timestamps = format_timestamps(deparsInput['timestamps'],config['SOURCES'][source]['CONFIG']['timestamp_format'])
 			# Structured sources
 			if config['STRUCTURED'][source]:
-				count_structured += stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_timestamps)
+				(cs, ct) = stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_timestamps)
+				count_structured += cs
+				count_tots += ct
 
 			# Unstructured sources
 			else:
-				count_unstructured += unstr_deparsing(config,threshold, sourcepath, deparsInput,source, formated_timestamps)
+				(cu, ct) = unstr_deparsing(config,threshold, sourcepath, deparsInput,source, formated_timestamps)
+				count_unstructured += cu
+				count_totu += ct
 
 			print "\n---------------------------------------------------------------------------\n"
 			print "Elapsed: %s" %(prettyTime(time.time() - startTime))
 			print "\n---------------------------------------------------------------------------\n"
 
-	stats(count_structured, count_unstructured, config['OUTDIR'], config['OUTSTATS'], startTime)
+	stats(count_structured, count_tots, count_unstructured, count_totu, config['OUTDIR'], config['OUTSTATS'], startTime)
 
 	
 
@@ -175,6 +181,7 @@ def stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_t
 
 
 	count_structured = 0
+	count_tot = 0
 	output_file = open(OUTDIR + "output_" + source,'w')
 	feat_appear = {}
 	for file in sourcepath:
@@ -220,6 +227,7 @@ def stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_t
 		line = input_file.readline()
 			
 		while line:
+			count_tot += 1	
 			try:
 				t = getStructuredTime(line,0,config['SOURCES'][source]['CONFIG']['timestamp_format'])		
 				if str(t).strip() in formated_timestamps:
@@ -234,7 +242,7 @@ def stru_deparsing(config,threshold, sourcepath, deparsInput, source, formated_t
 		input_file.close()
 	output_file.close()
 
-	return count_structured
+	return (count_structured, count_tot)
 
 def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated_timestamps):
 	'''
@@ -261,6 +269,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 			exit(1)
 
 	count_unstructured = 0
+	count_tot = 0
 	print OUTDIR + "output_" + source
 	output_file = open(OUTDIR + "output_" + source,'w')
 
@@ -337,6 +346,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 			while line:
 				log += line 
 				if len(log.split(config['SEPARATOR'][source])) > 1:
+					count_tot += 1	
 					logExtract = log.split(config['SEPARATOR'][source])[0]
 					
 					# For each log, extract timestamp with regular expresions and check if it is in the 
@@ -359,9 +369,9 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 
 		input_file.close()
 	output_file.close()
-	return count_unstructured
+	return (count_unstructured, count_tot)
 
-def stats( count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime):
+def stats( count_structured, count_tots, count_unstructured, count_totu, OUTDIR, OUTSTATS, startTime):
 	'''
 	Print and write stats from the deparsing process
 	'''
@@ -370,8 +380,8 @@ def stats( count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime):
 	print "\nSearch finished:"
 	print "Elapsed: %s" %(prettyTime(time.time() - startTime))
 	# print "\n Nfdump queries: " + str(count_nf)
-	print " Structured logs found:  " + str(count_structured)
-	print " Unstructured logs found: " + str(count_unstructured)
+	print " Structured logs found:  " + str(count_structured) + ' out of ' + str(count_tots) 
+	print " Unstructured logs found: " + str(count_unstructured) + ' out of ' + str(count_totu)
 	print "\n---------------------------------------------------------------------------\n"
 
 	# Write stats in stats.log file.
@@ -380,8 +390,8 @@ def stats( count_structured, count_unstructured, OUTDIR, OUTSTATS, startTime):
 		stats_file.write("STATS:\n")
 		stats_file.write("---------------------------------------------------------------------------\n")
 		# stats_file.write("Nfdump queries: " + str(count_nf) + "\n")
-		stats_file.write(" Structured logs found: " + str(count_structured) + "\n")
-		stats_file.write(" Unstructured logs found: " + str(count_unstructured))
+		stats_file.write(" Structured logs found: " + str(count_structured) + ' out of ' + str(count_tots) + "\n")
+		stats_file.write(" Unstructured logs found: " + str(count_unstructured) + ' out of ' + str(count_totu))
 
 	except IOError as e:
 		print "Stats file error: " + e.msg()
