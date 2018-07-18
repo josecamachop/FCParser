@@ -46,7 +46,7 @@ Online: False
 
 Chunk_size: 1024
 
-Learning_perc: 0.1
+Learning_perc: 0.001
 
 Processes: 4
  

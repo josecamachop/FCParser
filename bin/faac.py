@@ -841,7 +841,7 @@ def loadConfig(output, dataSources, parserConfig):
 
 	if 'Learning_perc' in parserConfig:
 		config['Lperc'] = int(parserConfig['Learning_perc'])
-	else
+	else:
 		config['Lperc'] = 0.01;
 		
 
