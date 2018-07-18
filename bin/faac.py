@@ -839,6 +839,12 @@ def loadConfig(output, dataSources, parserConfig):
 		print "**ERROR** Config file missing field: Chunk_size"
 		exit(1)	
 
+	if 'Learning_perc' in parserConfig:
+		config['Lperc'] = int(parserConfig['Learning_perc'])
+	else
+		config['Lperc'] = 0.01;
+		
+
 	# Sources settgins
 	config['SOURCES'] = {}
 	for source in dataSources:

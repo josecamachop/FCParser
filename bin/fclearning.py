@@ -56,10 +56,10 @@ def main(call='external',configfile=''):
 	output_data = parsing(config, startTime)
 
 	# Filter output
-	output_data = filter_output(output_data, stats['total_lines']*0.01)
+	output_data = filter_output(output_data, stats['total_lines']*config['Lperc'])
 
 	# Output results
-	write_output(config, output_data, stats['total_lines']*0.01)
+	write_output(config, output_data, stats['total_lines']*config['Lperc'])
 			
 
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	

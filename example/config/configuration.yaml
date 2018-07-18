@@ -46,6 +46,8 @@ Online: False
 
 Chunk_size: 1024
 
+Learning_perc: 0.1
+
 Processes: 4
  
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
