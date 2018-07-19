@@ -59,7 +59,7 @@ def main(call='external',configfile=''):
 	output_data = filter_output(output_data, stats['total_lines']*config['Lperc'])
 
 	# Output results
-	write_output(config, output_data, stats['total_lines']*config['Lperc'])
+	write_output(config, output_data, stats['total_lines'])
 			
 
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
@@ -150,12 +150,13 @@ def process_log(log, config, source, instances):
 
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 
-	for key,value in record.variables.items():
-		if key != 'timestamp':
-			if str(value) in instances[key]:
-				instances[key][str(value)] += 1
-			else:
-				instances[key][str(value)] = 1	
+	for variable,features in record.variables.items():
+		if variable != 'timestamp':
+			for feature in features:
+				if str(feature) in instances[variable]:
+					instances[variable][str(feature)] += 1
+				else:
+					instances[variable][str(feature)] = 1	
 
 	return instances
 	
@@ -328,10 +329,11 @@ def filter_output(output_data,threshold):
 				if output_data[source][varkey][feakey] < threshold:
 					del output_data[source][varkey][feakey]
 
+
 	return output_data
 					
 
-def write_output(config, output_data, threshold):
+def write_output(config, output_data, total):
 	'''Write configuration file
 	'''
 
@@ -345,11 +347,11 @@ def write_output(config, output_data, threshold):
 		for varkey in output_data[source].keys():
 			for feakey in output_data[source][varkey].keys():
 				interm = UnsortableOrderedDict()
-				interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "")
+				interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\\\'").replace("\"", "\\\"")
 				interm['variable'] = varkey
 				interm['matchtype'] = 'regexp'
-				interm['value'] = feakey
-				interm['weight'] = output_data[source][varkey][feakey]/threshold
+				interm['value'] =  feakey.replace("\'", "\\\'").replace("\"", "\\\"") 
+				interm['weight'] = output_data[source][varkey][feakey]/float(total)
 				contentf['FEATURES'].append(interm)
 
 		for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):

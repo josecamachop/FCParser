@@ -310,7 +310,7 @@ def process_log(log,config, source):
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faac.AggregatedObservation(record, config['FEATURES'][source], None)	
 
-	return normalize_timestamps(record.variables['timestamp'],config, source), obs.data
+	return normalize_timestamps(record.variables['timestamp'][0],config, source), obs.data
 	
 def normalize_timestamps(timestamp, config, source):
 	'''

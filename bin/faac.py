@@ -408,26 +408,28 @@ class Record(object):
 				if vType == 'regexp':
 
 					try:
-						p = vComp.search(line)
-						vValue = p.group(0)
+						vValues = vComp.findall(line)
+						variable = list();
 
-						if vMatchType == 'string':
-							variable = StringVariable(vValue)
+						for vValue in vValues:
 
-						elif vMatchType == 'number':
-							variable = NumberVariable(vValue)
+							if vMatchType == 'string':
+								variable.append(StringVariable(vValue))
 
-						elif vMatchType == 'ip':
-							variable = IpVariable(vValue)
+							elif vMatchType == 'number':
+								variable.append(NumberVariable(vValue))
 
-						elif vMatchType == 'time':
-							variable = TimeVariable(vValue)
+							elif vMatchType == 'ip':
+								variable.append(IpVariable(vValue))
 
-						elif vMatchType == 'duration':
-							if isinstance(vvalue, list) and len(vValue) == 2:
-								variable = TimedeltaVariable(vValue[0], vValue[1])
-							else:
-								raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
+							elif vMatchType == 'time':
+								variable.append(TimeVariable(vValue))
+
+							elif vMatchType == 'duration':
+								if isinstance(vvalue, list) and len(vValue) == 2:
+									variable.append(TimedeltaVariable(vValue[0], vValue[1]))
+								else:
+									raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
 
 
 					except:
@@ -506,16 +508,16 @@ class Observation(object):
 			# of the observations are increased. --> FaaC (Feature as a counter)
 
 			counter = 0
-			if variable:
+			for var in variable:
 				if fType == 'single':
 					if isinstance(fValue, list):
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fName))
-					counter += variable.equals(fValue)
+					counter += var.equals(fValue)
 
 				elif fType == 'multiple':
 					if isinstance(fValue, list):
 						for v in fValue:
-							counter += variable.equals(v)
+							counter += var.equals(v)
 					else:
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (list of items expected)" %(fName))
 
@@ -525,7 +527,7 @@ class Observation(object):
 						end   = fValue[1]
 						if str(end).lower() == 'inf':
 							end = None
-						counter += variable.belongs(start, end)
+						counter += var.belongs(start, end)
 					else:
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (two-item list expected)" %(fName))
 				
@@ -840,7 +842,7 @@ def loadConfig(output, dataSources, parserConfig):
 		exit(1)	
 
 	if 'Learning_perc' in parserConfig:
-		config['Lperc'] = int(parserConfig['Learning_perc'])
+		config['Lperc'] = float(parserConfig['Learning_perc'])
 	else:
 		config['Lperc'] = 0.01;
 		
