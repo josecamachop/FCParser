@@ -315,7 +315,7 @@ class Record(object):
 		variables -- Dictionary of variables, indexed by their name.
 		
 	"""
-	def __init__(self, line, variables, structured):
+	def __init__(self, line, variables, structured, all=False):
 		self.variables = {}
 		
 		# For structured sources
@@ -408,7 +408,10 @@ class Record(object):
 				if vType == 'regexp':
 
 					try:
-						vValues = vComp.findall(line)
+						if all:
+							vValues = vComp.findall(line)
+						else:
+							vValues = vComp.search(line)
 						variable = list();
 
 						for vValue in vValues:

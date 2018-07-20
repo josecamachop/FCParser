@@ -38,6 +38,7 @@ def main(call='external',configfile=''):
 	if call is 'external':
 		args = getArguments()
 		configfile = args.config
+		all_ = args.all
 
 	# Get configuration
 	parserConfig = faac.getConfiguration(configfile)
@@ -148,7 +149,7 @@ def process_log(log, config, source, instances):
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
 
-	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
+	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], all_)
 
 	for variable,features in record.variables.items():
 		if variable != 'timestamp':
@@ -315,6 +316,7 @@ def getArguments():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
 	description='''Multivariate Analysis Parsing Tool.''')
 	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
+	parser.add_argument('--all', action='store_true', help='Use findall instead of single serach in RE matching')
 	args = parser.parse_args()
 	return args
 

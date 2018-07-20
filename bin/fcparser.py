@@ -37,6 +37,7 @@ def main(call='external',configfile=''):
 	if call is 'external':
 		args = getArguments()
 		configfile = args.config
+		all_ = args.all
 
 	# Get configuration
 	parserConfig = faac.getConfiguration(configfile)
@@ -310,7 +311,7 @@ def process_log(log,config, source):
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
 	obs = faac.AggregatedObservation(record, config['FEATURES'][source], None)	
 
-	return normalize_timestamps(record.variables['timestamp'][0],config, source), obs.data
+	return normalize_timestamps(record.variables['timestamp'][0],config, source, all_), obs.data
 	
 def normalize_timestamps(timestamp, config, source):
 	'''
@@ -497,6 +498,7 @@ def getArguments():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
 	description='''Multivariate Analysis Parsing Tool.''')
 	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
+	parser.add_argument('--all', action='store_true', help='Use findall instead of single serach in RE matching')
 	args = parser.parse_args()
 	return args
 
