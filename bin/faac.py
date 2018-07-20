@@ -411,7 +411,9 @@ class Record(object):
 						if all:
 							vValues = vComp.findall(line)
 						else:
-							vValues = vComp.search(line)
+							vV = vComp.search(line)
+							vValues = [vV.group(0)]
+
 						variable = list();
 
 						for vValue in vValues:
@@ -436,7 +438,7 @@ class Record(object):
 
 
 					except:
-						variable = None
+						variable = [None]
 				else:
 					raise ConfigError(self, "VARIABLES: illegal matchtype in '%s' (%s)" %(vName, vMatchType))
 
@@ -827,8 +829,7 @@ def loadConfig(output, dataSources, parserConfig):
 		config['Time'] = parserConfig['SPLIT']['Time']
 
 	except:
-		print "**ERROR** Config file missing field: Time"
-		exit(1)	
+		config['Time'] = 0	
 
 	try: 
 		config['Cores'] = int(parserConfig['Processes'])
@@ -848,6 +849,11 @@ def loadConfig(output, dataSources, parserConfig):
 		config['Lperc'] = float(parserConfig['Learning_perc'])
 	else:
 		config['Lperc'] = 0.01;
+
+	if 'All' in parserConfig:
+		config['All'] = bool(parserConfig['All'])
+	else:
+		config['All'] = False;
 		
 
 	# Sources settgins

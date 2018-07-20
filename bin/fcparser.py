@@ -37,7 +37,6 @@ def main(call='external',configfile=''):
 	if call is 'external':
 		args = getArguments()
 		configfile = args.config
-		all_ = args.all
 
 	# Get configuration
 	parserConfig = faac.getConfiguration(configfile)
@@ -292,10 +291,14 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 
 			if separator in log:
 				tag, obs = process_log(log,config, source)
+				if tag == 0:
+					tag = file.split('/')[-1]
 				obsDict.add(obs,tag)
 				log = log.split(separator)[1]
 		if log:
 			tag, obs = process_log(log,config, source)
+			if tag == 0:
+				tag = file.split('/')[-1]
 			obsDict.add(obs,tag)
 
 	finally:
@@ -308,10 +311,10 @@ def process_log(log,config, source):
 	'''
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
-	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source])
+	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
 	obs = faac.AggregatedObservation(record, config['FEATURES'][source], None)	
 
-	return normalize_timestamps(record.variables['timestamp'][0],config, source, all_), obs.data
+	return normalize_timestamps(record.variables['timestamp'][0],config, source), obs.data
 	
 def normalize_timestamps(timestamp, config, source):
 	'''
@@ -321,9 +324,17 @@ def normalize_timestamps(timestamp, config, source):
 	try:
 		input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
 		window = config['Time']['window']
+		if window == 0:
+			return 0
 		t = datetime.datetime.strptime(str(timestamp), input_format)
-		new_minute = t.minute - t.minute % window  
-		t = t.replace(minute = new_minute, second = 0)	
+		if window <= 60:
+			new_minute = t.minute - t.minute % window  
+			t = t.replace(minute = new_minute, second = 0)
+		elif window <= 1440:
+			window_m = window % 60  # for simplicity, if window > 60 we only use the hours
+			window_h = (window - window_m) / 60
+			new_hour = t.hour - t.hour % window_h  
+			t = t.replace(hour = new_hour, minute = 0, second = 0)			 	
 
 
 		if t.year == 1900:
@@ -498,7 +509,6 @@ def getArguments():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
 	description='''Multivariate Analysis Parsing Tool.''')
 	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
-	parser.add_argument('--all', action='store_true', help='Use findall instead of single serach in RE matching')
 	args = parser.parse_args()
 	return args
 
