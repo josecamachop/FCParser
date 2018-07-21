@@ -392,17 +392,6 @@ class Record(object):
 				except KeyError as e:
 					raise ConfigError(self, "VARIABLES: missing config key (%s)" %(e.message))
 
-				# Validate name
-				if vName:
-					vName = str(vName)
-				else:
-					raise ConfigError(self, "VARIABLE: empty id in variable")
-
-				# Validate name
-				#if vWhere:
-				#	vWhere = str(vWhere)
-				#else:
-				#	raise ConfigError(self, "VARIABLE: empty arg in variable; regular expresion expected")
 
 				# Validate matchtype
 				if vType == 'regexp':
@@ -485,6 +474,7 @@ class Observation(object):
 		self.data  = [None] * len(FEATURES)    # Data array (counters)
 		defaults = []		               # tracks default features
 		
+
 		for i in range(len(FEATURES)):
 			try:
 				fName  = FEATURES[i]['name']
@@ -494,17 +484,6 @@ class Observation(object):
 			except KeyError as e:
 				raise ConfigError(self, "FEATURES: missing config key (%s)" %(e.message))
 
-			# Validate name
-			if fName:
-				fName = str(fName)
-			else:
-				raise ConfigError(self, "FEATURES: missing variable name")
-
-			# Validate variable
-			try:				
-				variable = record.variables[fVariable]
-			except KeyError as e:
-				variable = None
 
 			# Calculate feature 
 
@@ -512,17 +491,20 @@ class Observation(object):
 			# involved. Then, check the value of the variable asociated to the feature. If there is a match, the counters
 			# of the observations are increased. --> FaaC (Feature as a counter)
 
-			counter = 0
+			variable = record.variables[fVariable]
+			counter = 0			
+			self.label[i] = fName
+			self.data[i]  = counter
 			for var in variable:
 				if fType == 'single':
 					if isinstance(fValue, list):
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fName))
-					counter += var.equals(fValue)
+					counter = var.equals(fValue)
 
 				elif fType == 'multiple':
 					if isinstance(fValue, list):
 						for v in fValue:
-							counter += var.equals(v)
+							counter = var.equals(v)
 					else:
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (list of items expected)" %(fName))
 
@@ -532,7 +514,7 @@ class Observation(object):
 						end   = fValue[1]
 						if str(end).lower() == 'inf':
 							end = None
-						counter += var.belongs(start, end)
+						counter = var.belongs(start, end)
 					else:
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (two-item list expected)" %(fName))
 				
@@ -544,16 +526,18 @@ class Observation(object):
 					except re.error as e:
 						raise ConfigError(self, "FEATURES: illegal regexp in '%s' (%s)" %(fName, e.message))
 					if matchObj:
-						counter += 1
+						counter = 1
 						
 				elif fType == 'default':
 					defaults.append(i)
 				
 				else:
 					raise ConfigError(self, "FEATURES: illegal matchtype in '%s' (%s)" %(fName, fType))
+
+				if counter > 0:
+					break
 				
 			# Update data lists
-			self.label[i] = fName
 			self.data[i]  = counter
 
 			# Show debug info
@@ -565,14 +549,12 @@ class Observation(object):
 
 		# Manage default variables
 		for d in defaults:
-			assigned = False
+			counter = 0;
 			for i in range(len(FEATURES)):
 				if FEATURES[i]['variable'] == FEATURES[d]['variable']:
-					if self.data[i] > 0:
-						assigned = True
-						break
-			if not assigned:
-				self.data[d] += 1
+					counter += self.data[i]
+
+			self.data[d] = len(record.variables[FEATURES[d]['variable']]) - counter
 			
 	def aggregate(self, obs):
 		""" Aggregates this observation with a new one.
@@ -872,6 +854,26 @@ def loadConfig(output, dataSources, parserConfig):
 		config['FEATURES'][source] = config['SOURCES'][source]['CONFIG']['FEATURES']
 		config['STRUCTURED'][source] = config['SOURCES'][source]['CONFIG']['structured']
 		
+		for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+			# Validate name
+			if config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']:
+				config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'])
+			else:
+				raise ConfigError(self, "VARIABLE: empty id in variable")
+
+		for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
+			# Validate name
+			if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']:
+				config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'])
+			else:
+				raise ConfigError(self, "FEATURES: missing variable name")
+
+			# Validate variable
+			try:				
+				config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']
+			except KeyError as e:
+				config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+
 		if not config['STRUCTURED'][source]:
 			config['SEPARATOR'][source] = config['SOURCES'][source]['CONFIG']['separator']	
 
