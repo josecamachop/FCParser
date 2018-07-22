@@ -15,6 +15,7 @@ Last Modification: 16/Jul/2018
 
 """
 
+import multiprocessing as mp
 from collections import OrderedDict
 import argparse
 import glob
@@ -100,6 +101,8 @@ def process_multifile(config, source):
 	count = 0
 
 	for i in range(len(config['SOURCES'][source]['FILES'])):
+		pool = mp.Pool(config['Cores'])
+		jobs = []
 		input_path = config['SOURCES'][source]['FILES'][i]
 		if input_path:
 			count += 1
@@ -108,37 +111,93 @@ def process_multifile(config, source):
 			#Print some progress stats
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
 		
-			instances = process_file(input_path,config,source,config['SEPARATOR'][source],instances)
+			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
+				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+				
+			for job in jobs:
+				instances = combine(instances,job.get())
+
+		pool.close()
 
 	return instances
 
+def combine(instances, instances_new):
+	'''
+	Combine counters
+	'''	 
 
+	for variable,features in instances_new.items():
+		if variable in instances:
+			for feature in features:
+				if feature in instances[variable]:
+					instances[variable][feature] += instances_new[variable][feature]
+				else:
+					instances[variable][feature] = instances_new[variable][feature]
+		else:
+			for feature in features:
+				instances[variable] = dict() 
+				instances[variable][feature] = instances_new[variable][feature]
+				
 
+	return instances
 
-def process_file(file, config, source,separator,instances):
+def frag(fname, separator, size):
+	'''
+	Function to fragment files in chunks to be parallel processed for structured files by lines
+	'''
+
+	try:
+		if fname.endswith('.gz'):					
+			f = gzip.open(fname, 'r')
+		else:
+			f = open(fname, 'r')
+
+		end = f.tell()
+		cont = True
+		while True:
+			start = end
+			asdf = f.read(size)
+			i = asdf.rfind(separator)
+			if i == -1:
+				break
+
+			f.seek(start+i+1)
+			end = f.tell()
+
+			yield start, end-start
+
+	finally:
+		f.close()
+
+def process_file(file, fragStart, fragSize, config, source,separator):
 	'''
 	Function that uses each process to get data entries from unstructured data using the separator defined
 	in configuration files that will be transformed into observations. This is used only in offline parsing. 
 	'''
-	try:
-	
+
+	instances = {}
+	try:	
 		if file.endswith('.gz'):					
 			f = gzip.open(file, 'r')
 		else:
 			f = open(file, 'r')
 
-		log = ''
-		for line in f:
-			log += line 
-
-			if separator in log:
-				instances = process_log(log,config, source, instances)
-				log = log.split(separator)[1]
-		if log:	
-			instances = process_log(log,config, source, instances)
-
+		f.seek(fragStart)
+		lines = f.read(fragSize)
+	
 	finally:
 		f.close()
+
+	log = ''
+	for line in lines:
+		log += line 
+
+		if separator in log:
+			instances = process_log(log,config, source, instances)
+			log = log.split(separator)[1]
+	if log:	
+		instances = process_log(log,config, source, instances)
+
 	
 	return instances
 
@@ -150,13 +209,20 @@ def process_log(log, config, source, instances):
 
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
 
+
 	for variable,features in record.variables.items():
 		if variable != 'timestamp':
-			for feature in features:
-				if str(feature) in instances[variable]:
-					instances[variable][str(feature)] += 1
-				else:
-					instances[variable][str(feature)] = 1	
+			if variable in instances:
+				for feature in features:
+					if str(feature) in instances[variable]:
+						instances[variable][str(feature)] += 1
+					else:
+						instances[variable][str(feature)] = 1
+			else:
+				for feature in features:
+					instances[variable] = dict() 
+					instances[variable][str(feature)] = 1
+					
 
 	return instances
 	
