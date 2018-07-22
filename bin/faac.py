@@ -620,39 +620,21 @@ class AggregatedObservation(Observation):
 	"""Observation array with an aggregation ID.
 	
 	This is an Observation subclass used to track aggregations.
-	The aggregation ID is built based on the aggregation keys defined in
-	the user conf file, section KEYS. 
-	Empty (or absence of) keys means no aggregation.
 	
 	An aggregated observation looks like this:
-	'150.200.41.1' --> [0, 1, 0, 0, 2, 0, 0, 0, 3, 1, 0, ...]
+	timestamp --> [0, 1, 0, 0, 2, 0, 0, 0, 3, 1, 0, ...]
 
 	Class Attributes:
-		ID    -- ID of the observation.
 		label -- Array of variable names.
 		data  -- Array of data values.
 		nObs  -- Number of observations aggregated.
 	"""
-	def __init__(self, record, FEATURES, keys):
+	def __init__(self, record, FEATURES):
 		"""Creates an aggregated observation from a record of variables.
 		
 		record    -- Record object.
 		FEATURES -- List of variable configurations.
-		keys -- List of keys configurations.
 		"""
-		try:
-			keys 
-		except KeysError as e:
-			keys = None
-		try:
-			if not keys:
-				self.ID = None
-			elif isinstance(keys, list):
-				self.ID = ', '.join([str(record.variables[x].value) for x in keys])
-			else:
-				self.ID = record.variables[keys].value
-		except KeyError as e:
-			raise ConfigError(self, "KEYS: incorrect variable reference (%s)" %(e.message))
 
 		super(AggregatedObservation, self).__init__(record, FEATURES)  # Python3: super().__init__()
 		self.nObs = 1
@@ -662,11 +644,9 @@ class AggregatedObservation(Observation):
 		
 		aggr_obs -- Aggregated-observation object to merge with.
 		"""
-		if self.ID == aggr_obs.ID:
-			super(AggregatedObservation, self).aggregate(aggr_obs)      # Python3: super().aggregate()
-			self.nObs += 1
-		else:
-			raise AggregateError(self, "Observation IDs don't match.")
+		super(AggregatedObservation, self).aggregate(aggr_obs)      # Python3: super().aggregate()
+		self.nObs += 1
+		
 
 	def __repr__(self):
 		return "<%s - %d vars>" %(self.__class__.__name__, len(self.data))
@@ -685,54 +665,6 @@ class AggregatedObservation(Observation):
 		self.data = all_data
 		self.label = all_labels
 
-
-	
-class ObservationBatch(object):
-	"""Batch of observations.
-	
-	An observation batch contains all the aggregated observations
-	produced at a time k.
-	This is the output of the parsing process.
-
-	Class Attributes:
-		observations -- Dictionary of aggregated observations, indexed 
-		                by their ID.
-	"""
-	def __init__(self):
-		"""Creates an empty observation batch."""
-
-		self.observations = {}
-
-	def add(self, obs):
-		"""Adds a new observation to the batch.
-		If the ID already exists, the new observation is aggregated;
-		otherwise it is added as new item.
-		"""
-
-		if obs.ID in self.observations:
-			self.observations[obs.ID].aggregate(obs)
-		else:
-			self.observations[obs.ID] = obs
-
-	def __str__(self):
-		"""Prints nice representation of the batch
-		"""
-		s = ""
-		if self.observations:
-			firstKey = self.observations.keys()[0]
-			col1 = len(str(len(self.observations))) + 2
-			col2 = len(str(self.observations[firstKey].ID)) + 12
-			col3 = len(str(self.observations[firstKey].nObs)) + 5
-			count = 0
-			for obsKey in self.observations:
-				s += "#%s%s%s%s\n" %(str(count).ljust(col1), 
-									 str(self.observations[obsKey].ID).ljust(col2),
-									 str(self.observations[obsKey].nObs).ljust(col3),
-									 self.observations[obsKey].__repr__())
-				count += 1
-		else:
-			s = "<Empty-Observation-Batch>"
-		return s
 
 
 
@@ -819,6 +751,12 @@ def loadConfig(output, dataSources, parserConfig):
 	except:
 		print "**ERROR** Config file missing field: Processes"
 		exit(1)
+
+	try: 
+		config['Keys'] = parserConfig['Keys']
+
+	except:
+		config['Keys'] = []
 
 	try: 
 		config['Csize'] = 1024 * int(parserConfig['Chunk_size'])

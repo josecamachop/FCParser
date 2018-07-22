@@ -174,10 +174,10 @@ def process_multifile(config, source):
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
 
 			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
-				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-
-			for job in jobs:
-				results.append(job.get())
+			#	jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+				results.append(process_file(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source]))
+			#for job in jobs:
+			#	results.append(job.get())
 
 		pool.close()
 	return results
@@ -304,14 +304,22 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 	return obsDict
 
 
+
 def process_log(log,config, source):
 	'''
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
-	obs = faac.AggregatedObservation(record, config['FEATURES'][source], None)	
+	obs = faac.AggregatedObservation(record, config['FEATURES'][source])
 
-	return normalize_timestamps(record.variables['timestamp'][0],config, source), obs.data
+	tag = list()
+	tag.append(normalize_timestamps(record.variables['timestamp'][0],config, source))
+
+	if config['Keys']:
+		for i in range(len(config['Keys'])):
+			tag.append(str(record.variables[config['Keys'][i]][0]))	# Careful!, only works (intentionally) for the first instance of a variable in a record		
+
+	return tuple(tag), obs.data
 	
 def normalize_timestamps(timestamp, config, source):
 	'''
@@ -441,6 +449,8 @@ def getTag(filename):
 	else:
 		return None
 
+
+
 def file_uns_len(fname, separator):
 	'''
 	Function determine de number of logs for a unstructured file 
@@ -509,27 +519,32 @@ def getArguments():
 	args = parser.parse_args()
 	return args
 
+
+
 def write_output(output, headers, config):
 	'''Write parsing ouput into a file, for each timestamp a file is written
 	If the FCParser is mode online, only one file is written as output.
 	Furthermore, an adition file with a list of the features is ouputted.
 	'''
 
-	with open(config['OUTDIR'] + 'headers.dat', 'w') as f:
+ 	with open(config['OUTDIR'] + 'headers.dat', 'w') as f:
 		f.write(str(headers))
 
 	if isinstance(output, dict):
 		for k in output:
 			try:
-				tag = k.strftime("%Y%m%d%H%M")
+				tag = k[0].strftime("%Y%m%d%H%M")
 			except:
-				tag = str(k)
+				tag = str(k[0])
 
-			with open(config['OUTDIR'] + 'output-'+ tag + '.dat' , 'w') as f:
-				f.write(','.join(map(str,output[k])))
+			with open(config['OUTDIR'] + 'output-'+ tag + '.dat' , 'a') as f:
+				if len(k) > 1:
+					f.write(str(k[1:])[1:-2]+': ')
+				f.write(','.join(map(str,output[k]))+ '\n')
 	else:
 		with open(config['OUTDIR'] + 'output.dat' , 'w') as f:
 			f.write(','.join(map(str,output)))
+
 
 class obsDict_offline(object):
 	"""
@@ -545,6 +560,7 @@ class obsDict_offline(object):
 			self.obsList[tag] = map(add, obs, self.obsList[tag])
 		else:
 			self.obsList[tag] = obs
+			
 
 	def printt(self):
 		print self.obsList
@@ -566,6 +582,7 @@ class obsDict_online(object):
 
 	def printt(self):
 		print self.obsList
+
 
 if __name__ == "__main__":
 	
