@@ -174,10 +174,9 @@ def process_multifile(config, source):
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
 
 			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
-			#	jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-				results.append(process_file(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source]))
-			#for job in jobs:
-			#	results.append(job.get())
+				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+			for job in jobs:
+				results.append(job.get())
 
 		pool.close()
 	return results
