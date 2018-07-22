@@ -173,10 +173,8 @@ def process_multifile(config, source):
 			#Print some progress stats
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
 
-
 			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
 				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-				process_file(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])
 
 			for job in jobs:
 				results.append(job.get())
@@ -243,7 +241,6 @@ def frag(fname, separator, size):
 	'''
 	Function to fragment files in chunks to be parallel processed for structured files by lines
 	'''
-	fileEnd = os.path.getsize(fname)
 
 	try:
 		if fname.endswith('.gz'):					
@@ -257,7 +254,7 @@ def frag(fname, separator, size):
 			start = end
 			asdf = f.read(size)
 			i = asdf.rfind(separator)
-			if end >= fileEnd or i == -1:
+			if i == -1:
 				break
 
 			f.seek(start+i+1)
@@ -284,25 +281,25 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 
 		f.seek(fragStart)
 		lines = f.read(fragSize)
+	
+	finally:
+		f.close()
 
-		log = ''
-		for line in lines:
-			log += line 
+	log = ''
+	for line in lines:
+		log += line 
 
-			if separator in log:
-				tag, obs = process_log(log,config, source)
-				if tag == 0:
-					tag = file.split('/')[-1]
-				obsDict.add(obs,tag)
-				log = log.split(separator)[1]
-		if log:
+		if separator in log:
 			tag, obs = process_log(log,config, source)
 			if tag == 0:
 				tag = file.split('/')[-1]
 			obsDict.add(obs,tag)
-
-	finally:
-		f.close()
+			log = log.split(separator)[1]
+	if log:
+		tag, obs = process_log(log,config, source)
+		if tag == 0:
+			tag = file.split('/')[-1]
+		obsDict.add(obs,tag)
 
 	return obsDict
 
