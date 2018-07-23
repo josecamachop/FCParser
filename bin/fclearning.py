@@ -29,6 +29,8 @@ import yaml
 import subprocess
 from operator import add
 import faac
+import gc
+import sys
 	
 def main(call='external',configfile=''):
 
@@ -188,6 +190,7 @@ def process_file(file, fragStart, fragSize, config, source,separator):
 	finally:
 		f.close()
 
+	count = 0
 	log = ''
 	for line in lines:
 		log += line 
@@ -195,9 +198,31 @@ def process_file(file, fragStart, fragSize, config, source,separator):
 		if separator in log:
 			instances = process_log(log,config, source, instances)
 			log = log.split(separator)[1]
+			count += 1
 	if log:	
 		instances = process_log(log,config, source, instances)
+		count += 1
 
+	'''lala=0;
+	for varkey in instances.keys():
+		for feakey in instances[varkey].keys():
+			lala +=1
+			
+	print 'Antes: ' + str(lala)'''
+
+
+	instances = filter_instances(instances, count*config['Lperc'])
+
+
+	'''collected = gc.collect()
+	print "GC: %d" % (collected)
+
+
+	lala=0;
+	for varkey in instances.keys():
+		for feakey in instances[varkey].keys():
+			lala +=1
+	print 'Despues: ' + str(lala)'''
 	
 	return instances
 
@@ -219,8 +244,8 @@ def process_log(log, config, source, instances):
 					else:
 						instances[variable][str(feature)] = 1
 			else:
+				instances[variable] = dict() 
 				for feature in features:
-					instances[variable] = dict() 
 					instances[variable][str(feature)] = 1
 					
 
@@ -390,14 +415,49 @@ def filter_output(output_data,threshold):
 	'''
 
 	for source in output_data.keys():
-		for varkey in output_data[source].keys():
-			for feakey in output_data[source][varkey].keys():
-				if output_data[source][varkey][feakey] < threshold:
-					del output_data[source][varkey][feakey]
+		output_data[source] = filter_instances(output_data[source],threshold)
+
+
+	return output_data
+
+#def filter_instances(input_data,threshold):
+	'''Filter de data to only common fatures
+	'''
+'''	output_data = {}
+
+	for varkey in output_data.keys():
+		for feakey in output_data[varkey].keys():
+			if output_data[varkey][feakey] >= threshold:
+				#print 'Links: ' + str(sys.getrefcount(output_data[varkey][feakey]))
+				#a = gc.get_referrers(output_data[varkey][feakey])
+				#print a
+				#raw_input()
+				input_data[varkey][feakey] = output_data[varkey][feakey]
+
+'''
+def filter_instances(output_data,threshold):
+	'''Filter de data to only common fatures
+	'''
+
+	for varkey in output_data.keys():
+		for feakey in output_data[varkey].keys():
+			if output_data[varkey][feakey] < threshold:
+				#print 'Links: ' + str(sys.getrefcount(output_data[varkey][feakey]))
+				#a = gc.get_referrers(output_data[varkey][feakey])
+				#print a
+				#raw_input()
+				del output_data[varkey][feakey]
+		if len(output_data[varkey].keys()) == 0:
+			#print 'Var: ' + str(sys.getrefcount(output_data[varkey]))
+			del output_data[varkey]
+
+	#collected = gc.collect()
+	#print "GC: %d" % (collected)
 
 
 	return output_data
 					
+
 
 def write_output(config, output_data, total):
 	'''Write configuration file
