@@ -29,6 +29,8 @@ import yaml
 import subprocess
 from operator import add
 import faac
+from guppy import hpy 
+import sys
 	
 def main(call='external',configfile=''):
 
@@ -115,7 +117,9 @@ def process_multifile(config, source):
 				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
 				
 			for job in jobs:
-				instances = combine(instances,job.get())
+				instances = combine(instances,job.get())				
+				h = hpy() 
+				print h.heap()
 
 		pool.close()
 
