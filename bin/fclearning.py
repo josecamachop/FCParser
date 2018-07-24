@@ -29,8 +29,7 @@ import yaml
 import subprocess
 from operator import add
 import faac
-from guppy import hpy 
-import sys
+from collections import deque
 	
 def main(call='external',configfile=''):
 
@@ -59,7 +58,7 @@ def main(call='external',configfile=''):
 	output_data = parsing(config, startTime)
 
 	# Filter output
-	output_data = filter_output(output_data, stats['total_lines']*config['Lperc'])
+	output_data = filter_output(output_data, config['Lperc'])
 
 	# Output results
 	write_output(config, output_data, stats['total_lines'])
@@ -101,49 +100,57 @@ def process_multifile(config, source):
 		instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
 
 	count = 0
-
+	instances['count'] = 0
 	for i in range(len(config['SOURCES'][source]['FILES'])):
-		pool = mp.Pool(config['Cores'])
-		jobs = []
 		input_path = config['SOURCES'][source]['FILES'][i]
 		if input_path:
 			count += 1
 			tag = getTag(input_path)
 
 			#Print some progress stats
-			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
+			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)
 		
+			pool = mp.Pool(config['Cores'])
+			jobs = deque()
+
+			j = 0	
 			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
 				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-				
-			for job in jobs:
-				instances = combine(instances,job.get())				
-				h = hpy() 
-				print h.heap()
+				j += 1
 
-		pool.close()
+				if j >= config['Cores']:
+					instances = combine(instances,jobs.popleft().get(),config['Lperc'])
+				
+
+			pool.close()
+	
 
 	return instances
 
-def combine(instances, instances_new):
+def combine(instances, instances_new, perc):
 	'''
 	Combine counters
 	'''	 
 
+	instances_new = filter_instances(instances_new, perc)
+
+	instances['count'] += instances_new['count']
 	for variable,features in instances_new.items():
-		if variable in instances:
-			for feature in features:
-				if feature in instances[variable]:
-					instances[variable][feature] += instances_new[variable][feature]
-				else:
-					instances[variable][feature] = instances_new[variable][feature]
-		else:
-			for feature in features:
+		if variable != 'count':
+			if variable in instances.keys():
+				for feature in features:
+					if feature in instances[variable].keys():
+						instances[variable][feature] += instances_new[variable][feature]
+					else:
+						instances[variable][feature] = instances_new[variable][feature]
+			else:
 				instances[variable] = dict() 
-				instances[variable][feature] = instances_new[variable][feature]
-				
+				for feature in features:
+					instances[variable][feature] = instances_new[variable][feature]
+
 
 	return instances
+
 
 def frag(fname, separator, size):
 	'''
@@ -192,6 +199,7 @@ def process_file(file, fragStart, fragSize, config, source,separator):
 	finally:
 		f.close()
 
+	instances['count'] = 0
 	log = ''
 	for line in lines:
 		log += line 
@@ -202,7 +210,7 @@ def process_file(file, fragStart, fragSize, config, source,separator):
 	if log:	
 		instances = process_log(log,config, source, instances)
 
-	
+
 	return instances
 
 
@@ -213,19 +221,21 @@ def process_log(log, config, source, instances):
 
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
 
+	instances['count'] += 1
 
 	for variable,features in record.variables.items():
 		if variable != 'timestamp':
-			if variable in instances:
+			if variable in instances.keys():
 				for feature in features:
-					if str(feature) in instances[variable]:
+					if str(feature) in instances[variable].keys():
 						instances[variable][str(feature)] += 1
 					else:
 						instances[variable][str(feature)] = 1
 			else:
+				instances[variable] = dict() 
 				for feature in features:
-					instances[variable] = dict() 
 					instances[variable][str(feature)] = 1
+
 					
 
 	return instances
@@ -389,19 +399,32 @@ def getArguments():
 	return args
 
 
-def filter_output(output_data,threshold):
+def filter_output(output_data,perc):
 	'''Filter de data to only common fatures
 	'''
-
 	for source in output_data.keys():
-		for varkey in output_data[source].keys():
-			for feakey in output_data[source][varkey].keys():
-				if output_data[source][varkey][feakey] < threshold:
-					del output_data[source][varkey][feakey]
+		output_data[source] = filter_instances(output_data[source],perc)
 
 
 	return output_data
+
+
+def filter_instances(instances, perc):
+	'''Filter de data to only common fatures
+	'''
+	threshold = perc*instances['count']
+	for varkey in instances.keys():
+		if varkey != 'count':
+			for feakey in instances[varkey].keys():
+				if instances[varkey][feakey] < threshold:
+					del instances[varkey][feakey]
+			if len(instances[varkey].keys()) == 0:
+				del instances[varkey]
+
+
+	return instances
 					
+
 
 def write_output(config, output_data, total):
 	'''Write configuration file
@@ -415,14 +438,16 @@ def write_output(config, output_data, total):
 	for source in output_data.keys():
 		print "\nWriting configuration file " + config['SOURCES'][source]['CONFILE'] + "\n" 
 		for varkey in output_data[source].keys():
-			for feakey in output_data[source][varkey].keys():
-				interm = UnsortableOrderedDict()
-				interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\\\'").replace("\"", "\\\"")
-				interm['variable'] = varkey
-				interm['matchtype'] = 'regexp'
-				interm['value'] =  feakey.replace("\'", "\\\'").replace("\"", "\\\"") 
-				interm['weight'] = output_data[source][varkey][feakey]/float(total)
-				contentf['FEATURES'].append(interm)
+			if varkey != 'count':
+				for feakey in output_data[source][varkey].keys():
+
+					interm = UnsortableOrderedDict()
+					interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\\\'").replace("\"", "\\\"")
+					interm['variable'] = varkey
+					interm['matchtype'] = 'regexp'
+					interm['value'] =  feakey.replace("\'", "\\\'").replace("\"", "\\\"") 
+					interm['weight'] = output_data[source][varkey][feakey]/float(total)
+					contentf['FEATURES'].append(interm)
 
 		for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
 			vType = config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['matchtype']
