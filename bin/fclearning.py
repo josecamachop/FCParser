@@ -29,7 +29,6 @@ import yaml
 import subprocess
 from operator import add
 import faac
-from collections import deque
 	
 def main(call='external',configfile=''):
 
@@ -55,7 +54,7 @@ def main(call='external',configfile=''):
 	stats = count_entries(config,stats) 
 
 	# Parse
-	output_data = parsing(config, startTime)
+	output_data = parsing(config, startTime, stats)
 
 	# Filter output
 	output_data = filter_output(output_data, config['Lperc'])
@@ -67,7 +66,7 @@ def main(call='external',configfile=''):
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
 
-def parsing(config,startTime):
+def parsing(config,startTime,stats):
 	'''
 	Main process for parsing. The program is in charge of temporal sampling.
 	'''
@@ -83,12 +82,12 @@ def parsing(config,startTime):
 		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
 
 
-		results[source] = process_multifile(config, source)
+		results[source] = process_multifile(config, source, stats['sizes'][source])
 
 
 	return results
 
-def process_multifile(config, source):
+def process_multifile(config, source, lengths):
 	'''
 	processing files procedure for unstructured sources in offline parsing. In this function the pool 
 	of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
@@ -111,16 +110,14 @@ def process_multifile(config, source):
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)
 		
 			pool = mp.Pool(config['Cores'])
-			jobs = deque()
+			jobs = list()
+			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], lengths[i]/config['Cores'] + 1):
+				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )	
 
-			j = 0	
-			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], config['Csize']):
-				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-				j += 1
+			for job in jobs:
+				instances = combine(instances,job.get(),config['Lperc'])
 
-				if j >= config['Cores']:
-					instances = combine(instances,jobs.popleft().get(),config['Lperc'])
-				
+
 
 			pool.close()
 	
@@ -163,6 +160,7 @@ def frag(fname, separator, size):
 		else:
 			f = open(fname, 'r')
 
+
 		end = f.tell()
 		cont = True
 		while True:
@@ -176,6 +174,8 @@ def frag(fname, separator, size):
 			end = f.tell()
 
 			yield start, end-start
+
+
 
 	finally:
 		f.close()
@@ -271,6 +271,7 @@ def create_stats(config):
 	statsStream = open(statsPath, 'w')
 	statsStream.write("STATS\n")
 	statsStream.write("=================================================\n\n")
+
 	statsStream.close()
 	stats['statsPath'] = statsPath
 
@@ -278,20 +279,26 @@ def create_stats(config):
 
 def count_entries(config,stats):
 	'''
-	Function to get the amount of data entries for each data source
-	TO BE UPDATED
+	Function to get the amount of data entries and bytes for each data source
 	'''
+
 	lines = {}
+	stats['sizes'] = {}
 	for source in config['SOURCES']:
 		lines[source] = 0
-		
+		stats['sizes'][source] = list()
 		for file in config['SOURCES'][source]['FILES']:
 			if config['STRUCTURED'][source]:
-				lines[source] += file_len(file)
+				(l,s) = file_len(file)
+				lines[source] += l
+				stats['sizes'][source].append(s)
 
 			else:
-				lines[source] += file_uns_len(file,config['SEPARATOR'][source])
+				(l,s) = file_uns_len(file,config['SEPARATOR'][source])
+				lines[source] += l
+				stats['sizes'][source].append(s)
 	
+
 	# Sum lines from all datasources to obtain tota lines.
 	total_lines = 0
 
@@ -301,6 +308,18 @@ def count_entries(config,stats):
 		stats['lines'][source] = lines[source]
 
 	stats['total_lines'] = total_lines
+
+	statsStream = open(stats['statsPath'], 'a')
+
+	for source in config['SOURCES']:
+		statsStream.write( " * %s \n" %((source).ljust(18)))
+		statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
+		statsStream.write( "\t\t %d logs \n" %(stats['lines'][source]))
+		statsStream.write( "\t\t %d bytes \n" %(sum(stats['sizes'][source])))
+
+	statsStream.write("\n\n=================================================\n\n")
+
+	statsStream.close()
 
 	return stats
 
@@ -330,39 +349,53 @@ def getTag(filename):
 	else:
 		return None
 
+def file_len(fname):
+	'''
+	Function to get lines from a file
+	'''
+	count_log = 0
+	try:
+		if fname.endswith('.gz'):
+			input_file = gzip.open(fname,'r')
+		else:
+			input_file = open(fname,'r')
+
+		for count_log, l in enumerate(input_file):
+			pass
+
+	finally:
+		size = input_file.tell()
+		input_file.close()
+
+	return count_log,size
+
+
 def file_uns_len(fname, separator):
 	'''
 	Function determine de number of logs for a unstructured file 
 	'''
-	if fname.endswith('.gz'):
-		input_file = gzip.open(fname,'r')
-	else:
-		input_file = open(fname,'r')
-
-	line = input_file.readline()
 	count_log = 0
+	try:
+		if fname.endswith('.gz'):
+			input_file = gzip.open(fname,'r')
+		else:
+			input_file = open(fname,'r')
 
-	if line:
-		log ="" + line
-
-		while line:
+		log ="" 
+		for line in input_file:		
 			log += line 
 
-			if len(log.split(separator)) > 1:
-				logExtract = log.split(separator)[0]
-				count_log += 1		
-				log = ""
+			splitt = log.split(separator);
+			if len(splitt) > 1:
+				count_log += 1	
+				log = log[len(splitt[0])+1:]
 
-				for n in logExtract.split(separator)[1::]:
-					log += n
+	
+	finally:
+		size = input_file.tell()
+		input_file.close()
 
-			line = input_file.readline()
-		log += line
-		
-		if not log == "":
-			count_log += 1 
-
-	return count_log			
+	return count_log,size		
 	
 def prettyTime(elapsed):
 	'''
@@ -379,14 +412,6 @@ def prettyTime(elapsed):
 	return pretty
 
 
-def file_len(fname):
-	'''
-	Function to get lines from a file
-	'''
-	with open(fname) as f:
-		for i, l in enumerate(f):
-			pass
-	return i + 1
 
 def getArguments():
 	'''
