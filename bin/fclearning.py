@@ -29,6 +29,7 @@ import yaml
 import subprocess
 from operator import add
 import faac
+import math
 	
 def main(call='external',configfile=''):
 
@@ -111,13 +112,16 @@ def process_multifile(config, source, lengths):
 		
 			pool = mp.Pool(config['Cores'])
 			cont = True
+			init = 0
+			remain = lengths[i]
 			while cont: # cleans memory from processes
 				jobs = list()
-				for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], min(lengths[i],config['Csize'])/config['Cores'] + 1,config['Csize']):
+				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
 					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
 				else:
 					if fragStart+fragSize < lengths[i]:
-						lengths[i] -= fragStart+fragSize
+						remain = lengths[i] - fragStart+fragSize
+						init = fragStart+fragSize 
 					else:
 						cont = False
 
@@ -131,6 +135,41 @@ def process_multifile(config, source, lengths):
 	
 
 	return instances
+
+def frag(fname, init, separator, size, max_chunk):
+	'''
+	Function to fragment files in chunks to be parallel processed for structured files by lines
+	'''
+
+	#print "File pos: %d, size: %d, max_chunk: %d" %(init,size, max_chunk)
+
+	try:
+		if fname.endswith('.gz'):					
+			f = gzip.open(fname, 'r')
+		else:
+			f = open(fname, 'r')
+
+
+		f.seek(init)
+		end = f.tell()
+		init = end
+		cont = True
+		while end-init < max_chunk:
+			start = end
+			asdf = f.read(size)
+			i = asdf.rfind(separator)
+			if i == -1:
+				break
+
+			f.seek(start+i+1)
+			end = f.tell()
+
+			yield start, end-start
+
+
+
+	finally:
+		f.close()
 
 def combine(instances, instances_new, perc):
 	'''
@@ -157,37 +196,7 @@ def combine(instances, instances_new, perc):
 	return instances
 
 
-def frag(fname, separator, size, max_chunck):
-	'''
-	Function to fragment files in chunks to be parallel processed for structured files by lines
-	'''
 
-	try:
-		if fname.endswith('.gz'):					
-			f = gzip.open(fname, 'r')
-		else:
-			f = open(fname, 'r')
-
-
-		end = f.tell()
-		init = end
-		cont = True
-		while end-init < max_chunck:
-			start = end
-			asdf = f.read(size)
-			i = asdf.rfind(separator)
-			if i == -1:
-				break
-
-			f.seek(start+i+1)
-			end = f.tell()
-
-			yield start, end-start
-
-
-
-	finally:
-		f.close()
 
 def process_file(file, fragStart, fragSize, config, source,separator):
 	'''

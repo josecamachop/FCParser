@@ -759,10 +759,10 @@ def loadConfig(output, dataSources, parserConfig):
 		config['Keys'] = []
 
 	try: 
-		config['Csize'] = 1024 * int(parserConfig['Max_chunk_size'])
+		config['Csize'] = 1024 * 1024 * int(parserConfig['Max_chunk'])
 
 	except:
-		config['Csize'] = 1024 * 50000;
+		config['Csize'] = 1024 * 1024 * config['Cores'];
 
 	if 'Learning_perc' in parserConfig:
 		config['Lperc'] = float(parserConfig['Learning_perc'])
