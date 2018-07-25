@@ -111,7 +111,7 @@ def process_multifile(config, source, lengths):
 		
 			pool = mp.Pool(config['Cores'])
 			jobs = list()
-			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], lengths[i]/config['Cores'] + 1):
+			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], min(lengths[i]/config['Cores'] + 1,config['Csize'])):
 				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )	
 
 			for job in jobs:

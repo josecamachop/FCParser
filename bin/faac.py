@@ -759,11 +759,10 @@ def loadConfig(output, dataSources, parserConfig):
 		config['Keys'] = []
 
 	try: 
-		config['Csize'] = 1024 * int(parserConfig['Chunk_size'])
+		config['Csize'] = 1024 * int(parserConfig['Max_chunk_size'])
 
 	except:
-		print "**ERROR** Config file missing field: Chunk_size"
-		exit(1)	
+		config['Csize'] = 1024 * 50000;
 
 	if 'Learning_perc' in parserConfig:
 		config['Lperc'] = float(parserConfig['Learning_perc'])
