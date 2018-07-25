@@ -110,12 +110,20 @@ def process_multifile(config, source, lengths):
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)
 		
 			pool = mp.Pool(config['Cores'])
-			jobs = list()
-			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], min(lengths[i]/config['Cores'] + 1,config['Csize'])):
-				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )	
+			cont = True
+			while cont: # cleans memory from processes
+				jobs = list()
+				for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], min(lengths[i],config['Csize'])/config['Cores'] + 1,config['Csize']):
+					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+				else:
+					if fragStart+fragSize < lengths[i]:
+						lengths[i] -= fragStart+fragSize
+					else:
+						cont = False
 
-			for job in jobs:
-				instances = combine(instances,job.get(),config['Lperc'])
+				for job in jobs:
+					instances = combine(instances,job.get(),config['Lperc'])
+
 
 
 
@@ -149,7 +157,7 @@ def combine(instances, instances_new, perc):
 	return instances
 
 
-def frag(fname, separator, size):
+def frag(fname, separator, size, max_chunck):
 	'''
 	Function to fragment files in chunks to be parallel processed for structured files by lines
 	'''
@@ -162,8 +170,9 @@ def frag(fname, separator, size):
 
 
 		end = f.tell()
+		init = end
 		cont = True
-		while True:
+		while end-init < max_chunck:
 			start = end
 			asdf = f.read(size)
 			i = asdf.rfind(separator)
