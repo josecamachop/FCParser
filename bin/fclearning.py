@@ -240,27 +240,6 @@ def process_log(log, config, source, instances):
 
 	return instances
 	
-def normalize_timestamps(timestamp, config, source):
-	'''
-	Function that transform timestamps of data entries to a normalized format. It also do the 
-	time sampling using the time window defined in the configuration file.
-	'''	
-	try:
-		input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
-		window = config['Time']['window']
-		t = datetime.datetime.strptime(str(timestamp), input_format)
-		new_minute = t.minute - t.minute % window  
-		t = t.replace(minute = new_minute, second = 0)	
-
-
-		if t.year == 1900:
-			t = t.replace(year = datetime.datetime.now().year)
-		return t
-	except:
-		
-		return 0
-
-
 
 def create_stats(config):
 	'''
