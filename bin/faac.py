@@ -494,7 +494,7 @@ class Observation(object):
 			variable = record.variables[fVariable]
 			counter = 0			
 			self.label[i] = fName
-			self.data[i]  = counter
+			self.data[i]  = int(counter)
 			for var in variable:
 				if fType == 'single':
 					if isinstance(fValue, list):
@@ -538,7 +538,7 @@ class Observation(object):
 					break
 				
 			# Update data lists
-			self.data[i]  = counter
+			self.data[i]  = int(counter)
 
 			# Show debug info
 			if debug:
@@ -782,6 +782,7 @@ def loadConfig(output, dataSources, parserConfig):
 		config['SOURCES'][source]['CONFILE'] = dataSources[source]['config']
 		config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
 		config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['data'])
+		config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['train'])
 
 	config ['FEATURES'] = {}
 	config['STRUCTURED'] = {}

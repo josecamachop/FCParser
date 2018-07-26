@@ -27,6 +27,9 @@ import yaml
 import subprocess
 from operator import add
 import faac
+import math
+import copy
+from collections import OrderedDict
 	
 def main(call='external',configfile=''):
 
@@ -42,7 +45,7 @@ def main(call='external',configfile=''):
 	parserConfig = faac.getConfiguration(configfile)
 	online = parserConfig['Online']
 	dataSources = parserConfig['DataSources']
-	output = parserConfig['Output']
+	output = parserConfig['Parsing_Output']
 	config = faac.loadConfig(output, dataSources, parserConfig)
 
 	# Print configuration summary
@@ -170,13 +173,23 @@ def process_multifile(config, source, lengths):
 
 			#Print some progress stats
 			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
-
 			pool = mp.Pool(config['Cores'])
-			jobs = []
-			for fragStart,fragSize in frag(input_path,config['SEPARATOR'][source], min(lengths[i]/config['Cores'] + 1,config['Csize'])):
-				jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-			for job in jobs:
-				results.append(job.get())
+			cont = True
+			init = 0
+			remain = lengths[i]
+			while cont: # cleans memory from processes
+				jobs = list()
+				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
+					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+				else:
+					if fragStart+fragSize < lengths[i]:
+						remain = lengths[i] - fragStart+fragSize
+						init = fragStart+fragSize 
+					else:
+						cont = False
+
+				for job in jobs:
+					results.append(job.get())
 
 			pool.close()
 	return results
@@ -236,10 +249,12 @@ def fuseObs_online(resultado, config):
 	return fused_res, features
 
 
-def frag(fname, separator, size):
+def frag(fname, init, separator, size, max_chunk):
 	'''
 	Function to fragment files in chunks to be parallel processed for structured files by lines
 	'''
+
+	#print "File pos: %d, size: %d, max_chunk: %d" %(init,size, max_chunk)
 
 	try:
 		if fname.endswith('.gz'):					
@@ -247,9 +262,12 @@ def frag(fname, separator, size):
 		else:
 			f = open(fname, 'r')
 
+
+		f.seek(init)
 		end = f.tell()
+		init = end
 		cont = True
-		while True:
+		while end-init < max_chunk:
 			start = end
 			asdf = f.read(size)
 			i = asdf.rfind(separator)
@@ -260,6 +278,8 @@ def frag(fname, separator, size):
 			end = f.tell()
 
 			yield start, end-start
+
+
 
 	finally:
 		f.close()	
@@ -311,14 +331,22 @@ def process_log(log,config, source):
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
 	obs = faac.AggregatedObservation(record, config['FEATURES'][source])
 
-	tag = list()
-	tag.append(normalize_timestamps(record.variables['timestamp'][0],config, source))
-
 	if config['Keys']:
+		tag = list()		
+		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
+		tag.append(tag2.strftime("%Y%m%d%H%M"))
 		for i in range(len(config['Keys'])):
-			tag.append(str(record.variables[config['Keys'][i]][0]))	# Careful!, only works (intentionally) for the first instance of a variable in a record		
+			if len(record.variables[config['Keys'][i]]) > 0:
+				tag.append(str(record.variables[config['Keys'][i]][0]))	# Careful!, only works (intentionally) for the first instance of a variable in a record
+		if len(tag) > 1:
+			tag = tuple(tag)
+		else:
+			tag = tag[0]		
+	else:
+		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
+		tag = tag2.strftime("%Y%m%d%H%M")
 
-	return tuple(tag), obs.data
+	return tag, obs.data
 	
 def normalize_timestamps(timestamp, config, source):
 	'''
@@ -554,14 +582,62 @@ def write_output(output, headers, config):
 		f.write(str(headers))
 
 	if isinstance(output, dict):
-		for k in output:
-			try:
-				tag = k[0].strftime("%Y%m%d%H%M")
-			except:
-				tag = str(k[0])
 
-			with open(config['OUTDIR'] + 'output-'+ tag + '.dat' , 'a') as f:
-				if len(k) > 1:
+		lfiles = list();
+		for k in output:
+			if isinstance(k, tuple):
+				tag = k[0]
+			else:
+				tag = k
+				
+			if tag not in lfiles:
+				lfiles.append(tag)
+		
+		for i in range(len(lfiles)):
+			
+			tagt = lfiles[i]
+			fname = config['OUTDIR'] + 'output-'+ tagt + '.dat'
+			if os.path.isfile(fname):
+				with open(fname, 'r') as f:
+
+					for line in f:
+						if line.find(':')==-1:
+							obs_aux = line
+							tag = tagt
+						else:
+							laux = line.split(': ')
+							tag = [tagt]
+
+							tagso =  laux[0].replace("'","").split(',')
+							for j in range(len(tagso)):
+								tag.append(tagso[j])
+
+							obs_aux = laux[1]
+							tag = tuple(tag)
+
+						obs = obs_aux.split(',')
+						for j in range(len(obs)):
+							obs[j] = int(obs[j])
+
+						if tag in output:
+							for j in range(len(obs)):
+								output[tag][j] += obs[j]
+						else:
+							output[tag] = obs
+				
+				open(fname, 'w').close()
+
+
+		l = OrderedDict(sorted(output.items()))
+		for k in l.keys():
+			if isinstance(k, tuple):
+				tag = k[0]
+			else:
+				tag = k
+				
+			fname = config['OUTDIR'] + 'output-'+ tag + '.dat'
+			with open(fname, 'a') as f:
+				if isinstance(k, tuple):
 					f.write(str(k[1:])[1:-2]+': ')
 				f.write(','.join(map(str,output[k]))+ '\n')
 	else:

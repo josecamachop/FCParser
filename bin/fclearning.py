@@ -44,7 +44,7 @@ def main(call='external',configfile=''):
 	# Get configuration
 	parserConfig = faac.getConfiguration(configfile)
 	dataSources = parserConfig['DataSources']
-	output = parserConfig['Output']
+	output = parserConfig['Learning_Output']
 	config = faac.loadConfig(output, dataSources, parserConfig)
 
 	# Print configuration summary
@@ -57,8 +57,8 @@ def main(call='external',configfile=''):
 	# Parse
 	output_data = parsing(config, startTime, stats)
 
-	# Filter output
-	output_data = filter_output(output_data, config['Lperc'])
+	# Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
+	# output_data = filter_output(output_data, config['Lperc'])
 
 	# Output results
 	write_output(config, output_data, stats['total_lines'])
@@ -101,14 +101,14 @@ def process_multifile(config, source, lengths):
 
 	count = 0
 	instances['count'] = 0
-	for i in range(len(config['SOURCES'][source]['FILES'])):
-		input_path = config['SOURCES'][source]['FILES'][i]
+	for i in range(len(config['SOURCES'][source]['FILESTRAIN'])):
+		input_path = config['SOURCES'][source]['FILESTRAIN'][i]
 		if input_path:
 			count += 1
 			tag = getTag(input_path)
 
 			#Print some progress stats
-			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)
+			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag)
 		
 			pool = mp.Pool(config['Cores'])
 			cont = True
@@ -284,7 +284,7 @@ def count_entries(config,stats):
 	for source in config['SOURCES']:
 		lines[source] = 0
 		stats['sizes'][source] = list()
-		for file in config['SOURCES'][source]['FILES']:
+		for file in config['SOURCES'][source]['FILESTRAIN']:
 			if config['STRUCTURED'][source]:
 				(l,s) = file_len(file)
 				lines[source] += l
@@ -461,7 +461,9 @@ def write_output(config, output_data, total):
 		print "\nWriting configuration file " + config['SOURCES'][source]['CONFILE'] + "\n" 
 		for varkey in output_data[source].keys():
 			if varkey != 'count':
-				for feakey in output_data[source][varkey].keys():
+
+				l = OrderedDict(sorted(output_data[source][varkey].items(), key=lambda t: t[1], reverse=True))
+				for feakey in l.keys():
 
 					interm = UnsortableOrderedDict()
 					interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\\\'").replace("\"", "\\\"")
