@@ -781,8 +781,9 @@ def loadConfig(output, dataSources, parserConfig):
 		config['SOURCES'][source] = {}
 		config['SOURCES'][source]['CONFILE'] = dataSources[source]['config']
 		config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
-		config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['data'])
-		config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['train'])
+		config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
+		config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
+		config['SOURCES'][source]['FILESDEP'] = glob.glob(dataSources[source]['deparsing'])
 
 	config ['FEATURES'] = {}
 	config['STRUCTURED'] = {}

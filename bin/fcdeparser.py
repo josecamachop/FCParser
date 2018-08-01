@@ -48,7 +48,7 @@ def main():
 		for source in dataSources:
 			print source
 			count_source = 0
-			sourcepath = config['SOURCES'][source]['FILES']
+			sourcepath = config['SOURCES'][source]['FILESDEP']
 			formated_timestamps = format_timestamps(deparsInput['timestamps'],config['SOURCES'][source]['CONFIG']['timestamp_format'])
 			# Structured sources
 			if config['STRUCTURED'][source]:
