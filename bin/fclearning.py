@@ -58,7 +58,7 @@ def main(call='external',configfile=''):
 	output_data = parsing(config, startTime, stats)
 
 	# Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
-	# output_data = filter_output(output_data, config['Lperc'])
+	output_data = filter_output(output_data, config['EndLperc'])
 
 	# Output results
 	write_output(config, output_data, stats['total_lines'])

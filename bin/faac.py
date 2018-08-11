@@ -522,14 +522,15 @@ class Observation(object):
 					if isinstance(fValue, list):
 						raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fName))
 					try:
-						matchObj = FEATURES[i]['r_Comp'].search(str(variable))
+						matchObj = FEATURES[i]['r_Comp'].match(str(variable).replace('[','').replace(']',''))
 					except re.error as e:
 						raise ConfigError(self, "FEATURES: illegal regexp in '%s' (%s)" %(fName, e.message))
 					if matchObj:
 						counter = 1
 						
 				elif fType == 'default':
-					defaults.append(i)
+					if i not in defaults:
+						defaults.append(i)
 				
 				else:
 					raise ConfigError(self, "FEATURES: illegal matchtype in '%s' (%s)" %(fName, fType))
@@ -548,13 +549,38 @@ class Observation(object):
 					print "%s%s %d" %(fName.ljust(25), (str(variable) + " == " + str(vValue)).ljust(30), counter)
 
 		# Manage default variables
+
 		for d in defaults:
 			counter = 0;
 			for i in range(len(FEATURES)):
 				if FEATURES[i]['variable'] == FEATURES[d]['variable']:
 					counter += self.data[i]
 
+
+#			if len(record.variables[FEATURES[d]['variable']]) > 0:
+#				print '*************Feat Def: ' + FEATURES[d]['name']
+#				print '*************Var: ' + FEATURES[d]['variable']
+#				counter = 0;
+#				for i in range(len(FEATURES)):
+#					if FEATURES[i]['variable'] == FEATURES[d]['variable']:
+#						counter += self.data[i]
+#						print 'Feat: ' + FEATURES[i]['name']
+#						print 'Val: ' + str(self.data[i])
+#						print 'Counter: ' + str(counter)
+#
+#				print 'Total Var: ' + str(len(record.variables[FEATURES[d]['variable']]))
+#				print 'Total no def: ' + str(counter)
+#				print 'Dif: ' +  str(len(record.variables[FEATURES[d]['variable']]) - counter)
+#				print '*************Feat Def Ends'
+
+
 			self.data[d] = len(record.variables[FEATURES[d]['variable']]) - counter
+				
+
+						
+
+
+
 			
 	def aggregate(self, obs):
 		""" Aggregates this observation with a new one.
@@ -769,6 +795,11 @@ def loadConfig(output, dataSources, parserConfig):
 	else:
 		config['Lperc'] = 0.01;
 
+	if 'EndL_perc' in parserConfig:
+		config['EndLperc'] = float(parserConfig['EndL_perc'])
+	else:
+		config['EndLperc'] = 0.0001;
+
 	if 'All' in parserConfig:
 		config['All'] = bool(parserConfig['All'])
 	else:
@@ -821,7 +852,7 @@ def loadConfig(output, dataSources, parserConfig):
 
 			for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
 					if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
-						config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])
+						config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value']+'$')
 
 		else:
 			config['SEPARATOR'][source] = "\n"
@@ -862,11 +893,19 @@ def loadConfig(output, dataSources, parserConfig):
 					print "FEATURES: missing config key (%s)" %(e.message)
 					exit(1)	
 
-
 				try:	
-					config['weights'].append(str(feat['weight']))
+					fw = feat['weight']
+					for var in config['SOURCES'][source]['CONFIG']['VARIABLES']:
+						if var['name'] == feat['variable']:
+							try:
+								fw2 = var['weight']
+								fw = fw*fw2
+							except:
+								fw = 1
 				except:
-					config['weights'].append('1')
+					fw = 1
+
+				config['weights'].append(str(fw))
 
 
 
