@@ -9,7 +9,7 @@ Authors: Alejandro Perez Villegas (alextoni@gmail.com)
 	 Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
 	 Jose Camacho (josecamacho@ugr.es)	
 
-Last Modification: 29/Jul/2017
+Last Modification: 11/Aug/2018
 
 """
 

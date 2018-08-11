@@ -468,7 +468,7 @@ def write_output(config, output_data, total):
 					interm = UnsortableOrderedDict()
 					interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\'\'").replace("\"", "\"\"")
 					interm['variable'] = varkey
-					interm['matchtype'] = 'regexp'
+					interm['matchtype'] = 'single'
 					interm['value'] =  feakey.replace("\'", "\'\'").replace("\"", "\"\"") 
 					interm['weight'] = output_data[source][varkey][feakey]/float(total)
 					contentf['FEATURES'].append(interm)
