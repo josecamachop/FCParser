@@ -605,10 +605,11 @@ def write_output(output, headers, config):
 							obs_aux = line
 							tag = tagt
 						else:
-							laux = line.split(': ')
+							laux = line.rsplit(': ',2)
 							tag = [tagt]
 
-							tagso =  laux[0].replace("'","").split(',')
+							tagso =  laux[0].split(',')
+							map(str.strip,tagso)
 							for j in range(len(tagso)):
 								tag.append(tagso[j])
 
@@ -638,7 +639,8 @@ def write_output(output, headers, config):
 			fname = config['OUTDIR'] + 'output-'+ tag + '.dat'
 			with open(fname, 'a') as f:
 				if isinstance(k, tuple):
-					f.write(str(k[1:])[1:-2]+': ')
+					tag2 = map(str.strip,k[1:])
+					f.write(','.join(tag2)+': ')
 				f.write(','.join(map(str,output[k]))+ '\n')
 	else:
 		with open(config['OUTDIR'] + 'output.dat' , 'w') as f:
