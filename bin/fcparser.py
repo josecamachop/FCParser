@@ -61,15 +61,15 @@ def main(call='external',configfile=''):
 	# processing files
 	if online:
 		data = online_parsing(config)
-		output_data,headers = fuseObs_online(data, config)
+		output_data = fuseObs_online(data)
 
 	# process offline 
 	else:
 		data = offline_parsing(config, startTime, stats)
-		output_data,headers = fuseObs_offline(data, config)
+		output_data = fuseObs_offline(data)
 
 	# Output results
-	write_output(output_data, headers, config)
+	write_output(output_data, config)
 
 	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
 
@@ -149,9 +149,13 @@ def offline_parsing(config,startTime,stats):
 
 
 	for source in results:
-		final_res[source] = results[source][0].obsList
+		final_res[source] = results[source][0] # combine the outputs of the several processes
 		for result in results[source][1:]:
-			final_res[source] = combine_results(final_res[source], result.obsList)
+			for key in result:
+				if key in final_res[source]:
+					final_res[source][key].aggregate(result[key])
+				else:
+					final_res[source][key] = result[key]
 
 	return final_res
 
@@ -196,42 +200,40 @@ def process_multifile(config, source, lengths):
 
 
 	
-def fuseObs_offline(resultado, config):
+def fuseObs_offline(resultado):
 	'''
-	Function to fuse all the results obtained from all the processes to form a single matrix
-	of observations with the information from all the input data. The program generated one observation
-	for each time interval defined in the configuration file. 
+	Sources Fusion in a single stream. 
 	'''
-	fused_res = {}
-	features = []
 
-	for source in resultado:
+	v = resultado.keys()
+	fused_res = resultado[v[0]]
 
-		for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
-			features.append(feat['name'])
+	for source in v[1:]:
 
-		arbitrary_len2 = len(next(iter(resultado[source].values())))
+		arbitrary_len2 = len(next(iter(resultado[source].values())).data)
 		try:
-			arbitrary_len = len(next(iter(fused_res.values())))
+			arbitrary_len = len(next(iter(fused_res.values())).data)
 		except:
 			arbitrary_len = 0
 
 
 		for date in resultado[source]:
 
-			if date in fused_res:
-				fused_res[date] = fused_res[date] + resultado[source][date] 
+			if date not in fused_res:
+				fused_res[date] = resultado[source][date].zeroPadding(arbitrary_len)
 			else:
-				fused_res[date] = [0]*arbitrary_len + resultado[source][date] 
+				fused_res[date].fuse(resultado[source][date].data) 
+
 
 		for date2 in fused_res:
 
 			if date2 not in resultado[source]:
-				fused_res[date2] = fused_res[date2] + [0]*arbitrary_len2
 
-	return fused_res, features
+				fused_res[date2].fuse([0]*arbitrary_len2)
+
+	return fused_res
 	
-def fuseObs_online(resultado, config):
+def fuseObs_online(resultado):
 	'''
 	Function to fuse all the results obtained from all the processes to form a single observation in 
 	array form.
@@ -241,12 +243,9 @@ def fuseObs_online(resultado, config):
 
 	for source in resultado:
 
-		for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
-			features.append(feat['name'])
-
 		fused_res = fused_res + resultado[source].obsList
 
-	return fused_res, features
+	return fused_res
 
 
 def frag(fname, init, separator, size, max_chunk):
@@ -289,7 +288,7 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 	Function that uses each process to get data entries from  data using the separator defined
 	in configuration files that will be transformed into observations. This is used only in offline parsing. 
 	'''
-	obsDict = obsDict_offline()
+	obsDict = {}
 
 
 	try:	
@@ -312,16 +311,25 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 			tag, obs = process_log(log,config, source)
 			if tag == 0:
 				tag = file.split('/')[-1]
-			obsDict.add(obs,tag)
+			add_observation(obsDict,obs,tag)
 			log = log.split(separator)[1]
 	if log:
 		tag, obs = process_log(log,config, source)
 		if tag == 0:
 			tag = file.split('/')[-1]
-		obsDict.add(obs,tag)
+		add_observation(obsDict,obs,tag)
 
 	return obsDict
 
+def add_observation(obsDict,obs,tag):
+	'''
+	Adds an observation (obs) to dictionary (obsDict) in an entry (tag) 
+	'''
+	
+	if tag in obsDict.keys():
+		obsDict[tag].aggregate(obs)
+	else:
+		obsDict[tag] = obs
 
 
 def process_log(log,config, source):
@@ -329,7 +337,7 @@ def process_log(log,config, source):
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
-	obs = faac.AggregatedObservation(record, config['FEATURES'][source])
+	obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
 
 	if config['Keys']:
 		tag = list()		
@@ -346,7 +354,7 @@ def process_log(log,config, source):
 		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
 		tag = tag2.strftime("%Y%m%d%H%M")
 
-	return tag, obs.data
+	return tag, obs
 	
 def normalize_timestamps(timestamp, config, source):
 	'''
@@ -375,25 +383,6 @@ def normalize_timestamps(timestamp, config, source):
 	except:
 		
 		return 0
-
-def combine_results(dict1, dict2):
-	'''
-	Combine results of parsing from multiple process,
-	Results are dicts with observations. The combination consist on 
-	merging dicts, if a key is in both dicts, observations are added.
-	'''
-	dict3 = {}
-	for key in dict1:
-		if key in dict2:
-			dict3[key] = map(add, dict1[key], dict2[key])
-		else:
-			dict3[key] = dict1[key]
-
-	for key in dict2:
-		if not (key in dict3):
-			dict3[key] = dict2[key]
-
-	return dict3
 
 def create_stats(config):
 	'''
@@ -572,14 +561,19 @@ def getArguments():
 
 
 
-def write_output(output, headers, config):
+def write_output(output, config):
 	'''Write parsing ouput into a file, for each timestamp a file is written
 	If the FCParser is mode online, only one file is written as output.
 	Furthermore, an adition file with a list of the features is ouputted.
 	'''
 
+	features = []
+	for source in config['SOURCES']:
+		for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+			features.append(feat['name'])
+
  	with open(config['OUTDIR'] + 'headers.dat', 'w') as f:
-		f.write(str(headers))
+		f.write(str(features))
 
 	if isinstance(output, dict):
 
@@ -601,14 +595,16 @@ def write_output(output, headers, config):
 				with open(fname, 'r') as f:
 
 					for line in f:
+
 						if line.find(':')==-1:
 							obs_aux = line
 							tag = tagt
-						else:
-							laux = line.split(': ')
+						else:			
+							laux = line.rsplit(': ',2)
 							tag = [tagt]
 
-							tagso =  laux[0].replace("'","").split(',')
+							tagso =  laux[0].split(',')
+							map(str.strip,tagso)
 							for j in range(len(tagso)):
 								tag.append(tagso[j])
 
@@ -621,9 +617,17 @@ def write_output(output, headers, config):
 
 						if tag in output:
 							for j in range(len(obs)):
-								output[tag][j] += obs[j]
+								output[tag].data[j].value += obs[j]
 						else:
-							output[tag] = obs
+							j = 0;
+							data = []
+							for source in config['SOURCES']:
+								for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+									data.append(faac.Feature(feat))
+									data[j].value += obs[j]
+									j += 1
+
+							output[tag] = faac.Observation(data)
 				
 				open(fname, 'w').close()
 
@@ -638,31 +642,13 @@ def write_output(output, headers, config):
 			fname = config['OUTDIR'] + 'output-'+ tag + '.dat'
 			with open(fname, 'a') as f:
 				if isinstance(k, tuple):
-					f.write(str(k[1:])[1:-2]+': ')
-				f.write(','.join(map(str,output[k]))+ '\n')
+					tag2 = map(str.strip,k[1:])
+					f.write(','.join(tag2)+': ')
+				f.write(','.join(map(str,output[k].data))+ '\n')
 	else:
 		with open(config['OUTDIR'] + 'output.dat' , 'w') as f:
-			f.write(','.join(map(str,output)))
+			f.write(','.join(map(str,output.data)))
 
-
-class obsDict_offline(object):
-	"""
-	Class to store observations of parsed data in offline mode. This class include 
-	methods to add new partial observation to an absolute observation and a other 
-	method for visual representation.
-	"""
-	def __init__(self):
-		self.obsList = {}
-
-	def add(self,obs,tag):
-		if tag in self.obsList.keys():
-			self.obsList[tag] = map(add, obs, self.obsList[tag])
-		else:
-			self.obsList[tag] = obs
-			
-
-	def printt(self):
-		print self.obsList
 	
 class obsDict_online(object):
 	"""
@@ -675,7 +661,7 @@ class obsDict_online(object):
 
 	def add(self,obs):
 		if self.obsList:
-			self.obsList = map(add, obs, self.obsList)
+			self.obsList = map(add, obs, self.obsList) # won't work in new code
 		else:
 			self.obsList = obs
 
