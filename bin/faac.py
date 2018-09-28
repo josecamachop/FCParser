@@ -583,6 +583,13 @@ class DefaultFeature(Feature):
 
 		self.value += len(record.variables[self.fVariable]) - counter
 
+class TotalFeature(Feature):
+	"""Counter of number of variable instances 
+	"""
+				
+	def add(self, var):
+
+		self.value += 1
 
 #-----------------------------------------------------------------------
 # Observation Class
@@ -638,6 +645,8 @@ class Observation(object):
 					feature = RegExpFeature(FEATURES[i])
 				elif fType == 'default':
 					feature = DefaultFeature(FEATURES[i])
+				elif fType == 'total':
+					feature = TotalFeature(FEATURES[i])
 				else:
 					raise ConfigError(cls, "FEATURES: illegal matchtype in \'%s\' (%s)" %(FEATURES[i]['name'], fType))
 
@@ -906,9 +915,10 @@ def loadConfig(output, dataSources, parserConfig):
 						if var['name'] == feat['variable']:
 							try:
 								fw2 = var['weight']
-								fw = fw*fw2
 							except:
-								fw = 1
+								fw2 = 1
+
+							fw = fw*fw2
 				except:
 					fw = 1
 
