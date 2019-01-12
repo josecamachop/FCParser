@@ -612,24 +612,24 @@ def write_output(output, config):
 							tag = tuple(tag)
 
 						obs = obs_aux.split(',')
-						if not obs:
+						#if not obs:	
+						for j in range(len(obs)):
+							obs[j] = int(obs[j])
+
+						if tag in output:
 							for j in range(len(obs)):
-								obs[j] = int(obs[j])
+								output[tag].data[j].value += obs[j]
+						else:
+							j = 0;
+							data = []
+							for source in config['SOURCES']:
+								for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+									data.append(faac.Feature(feat))
+									data[j].value += obs[j]
+									j += 1
 
-							if tag in output:
-								for j in range(len(obs)):
-									output[tag].data[j].value += obs[j]
-							else:
-								j = 0;
-								data = []
-								for source in config['SOURCES']:
-									for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
-										data.append(faac.Feature(feat))
-										data[j].value += obs[j]
-										j += 1
-
-								output[tag] = faac.Observation(data)
-				
+							output[tag] = faac.Observation(data)
+			
 				open(fname, 'w').close()
 
 
