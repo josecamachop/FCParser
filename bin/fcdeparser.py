@@ -140,10 +140,15 @@ def getDeparsInput(configfile,config):
 	if not (config['Time']['window'] == 1  or config['Time']['window'] == None):
 		temp = []
 		for timestamp in timestamps:
+			print timestamp
 			for i in range(config['Time']['window'] ):
 				t = datetime.strptime(timestamp,"%Y-%m-%d %H:%M:%S")
-				t = t.replace(minute = t.minute + i)
+				new_minute = (t.minute + i) % 60
+				new_hour = (t.hour + i/60) % 24
+				new_day = (t.day + i/(24*60)) 
+				t = t.replace(day = new_day, hour = new_hour, minute = new_minute, second = 0)	
 				temp.append(str(t))
+
 
 		timestamps = temp
 
@@ -298,7 +303,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 					# input timestamps
 					try:
 
-						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])													
+						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])					
 						if str(t).strip() in formated_timestamps:	
 							# Check if features appear in the log to write in the file.
 							feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features))
@@ -352,11 +357,11 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
 					try:
-						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])														
-						if str(t).strip() in formated_timestamps:
+						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])												
+						if str(t).strip() in formated_timestamps:	
 							# Check if features appear in the log to write in the file.
 							if feat_appear[file][index] >= features_needed:
-								output_file.write(logExtract + "\n\n")
+								output_file.write(logExtract + config['SEPARATOR'][source])
 								count_unstructured += 1	
 							index += 1
 					except:
@@ -403,44 +408,42 @@ def search_feature_unstr(FEATURES,VARIABLES,logExtract,features):
 	'''
 
 	feature_count = 0
-	list_timetamps = []
-	varBol = False		
-
+	list_timetamps = []	
+	
 	for feature in FEATURES:	
 		if feature in features:	
 
 			fVariable = FEATURES[feature]['variable']
 		
 			fValue = FEATURES[feature]['value']		
-			fType = FEATURES[feature]['matchtype']		
+			fType = FEATURES[feature]['matchtype']	
+			
+			if all:
+				vValues = VARIABLES[fVariable]['r_Comp'].findall(logExtract)
+			else:
+				vV = VARIABLES[fVariable]['r_Comp'].search(logExtract)
+				vValues = [vV.group(0)]
 
 
-			match = re.search(VARIABLES[fVariable]['where'],logExtract)
-
-			if match:
-				match = match.group(0)
-				matchType = VARIABLES[fVariable]['matchtype']
-
+			for match in vValues:
 				if fType == "regexp":
-
 					if re.search(fValue, match):
 						feature_count += 1
-						varBol = True
 
-				if fType == "single":	
+				if fType == "single":
 					if str(fValue) == match:
 						feature_count += 1
-						varBol = True
 
 				if fType == "multiple":
 					if int(match) in fValue:
 						feature_count += 1
-						varBol = True
 
 				if fType == "range":
 					if int(match) >= fValue[0] and int(match) <= fValue[1]:
 						feature_count += 1
-						varBol = True
+
+				if fType == "total":
+					feature_count += 1
 
 	return feature_count
 

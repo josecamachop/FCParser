@@ -303,7 +303,7 @@ class MultipleVariable(object):
 #-----------------------------------------------------------------------
 
 class Record(object):
-	"""Information record containing data variables.
+	"""Information record containing data variables. It is a dictonary of variables.
 	
 	The variables are defined in the user conf file, section VARIABLES.
 	Each variable will be later used to define one or more features.
@@ -442,7 +442,157 @@ class Record(object):
 
 
 #-----------------------------------------------------------------------
-# Observation Classes
+# Feature Class
+#-----------------------------------------------------------------------
+
+class Feature(object):
+	"""Quantitative feature contained in an observation.
+	
+	This is an abstract class, and should not be directly instantiated. 
+	Instead, use one of the subclasses, defined for each matchtype of feature:
+	- SingleFeature    (matchtype 'single')
+	- MultipleFeature  (matchtype 'multiple')
+	- RangeFeature     (matchtype 'range')
+	- RegExpFeature    (matchtype 'regexp')
+	- DefaultFeature   (matchtype 'default')
+	- ListFeature      (matchtype 'list')
+	
+	Class Attributes:
+		value -- The value of the variable.
+	"""
+	def __init__(self, fconfig):
+		"""Class constructor.
+
+		raw_value -- Single value, as it is read from the input.
+		"""
+		self.fName  = fconfig['name']
+		self.fVariable = fconfig['variable']
+		self.fValue = fconfig['value']
+		self.value = 0
+
+	def add(self, var):
+		"""Adds a variable to the feature if it is suitable.
+		"""
+		self.value += var.equals(self.fValue)
+
+	def aggregate(self, feature):
+		"""Adds a feature to the feature.
+		"""
+		if not isinstance(feature, Feature):
+			raise AggregateError (self, "Ubale to add %s and %s" %(self.__class__.__name__, feature.__class__.__name__))
+
+		if feature.value is not None:
+			self.value += feature.value
+		
+
+	def __repr__(self):
+		"""Class default string representation.
+		"""
+		return self.value.__str__()
+
+
+class SingleFeature(Feature):
+	"""Counter of a single value (e.g port 80).
+	"""
+
+	def __init__(self, fconfig):
+
+		if isinstance(fconfig['name'], list):
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fconfig['name']))
+
+		super(SingleFeature, self).__init__(fconfig)
+
+
+
+class MultipleFeature(Feature):
+	"""Counter of several values (e.g ports 80 & 8080).
+	"""
+
+	def __init__(self, fconfig):
+
+		if not isinstance(fconfig['name'], list):
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (list of items expected)" %(fconfig['name']))
+
+		super(MultipleFeature, self).__init__(fconfig)
+
+	def add(self, var):
+
+		for v in self.fValue:
+			super(MultipleFeature, self).add(var)
+
+
+class RangeFeature(Feature):
+	"""Counter of several values (e.g ports 80 & 8080).
+	"""
+
+	def __init__(self, fconfig):
+
+		if isinstance(fconfig['name'], list) and len(fconfig['name']) == 2:
+
+			super(RangeFeature, self).__init__(fconfig)
+
+			self.start = self.fValue[0]
+			self.end =  self.fValue[1]
+			if str(self.end).lower() == 'inf':
+				self.end  = None
+		else:
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (two-item list expected)" %(fconfig['name']))
+
+
+	def add(self, var):
+		self.value += var.belongs(start, end)
+
+
+
+class RegExpFeature(Feature):
+	"""Counter of reg. expresions, for unstructured data
+	"""
+
+	def __init__(self, fconfig):
+		if isinstance(fconfig['name'], list):
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fconfig['name']))
+
+		super(RegExpFeature, self).__init__(fconfig)
+
+		self.r_Comp = fconfig['r_Comp']
+
+
+	def add(self, var):
+
+		try:
+			matchObj = self.r_Comp.match(str(var).replace('[','').replace(']',''))
+		except re.error as e:
+			raise ConfigError(self, "FEATURES: illegal regexp in '%s' (%s)" %(self.fName, e.message))
+		
+		if matchObj:
+			self.value += 1
+
+
+		
+class DefaultFeature(Feature):
+	"""Counter of number of variable instances not identified in other features
+	"""
+				
+	def add(self, record, data):
+
+		counter = 0
+		for i in range(len(data)):
+			if data[i].fVariable == self.fVariable:
+				counter += data[i].value
+
+
+		self.value += len(record.variables[self.fVariable]) - counter
+
+class TotalFeature(Feature):
+	"""Counter of number of variable instances 
+	"""
+				
+	def add(self, var):
+
+		self.value += 1
+
+#-----------------------------------------------------------------------
+# Observation Class
 #-----------------------------------------------------------------------
 
 class Observation(object):
@@ -460,29 +610,48 @@ class Observation(object):
 	[0, 1, 0, 0, 2, 0, 0, 0, 3, 1, 0, ...]
 
 	Class Attributes:
-		label -- Array of features names.
 		data  -- Array of data values.
 
 	"""
-	def __init__(self, record, FEATURES, debug=None):
+
+
+	def __init__(self, data, debug=None):
+
+		self.data = data
+
+    	
+	@classmethod
+    	def fromRecord(cls, record, FEATURES):
 		"""Creates an observation from a record of variables.
 		record    -- Record object.
-		FEATURES -- List of features configurations.
-
-		"""
-		self.label = [None] * len(FEATURES)    # List of features names
-		self.data  = [None] * len(FEATURES)    # Data array (counters)
+		FEATURES -- List of features configurations."""
+		data  = [None] * len(FEATURES)    # Data array (counters)
 		defaults = []		               # tracks default features
-		
+
+			
 
 		for i in range(len(FEATURES)):
 			try:
-				fName  = FEATURES[i]['name']
-				fVariable = FEATURES[i]['variable']
 				fType  = FEATURES[i]['matchtype']
-				fValue = FEATURES[i]['value']
+
+				# Validate matchtype
+				if fType == 'single':
+					feature = SingleFeature(FEATURES[i])
+				elif fType == 'multiple':
+					feature = MultipleFeature(FEATURES[i])
+				elif fType == 'range':
+					feature = RangeFeature(FEATURES[i])
+				elif fType == 'regexp':
+					feature = RegExpFeature(FEATURES[i])
+				elif fType == 'default':
+					feature = DefaultFeature(FEATURES[i])
+				elif fType == 'total':
+					feature = TotalFeature(FEATURES[i])
+				else:
+					raise ConfigError(cls, "FEATURES: illegal matchtype in \'%s\' (%s)" %(FEATURES[i]['name'], fType))
+
 			except KeyError as e:
-				raise ConfigError(self, "FEATURES: missing config key (%s)" %(e.message))
+				raise ConfigError(cls, "FEATURES: missing config key (%s)" %(e.message))
 
 
 			# Calculate feature 
@@ -491,95 +660,24 @@ class Observation(object):
 			# involved. Then, check the value of the variable asociated to the feature. If there is a match, the counters
 			# of the observations are increased. --> FaaC (Feature as a counter)
 
-			variable = record.variables[fVariable]
-			counter = 0			
-			self.label[i] = fName
-			self.data[i]  = int(counter)
+			variable = record.variables[FEATURES[i]['variable']]		
+			data[i]  = feature
 			for var in variable:
-				if fType == 'single':
-					if isinstance(fValue, list):
-						raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fName))
-					counter = var.equals(fValue)
-
-				elif fType == 'multiple':
-					if isinstance(fValue, list):
-						for v in fValue:
-							counter = var.equals(v)
-					else:
-						raise ConfigError(self, "FEATURES: illegal value in '%s' (list of items expected)" %(fName))
-
-				elif fType == 'range':
-					if isinstance(fValue, list) and len(fValue) == 2:
-						start = fValue[0]
-						end   = fValue[1]
-						if str(end).lower() == 'inf':
-							end = None
-						counter = var.belongs(start, end)
-					else:
-						raise ConfigError(self, "FEATURES: illegal value in '%s' (two-item list expected)" %(fName))
-				
-				elif fType == 'regexp':
-					if isinstance(fValue, list):
-						raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fName))
-					try:
-						matchObj = FEATURES[i]['r_Comp'].match(str(variable).replace('[','').replace(']',''))
-					except re.error as e:
-						raise ConfigError(self, "FEATURES: illegal regexp in '%s' (%s)" %(fName, e.message))
-					if matchObj:
-						counter = 1
-						
-				elif fType == 'default':
+				if fType == 'default':
 					if i not in defaults:
 						defaults.append(i)
 				
 				else:
-					raise ConfigError(self, "FEATURES: illegal matchtype in '%s' (%s)" %(fName, fType))
-
-				if counter > 0:
-					break
+					data[i].add(var)
 				
-			# Update data lists
-			self.data[i]  = int(counter)
 
-			# Show debug info
-			if debug:
-				if vType == 'regexp':
-					print "%s%s %d" %(fName.ljust(25), (str(variable) + " == " + str("r'" + vValue + "'")).ljust(30), counter)
-				else:
-					print "%s%s %d" %(fName.ljust(25), (str(variable) + " == " + str(vValue)).ljust(30), counter)
 
 		# Manage default variables
 
 		for d in defaults:
-			counter = 0;
-			for i in range(len(FEATURES)):
-				if FEATURES[i]['variable'] == FEATURES[d]['variable']:
-					counter += self.data[i]
+			data[d].add(record,data)	
 
-
-#			if len(record.variables[FEATURES[d]['variable']]) > 0:
-#				print '*************Feat Def: ' + FEATURES[d]['name']
-#				print '*************Var: ' + FEATURES[d]['variable']
-#				counter = 0;
-#				for i in range(len(FEATURES)):
-#					if FEATURES[i]['variable'] == FEATURES[d]['variable']:
-#						counter += self.data[i]
-#						print 'Feat: ' + FEATURES[i]['name']
-#						print 'Val: ' + str(self.data[i])
-#						print 'Counter: ' + str(counter)
-#
-#				print 'Total Var: ' + str(len(record.variables[FEATURES[d]['variable']]))
-#				print 'Total no def: ' + str(counter)
-#				print 'Dif: ' +  str(len(record.variables[FEATURES[d]['variable']]) - counter)
-#				print '*************Feat Def Ends'
-
-
-			self.data[d] = len(record.variables[FEATURES[d]['variable']]) - counter
-				
-
-						
-
-
+		return cls(data)		
 
 			
 	def aggregate(self, obs):
@@ -587,111 +685,31 @@ class Observation(object):
 			obs -- Observation object to merge with.
 		"""
 		
+		try:
+			for i in range(len(self.data)):
+				self.data[i].aggregate(obs.data[i])
+		except IndexError as e:
+			raise AggregateError (self, "Unable to aggregate data arrays (%s)" %(e.message))
 
-		if self.label == obs.label:
-			try:
-				for i in range(len(self.data)):
-					self.data[i] += obs.data[i]
-			except IndexError as e:
-				raise AggregateError (self, "Unable to aggregate data arrays (%s)" %(e.message))
 
-		else:
-			self.label += obs.label
-			self.data += obs.data
+	def fuse(self, data):
+		""" Aggregates this observation with a new one.
+			obs -- Observation object to merge with.
 
-	def formatCSV(self):
-		"""Converts the observation to a string in CSV format.
 		"""
-		return ','.join([str(x) for x in self.data]) + '\n'
+		self.data += data
+
+
+	def zeroPadding(self, N):
+
+		self.data = [0] * N + self.data
+
 
 	def __repr__(self):
 		return "<%s - %d vars>" %(self.__class__.__name__, len(self.data))
 		
 	def __str__(self):
 		return self.data.__str__()
-
-
-	def write(self, outstream):
-		"""Writes the observations to a file.
-		A header line preceded by '#' contains the variable names.
-		Following, the observations are written in CSV format.
-		"""
-
-		headerLine = ', '.join(self.label) + '\n'
-		outstream.write(headerLine)
-
-		outstream.write(self.formatCSV())
-
-	
-	def writeLabels(self, outstream):
-		"""Writes only the list of feature names 
-		   in a line of the file
-		"""
-
-		headerLine = ', '.join(self.label) + '\n'
-		outstream.write(headerLine)
-	
-
-
-	def writeValues(self, outstream):
-		"""Writes only the values of the features 
-		   in a line of the file
-		"""
-
-		outstream.write(self.formatCSV())
-
-
-	
-class AggregatedObservation(Observation):
-	"""Observation array with an aggregation ID.
-	
-	This is an Observation subclass used to track aggregations.
-	
-	An aggregated observation looks like this:
-	timestamp --> [0, 1, 0, 0, 2, 0, 0, 0, 3, 1, 0, ...]
-
-	Class Attributes:
-		label -- Array of variable names.
-		data  -- Array of data values.
-		nObs  -- Number of observations aggregated.
-	"""
-	def __init__(self, record, FEATURES):
-		"""Creates an aggregated observation from a record of variables.
-		
-		record    -- Record object.
-		FEATURES -- List of variable configurations.
-		"""
-
-		super(AggregatedObservation, self).__init__(record, FEATURES)  # Python3: super().__init__()
-		self.nObs = 1
-		
-	def aggregate(self, aggr_obs):
-		"""Aggregates this observation with a new one.
-		
-		aggr_obs -- Aggregated-observation object to merge with.
-		"""
-		super(AggregatedObservation, self).aggregate(aggr_obs)      # Python3: super().aggregate()
-		self.nObs += 1
-		
-
-	def __repr__(self):
-		return "<%s - %d vars>" %(self.__class__.__name__, len(self.data))
-
-
-	def zeroPadding(self, features):
-
-		all_data = [0] * len(features)
-		all_labels = features
-		for feature in features:
-			if feature in self.label:
-				all_data[all_labels.index(feature)] = self.data[self.label.index(feature)]
-			else:
-				all_data[all_labels.index(feature)] = 0
-
-		self.data = all_data
-		self.label = all_labels
-
-
 
 
 #-----------------------------------------------------------------------
@@ -709,8 +727,6 @@ class AggregateError(Exception):
 		self.obj = obj
 		self.message = message
 		self.msg = "ERROR - Aggregate - %s" %(message)
-
-
 
 
 #-----------------------------------------------------------------------
@@ -899,9 +915,10 @@ def loadConfig(output, dataSources, parserConfig):
 						if var['name'] == feat['variable']:
 							try:
 								fw2 = var['weight']
-								fw = fw*fw2
 							except:
-								fw = 1
+								fw2 = 1
+
+							fw = fw*fw2
 				except:
 					fw = 1
 
