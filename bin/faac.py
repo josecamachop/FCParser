@@ -353,18 +353,20 @@ class Record(object):
 
 				except:
 					vValue = None
+
+				variable = list();
 				# Validate matchtype
 				if vType == 'string':
-					variable = StringVariable(vValue)
+					variable.append(StringVariable(vValue))
 				elif vType == 'number':
-					variable = NumberVariable(vValue)
+					variable.append(NumberVariable(vValue))
 				elif vType == 'ip':
-					variable = IpVariable(vValue)
+					variable.append(IpVariable(vValue))
 				elif vType == 'time':
-					variable = TimeVariable(vValue)
+					variable.append(TimeVariable(vValue))
 				elif vType == 'duration':
 					if isinstance(vvalue, list) and len(vValue) == 2:
-						variable = TimedeltaVariable(vValue[0], vValue[1])
+						variable.append(TimedeltaVariable(vValue[0], vValue[1]))
 					else:
 						raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
 				else:
@@ -497,7 +499,7 @@ class SingleFeature(Feature):
 
 	def __init__(self, fconfig):
 
-		if isinstance(fconfig['name'], list):
+		if isinstance(fconfig['value'], list):
 			raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fconfig['name']))
 
 		super(SingleFeature, self).__init__(fconfig)
@@ -510,8 +512,8 @@ class MultipleFeature(Feature):
 
 	def __init__(self, fconfig):
 
-		if not isinstance(fconfig['name'], list):
-			raise ConfigError(self, "FEATURES: illegal value in '%s' (list of items expected)" %(fconfig['name']))
+		if not isinstance(fconfig['value'], list):
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (list of items expected)" %(fconfig['value']))
 
 		super(MultipleFeature, self).__init__(fconfig)
 
@@ -527,7 +529,7 @@ class RangeFeature(Feature):
 
 	def __init__(self, fconfig):
 
-		if isinstance(fconfig['name'], list) and len(fconfig['name']) == 2:
+		if isinstance(fconfig['value'], list) and len(fconfig['value']) == 2:
 
 			super(RangeFeature, self).__init__(fconfig)
 
@@ -540,7 +542,7 @@ class RangeFeature(Feature):
 
 
 	def add(self, var):
-		self.value += var.belongs(start, end)
+		self.value += var.belongs(self.start, self.end)
 
 
 
@@ -549,7 +551,7 @@ class RegExpFeature(Feature):
 	"""
 
 	def __init__(self, fconfig):
-		if isinstance(fconfig['name'], list):
+		if isinstance(fconfig['value'], list):
 			raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fconfig['name']))
 
 		super(RegExpFeature, self).__init__(fconfig)
@@ -579,7 +581,6 @@ class DefaultFeature(Feature):
 		for i in range(len(data)):
 			if data[i].fVariable == self.fVariable:
 				counter += data[i].value
-
 
 		self.value += len(record.variables[self.fVariable]) - counter
 
@@ -662,6 +663,7 @@ class Observation(object):
 
 			variable = record.variables[FEATURES[i]['variable']]		
 			data[i]  = feature
+			
 			for var in variable:
 				if fType == 'default':
 					if i not in defaults:

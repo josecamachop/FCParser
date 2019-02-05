@@ -184,7 +184,8 @@ def process_multifile(config, source, lengths):
 			while cont: # cleans memory from processes
 				jobs = list()
 				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
-					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+					#jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+					process_file(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])
 				else:
 					if fragStart+fragSize < lengths[i]:
 						remain = lengths[i] - fragStart+fragSize
