@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
+
 from setuptools import setup
 
-setup(name='FCParser',
+setup(name='fcparser',
       version='1.0',
       description='Feature as a Counter Parser',
       url='https://github.com/josecamachop/FCParser',
