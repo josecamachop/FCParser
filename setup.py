@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='fcparser',
-      version='1.0',
+      version='1.0.0',
       description='Feature as a Counter Parser',
       url='https://github.com/josecamachop/FCParser',
       author='Alejandro Perez Villegas, Jose Manuel Garcia Gimenez, José Camacho Páez',
