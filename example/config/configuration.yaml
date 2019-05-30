@@ -36,29 +36,33 @@ DataSources:
 
   netflow:
     config: ./example/config/netflow.yaml
-    data: ./example/Examples_data/nf*.csv
+    learning: ./example/Examples_data/nf*.csv
+    parsing: ./example/Examples_data/nf*.csv
+    deparsing: ./example/Examples_data/nf*.csv
 
   ids:
     config: ./example/config/ids.yaml
-    data: ./example/Examples_data/ids*
+    learning: ./example/Examples_data/ids*
+    parsing: ./example/Examples_data/ids*
+    deparsing: ./example/Examples_data/ids*
 
 Online: False
 
-Chunk_size: 1024
+Processes: 8
+
+Max_chunck: 8
 
 Learning_perc: 0.001
-
-Processes: 4
  
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
 
-Output:
+Parsing_Output:
   dir: ./example/OUTPUT/
   stats: stats.log
  
 Deparsing_output:
   dir: ./example/Deparsing_output/
-  threshold: 50
+  threshold: 10
 
 SPLIT: 
   Time:

@@ -256,15 +256,16 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 	OUTDIR = config['OUTDIR']
 	features = deparsInput['features']
 
-	FEATURES = {}
-	VARIABLES = {}
+	selection = []
+	for i in range(len(config['FEATURES'][source])):
+		if config['FEATURES'][source][i]['name'] in features:
+			selection.append(i)
 
-	for feature in config['SOURCES'][source]['CONFIG']['FEATURES']:
-		try:
-			FEATURES[feature['name']] = feature
-		except:
-			print "Cofiguration file error: missing features"
-			exit(1)
+	FEATURES_sel = []
+	for i in selection:
+		FEATURES_sel.append(config['FEATURES'][source][i])
+
+	VARIABLES = {}
 
 	for variable in config['SOURCES'][source]['CONFIG']['VARIABLES']:
 		try:
@@ -272,7 +273,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 		except:
 			print "Cofiguration file error: missing vriables"
 			exit(1)
-
+	
 	count_unstructured = 0
 	count_tot = 0
 	print OUTDIR + "output_" + source
@@ -293,12 +294,13 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 
 		# First read to generate list of number of appearances
 		if line:
-			log = "" + line 	
+			log = "" 	
 			while line:
 				log += line 
 	
 				if len(log.split(config['SEPARATOR'][source])) > 1:
 					logExtract = log.split(config['SEPARATOR'][source])[0]
+					
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
 					try:
@@ -306,7 +308,9 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])					
 						if str(t).strip() in formated_timestamps:	
 							# Check if features appear in the log to write in the file.
-							feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features))
+							record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+							obs = faac.Observation.fromRecord(record, FEATURES_sel)
+							feat_appear[file].append(sum( [obs.data[i].value for i in range(len(obs.data))]))
 					except:
 						pass
 						
@@ -320,7 +324,9 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 			try:								
 				t = getUnstructuredTime(log, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])
 				if str(t) in timestamps:
-					feat_appear[file].append(search_feature_unstr(FEATURES,VARIABLES,logExtract,features))
+					record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+					obs = faac.Observation.fromRecord(record, FEATURES_sel)
+					feat_appear[file].append(sum( [obs.data[i].value for i in range(len(obs.data))]))
 			except:
 				pass
 
@@ -332,6 +338,8 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 	while count < int(threshold) and (not features_needed <= 1):
 		for file in feat_appear:
 			count += feat_appear[file].count(int(features_needed))
+
+		print("There are " + str(count) + " unstructured logs with more than " + str(features_needed) + " matching features...")
 		features_needed -= 1
 
 	# Re-read the file
@@ -401,51 +409,6 @@ def stats( count_structured, count_tots, count_unstructured, count_totu, OUTDIR,
 	except IOError as e:
 		print "Stats file error: " + e.msg()
 
-def search_feature_unstr(FEATURES,VARIABLES,logExtract,features):
-	'''
-	Function that take as an input one data record and obtain the number of features that appear in the log from the 
-	input features for unstructured data sources.	
-	'''
-
-	feature_count = 0
-	list_timetamps = []	
-	
-	for feature in FEATURES:	
-		if feature in features:	
-
-			fVariable = FEATURES[feature]['variable']
-		
-			fValue = FEATURES[feature]['value']		
-			fType = FEATURES[feature]['matchtype']	
-			
-			if all:
-				vValues = VARIABLES[fVariable]['r_Comp'].findall(logExtract)
-			else:
-				vV = VARIABLES[fVariable]['r_Comp'].search(logExtract)
-				vValues = [vV.group(0)]
-
-
-			for match in vValues:
-				if fType == "regexp":
-					if re.search(fValue, match):
-						feature_count += 1
-
-				if fType == "single":
-					if str(fValue) == match:
-						feature_count += 1
-
-				if fType == "multiple":
-					if int(match) in fValue:
-						feature_count += 1
-
-				if fType == "range":
-					if int(match) >= fValue[0] and int(match) <= fValue[1]:
-						feature_count += 1
-
-				if fType == "total":
-					feature_count += 1
-
-	return feature_count
 
 def search_features_str(line,features,FEATURES,VARIABLES):
 	'''
