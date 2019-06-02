@@ -805,13 +805,13 @@ def loadConfig(output, dataSources, parserConfig):
 	except:
 		config['Csize'] = 1024 * 1024 * config['Cores'];
 
-	if 'Learning_perc' in parserConfig:
-		config['Lperc'] = float(parserConfig['Learning_perc'])
+	if 'Lperc' in parserConfig:
+		config['Lperc'] = float(parserConfig['Lperc'])
 	else:
 		config['Lperc'] = 0.01;
 
-	if 'EndL_perc' in parserConfig:
-		config['EndLperc'] = float(parserConfig['EndL_perc'])
+	if 'EndLperc' in parserConfig:
+		config['EndLperc'] = float(parserConfig['EndLperc'])
 	else:
 		config['EndLperc'] = 0.0001;
 

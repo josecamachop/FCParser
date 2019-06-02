@@ -368,7 +368,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 						t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])												
 						if str(t).strip() in formated_timestamps:	
 							# Check if features appear in the log to write in the file.
-							if feat_appear[file][index] >= features_needed:
+							if feat_appear[file][index] > features_needed:
 								output_file.write(logExtract + config['SEPARATOR'][source])
 								count_unstructured += 1	
 							index += 1
