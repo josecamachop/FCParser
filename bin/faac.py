@@ -344,9 +344,15 @@ class Record(object):
 				try:
 
 					if isinstance(vWhere, list) and len(vWhere) == 2:
-						vValue = [raw_values[vWhere[0]], raw_values[vWhere[1]]]
+						if vWhere[0]>len(raw_values) or vWhere[1]>len(raw_values):
+ 							vValue = [None,	 None]
+						else:
+							vValue = [raw_values[vWhere[0]], raw_values[vWhere[1]]]
 					else:
-						vValue = raw_values[vWhere]
+						if vWhere>len(raw_values):
+ 							vValue = None
+						else:
+							vValue = raw_values[vWhere]
 
 				except (TypeError, IndexError) as e:
 					raise ConfigError(self, "VARIABLES: illegal arg in \'%s\' (%s)" %(vName, e.message))
@@ -724,11 +730,17 @@ class ConfigError(Exception):
 		self.message = message
 		self.msg = "ERROR - Config File - %s" %(message)
 
+	def __str__(self):
+	        return repr(self.msg)
+
 class AggregateError(Exception):
 	def __init__(self, obj, message=''):
 		self.obj = obj
 		self.message = message
 		self.msg = "ERROR - Aggregate - %s" %(message)
+
+	def __str__(self):
+	        return repr(self.msg)
 
 
 #-----------------------------------------------------------------------
