@@ -613,9 +613,12 @@ def write_output(output, config):
 							tag = tuple(tag)
 
 						obs = obs_aux.split(',')
-						#if not obs:	
-						for j in range(len(obs)):
-							obs[j] = int(obs[j])
+
+						try:
+							for j in range(len(obs)):
+								obs[j] = int(obs[j])
+						except:
+							obs = []
 
 						if tag in output:
 							for j in range(len(obs)):
