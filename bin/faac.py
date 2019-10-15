@@ -506,7 +506,7 @@ class SingleFeature(Feature):
 	def __init__(self, fconfig):
 
 		if isinstance(fconfig['value'], list):
-			raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fconfig['name']))
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (single item expected)" %(fconfig['value']))
 
 		super(SingleFeature, self).__init__(fconfig)
 
@@ -544,7 +544,7 @@ class RangeFeature(Feature):
 			if str(self.end).lower() == 'inf':
 				self.end  = None
 		else:
-			raise ConfigError(self, "FEATURES: illegal value in '%s' (two-item list expected)" %(fconfig['name']))
+			raise ConfigError(self, "FEATURES: illegal value in '%s' (two-item list expected)" %(fconfig['value']))
 
 
 	def add(self, var):
@@ -632,10 +632,9 @@ class Observation(object):
 		"""Creates an observation from a record of variables.
 		record    -- Record object.
 		FEATURES -- List of features configurations."""
+
 		data  = [None] * len(FEATURES)    # Data array (counters)
 		defaults = []		               # tracks default features
-
-			
 
 		for i in range(len(FEATURES)):
 			try:
@@ -657,6 +656,7 @@ class Observation(object):
 				else:
 					raise ConfigError(cls, "FEATURES: illegal matchtype in \'%s\' (%s)" %(FEATURES[i]['name'], fType))
 
+
 			except KeyError as e:
 				raise ConfigError(cls, "FEATURES: missing config key (%s)" %(e.message))
 
@@ -668,20 +668,19 @@ class Observation(object):
 			# of the observations are increased. --> FaaC (Feature as a counter)
 
 			variable = record.variables[FEATURES[i]['variable']]		
+
 			data[i]  = feature
 			
 			for var in variable:
-				if fType == 'default':
-					if i not in defaults:
-						defaults.append(i)
-				
-				else:
-					data[i].add(var)
-				
-
-
+				if var is not None:
+					if fType == 'default':
+						if i not in defaults:
+							defaults.append(i)
+					
+					else:
+						data[i].add(var)
+							
 		# Manage default variables
-
 		for d in defaults:
 			data[d].add(record,data)	
 
@@ -820,13 +819,13 @@ def loadConfig(output, dataSources, parserConfig):
 	except:
 		config['Csize'] = 1024 * 1024 * config['Cores'];
 
-	if 'Learning_perc' in parserConfig:
-		config['Lperc'] = float(parserConfig['Learning_perc'])
+	if 'Lperc' in parserConfig:
+		config['Lperc'] = float(parserConfig['Lperc'])
 	else:
 		config['Lperc'] = 0.01;
 
-	if 'EndL_perc' in parserConfig:
-		config['EndLperc'] = float(parserConfig['EndL_perc'])
+	if 'EndLperc' in parserConfig:
+		config['EndLperc'] = float(parserConfig['EndLperc'])
 	else:
 		config['EndLperc'] = 0.0001;
 
