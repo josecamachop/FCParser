@@ -1,0 +1,66 @@
+#-----------------------------------------------------------------------
+#
+# Parser - Configuration File
+#
+#-----------------------------------------------------------------------
+# DataSources:
+#   Source1:   DataSource name
+#     config:    Configuration file for this datasource.
+#     data:      Input files.
+#   Source2:
+#     ...
+#   SourceN:
+#     ...
+#
+# Processes:    Number of processes used by the program
+#
+# Online: 	Boolean variable to determine if online or offline mode
+#
+# Chunk_size:   Size of the chunk of files that are being processed at 
+# 	        the same time (Kilobytes)
+# Output:
+#   dir:       Output directory to write the output files.
+#   stats:     Log file to write the stats (lines, records, matches).
+#
+# Deparsing_output: 
+#  dir:          Output directory for deparsing process
+# treshold:     upper limit of log entries by datasource. 
+#
+# SPLIT:        split params for temporal samplig
+#   Time:
+#     window:   time windows for sampling in seconds
+#     start:    start and end time for sampling interval
+#     end:  
+#   
+#    Output:    Output directory for split data      
+#
+#-----------------------------------------------------------------------
+
+
+
+
+
+
+DataSources:
+
+  datasource_name:
+    config: 
+    data: 
+
+Keys: 
+ 
+Output:
+  dir: 
+  stats: 
+
+Deparsing_output:
+  dir:
+  treshold: 
+
+SPLIT: 
+  Time:
+    window: 
+    start:
+    end:   
+    
+  Output: 

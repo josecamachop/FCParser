@@ -71,7 +71,7 @@ def main(call='external',configfile=''):
 	# Output results
 	write_output(output_data, config)
 
-	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+	print("Elapsed: %s \n" %(prettyTime(time.time() - startTime)))	
 
 def online_parsing(config):
 	'''
@@ -142,11 +142,13 @@ def offline_parsing(config,startTime,stats):
 
 		results[source] = []
 		currentTime = time.time()
-		print "\n-----------------------------------------------------------------------\n"
-		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
+		print("\n-----------------------------------------------------------------------\n")
+		print("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))	
 			
 		results[source] = process_multifile(config, source, stats['sizes'][source])
 
+	# import pprint
+	# pprint.pprint(str(results['flow'][1]['201907100000']), depth=4)
 
 	for source in results:
 		final_res[source] = results[source][0] # combine the outputs of the several processes
@@ -157,6 +159,7 @@ def offline_parsing(config,startTime,stats):
 				else:
 					final_res[source][key] = result[key]
 
+	#pprint.pprint(str(final_res['flow']['201907100000']), depth=4)
 	return final_res
 
 def process_multifile(config, source, lengths):
@@ -176,7 +179,7 @@ def process_multifile(config, source, lengths):
 			tag = getTag(input_path)
 
 			#Print some progress stats
-			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag)	
+			print("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag))	
 			pool = mp.Pool(config['Cores'])
 			cont = True
 			init = 0
@@ -184,8 +187,8 @@ def process_multifile(config, source, lengths):
 			while cont: # cleans memory from processes
 				jobs = list()
 				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
-					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-
+					#print("New job")
+					jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source]]) )
 				else:
 					if fragStart+fragSize < lengths[i]:
 						remain = lengths[i] - fragStart+fragSize
@@ -206,14 +209,14 @@ def fuseObs_offline(resultado):
 	Sources Fusion in a single stream. 
 	'''
 
-	v = resultado.keys()
+	v = list(resultado.keys())
 	fused_res = resultado[v[0]]
 
 	for source in v[1:]:
 
-		arbitrary_len2 = len(next(iter(resultado[source].values())).data)
+		arbitrary_len2 = len(next(iter(list(resultado[source].values()))).data)
 		try:
-			arbitrary_len = len(next(iter(fused_res.values())).data)
+			arbitrary_len = len(next(iter(list(fused_res.values()))).data)
 		except:
 			arbitrary_len = 0
 
@@ -254,7 +257,7 @@ def frag(fname, init, separator, size, max_chunk):
 	Function to fragment files in chunks to be parallel processed for structured files by lines
 	'''
 
-	#print "File pos: %d, size: %d, max_chunk: %d" %(init,size, max_chunk)
+	#print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
 
 	try:
 		if fname.endswith('.gz'):					
@@ -266,16 +269,18 @@ def frag(fname, init, separator, size, max_chunk):
 		f.seek(init)
 		end = f.tell()
 		init = end
-		cont = True
+		#cont = True
 		while end-init < max_chunk:
 			start = end
-			asdf = f.read(size)
-			i = asdf.rfind(separator)
+			tmp = f.read(size)
+			i = tmp.rfind(separator)
 			if i == -1:
+				yield start, len(tmp)
 				break
 
 			f.seek(start+i+1)
 			end = f.tell()
+			#print("Frag: "+str([start, i, end]))
 
 			yield start, end-start
 
@@ -291,7 +296,6 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 	'''
 	obsDict = {}
 
-
 	try:	
 		if file.endswith('.gz'):					
 			f = gzip.open(file, 'r')
@@ -305,10 +309,12 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 		f.close()
 
 	log = ''
+	#print(lines)
 	for line in lines:
 		log += line 
 
 		if separator in log:
+			#print("Log: "+str(log))
 			tag, obs = process_log(log,config, source)
 			if tag == 0:
 				tag = file.split('/')[-1]
@@ -319,15 +325,13 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 		if tag == 0:
 			tag = file.split('/')[-1]
 		add_observation(obsDict,obs,tag)
-
 	return obsDict
 
 def add_observation(obsDict,obs,tag):
 	'''
 	Adds an observation (obs) to dictionary (obsDict) in an entry (tag) 
 	'''
-	
-	if tag in obsDict.keys():
+	if tag in list(obsDict.keys()):
 		obsDict[tag].aggregate(obs)
 	else:
 		obsDict[tag] = obs
@@ -340,21 +344,25 @@ def process_log(log,config, source):
 	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
 	obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
 
-	if config['Keys']:
-		tag = list()		
-		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
-		tag.append(tag2.strftime("%Y%m%d%H%M"))
-		for i in range(len(config['Keys'])):
-			if len(record.variables[config['Keys'][i]]) > 0:
-				tag.append(str(record.variables[config['Keys'][i]][0]))	# Careful!, only works (intentionally) for the first instance of a variable in a record
-		if len(tag) > 1:
-			tag = tuple(tag)
-		else:
-			tag = tag[0]		
-	else:
-		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
-		tag = tag2.strftime("%Y%m%d%H%M")
+	#print(str(record)+ "Obs: " + str(obs))
 
+	try:
+		if config['Keys']:
+			tag = list()
+			tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
+			tag.append(tag2.strftime("%Y%m%d%H%M"))
+			for i in range(len(config['Keys'])):
+				if len(record.variables[config['Keys'][i]]) > 0:
+					tag.append(str(record.variables[config['Keys'][i]][0]))	# Careful!, only works (intentionally) for the first instance of a variable in a record
+			if len(tag) > 1:
+				tag = tuple(tag)
+			else:
+				tag = tag[0]		
+		else:
+			tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
+			tag = tag2.strftime("%Y%m%d%H%M")
+	except Exception as err:
+		print((str(err) + " Record value: "+ str(record)))
 	return tag, obs
 	
 def normalize_timestamps(timestamp, config, source):
@@ -373,17 +381,15 @@ def normalize_timestamps(timestamp, config, source):
 			t = t.replace(minute = new_minute, second = 0)
 		elif window <= 1440:
 			window_m = window % 60  # for simplicity, if window > 60 we only use the hours
-			window_h = (window - window_m) / 60
+			window_h = int((window - window_m) / 60)
 			new_hour = t.hour - t.hour % window_h  
 			t = t.replace(hour = new_hour, minute = 0, second = 0)			 	
-
-
 		if t.year == 1900:
 			t = t.replace(year = datetime.datetime.now().year)
 		return t
-	except:
-		
-		return 0
+	except Exception as err:
+		print("Normalizing error: "+str(err))
+	return 0
 
 def create_stats(config):
 	'''
@@ -460,17 +466,17 @@ def configSummary(config):
 	Print a summary of loaded parameters
 	'''
 
-	print "-----------------------------------------------------------------------"
-	print "Data Sources:"
+	print("-----------------------------------------------------------------------")
+	print("Data Sources:")
 	for source in config['SOURCES']:
-		print " * %s %s variables   %s features" %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2), str(len(config['SOURCES'][source]['CONFIG']['FEATURES'])).ljust(3))
-	print " TOTAL %s features" %(str(sum(len(l) for l in config['FEATURES'].itervalues())))
-	print
-	print "Output:"
-	print "  Directory: %s" %(config['OUTDIR'])
-	print "  Stats file: %s" %(config['OUTSTATS'])
-	print "  Weights file: %s" %(config['OUTW'])
-	print "-----------------------------------------------------------------------\n"
+		print(" * %s %s variables   %s features" %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2), str(len(config['SOURCES'][source]['CONFIG']['FEATURES'])).ljust(3)))
+	print(" TOTAL %s features" %(str(sum(len(l) for l in config['FEATURES'].values()))))
+	print()
+	print("Output:")
+	print("  Directory: %s" %(config['OUTDIR']))
+	print("  Stats file: %s" %(config['OUTSTATS']))
+	print("  Weights file: %s" %(config['OUTW']))
+	print("-----------------------------------------------------------------------\n")
 	
 
 
@@ -573,7 +579,7 @@ def write_output(output, config):
 		for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
 			features.append(feat['name'])
 
- 	with open(config['OUTDIR'] + 'headers.dat', 'w') as f:
+	with open(config['OUTDIR'] + 'headers.dat', 'w') as f:
 		f.write(str(features))
 
 	if isinstance(output, dict):
@@ -606,7 +612,7 @@ def write_output(output, config):
 							tag = [tagt]
 
 							tagso =  laux[0].split(',')
-							map(str.strip,tagso)
+							list(map(str.strip,tagso))
 							for j in range(len(tagso)):
 								tag.append(tagso[j])
 
@@ -639,7 +645,7 @@ def write_output(output, config):
 
 
 		l = OrderedDict(sorted(output.items()))
-		for k in l.keys():
+		for k in list(l.keys()):
 			if isinstance(k, tuple):
 				tag = k[0]
 			else:
@@ -648,7 +654,7 @@ def write_output(output, config):
 			fname = config['OUTDIR'] + 'output-'+ tag + '.dat'
 			with open(fname, 'a') as f:
 				if isinstance(k, tuple):
-					tag2 = map(str.strip,k[1:])
+					tag2 = list(map(str.strip,k[1:]))
 					f.write(','.join(tag2)+': ')
 
 				f.write(','.join(map(str,output[k].data))+ '\n')
@@ -668,12 +674,12 @@ class obsDict_online(object):
 
 	def add(self,obs):
 		if self.obsList:
-			self.obsList = map(add, obs, self.obsList) # won't work in new code
+			self.obsList = list(map(add, obs, self.obsList)) # won't work in new code
 		else:
 			self.obsList = obs
 
 	def printt(self):
-		print self.obsList
+		print(self.obsList)
 
 
 if __name__ == "__main__":

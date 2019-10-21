@@ -321,6 +321,7 @@ class Record(object):
 		# For structured sources
 		if structured:
 			raw_values = line.split(',')
+			#print(raw_values)
 
 			for v in variables:
 				try:
@@ -371,7 +372,7 @@ class Record(object):
 				elif vType == 'time':
 					variable.append(TimeVariable(vValue))
 				elif vType == 'duration':
-					if isinstance(vvalue, list) and len(vValue) == 2:
+					if isinstance(vValue, list) and len(vValue) == 2:
 						variable.append(TimedeltaVariable(vValue[0], vValue[1]))
 					else:
 						raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
@@ -428,7 +429,7 @@ class Record(object):
 								variable.append(TimeVariable(vValue))
 
 							elif vMatchType == 'duration':
-								if isinstance(vvalue, list) and len(vValue) == 2:
+								if isinstance(vValue, list) and len(vValue) == 2:
 									variable.append(TimedeltaVariable(vValue[0], vValue[1]))
 								else:
 									raise ConfigError(self, "VARIABLES: illegal arg in %s (two-item list expected)" %(vName))
@@ -628,7 +629,7 @@ class Observation(object):
 
     	
 	@classmethod
-    	def fromRecord(cls, record, FEATURES):
+	def fromRecord(cls, record, FEATURES):
 		"""Creates an observation from a record of variables.
 		record    -- Record object.
 		FEATURES -- List of features configurations."""
@@ -750,7 +751,7 @@ def getConfiguration(config_file):
 	'''
 	Function to load config file
 	'''
-	stream = file(config_file, 'r')
+	stream = open(config_file, 'r')
 	conf = yaml.load(stream)
 	if 'FEATURES' not in conf:
 		conf['FEATURES'] = {}
@@ -772,7 +773,7 @@ def loadConfig(output, dataSources, parserConfig):
 			config['OUTDIR'] = config['OUTDIR'] + '/'
 	except (KeyError, TypeError):
 		config['OUTDIR'] = 'OUTPUT/'
-		print " ** Default output directory: '%s'" %(config['OUTDIR'])
+		print(" ** Default output directory: '%s'" %(config['OUTDIR']))
 
 	try:
 		shutil.rmtree(config['OUTDIR']+'/')
@@ -781,13 +782,13 @@ def loadConfig(output, dataSources, parserConfig):
 
 	if not os.path.exists(config['OUTDIR']):
 		os.mkdir(config['OUTDIR'])
-		print "** creating directory %s" %(config['OUTDIR'])
+		print("** creating directory %s" %(config['OUTDIR']))
 
 	try:
 		config['OUTSTATS'] = output['stats']
 	except (KeyError, TypeError):
 		config['OUTSTATS'] = 'stats.log'
-		print " ** Default log file: '%s'" %(config['OUTSTATS'])
+		print(" ** Default log file: '%s'" %(config['OUTSTATS']))
 	try:
 		config['OUTW'] = output['weights']
 	except (KeyError, TypeError):
@@ -804,7 +805,7 @@ def loadConfig(output, dataSources, parserConfig):
 		config['Cores'] = int(parserConfig['Processes'])
 
 	except:
-		print "**ERROR** Config file missing field: Processes"
+		print("**ERROR** Config file missing field: Processes")
 		exit(1)
 
 	try: 
@@ -919,7 +920,7 @@ def loadConfig(output, dataSources, parserConfig):
 				try:	
 					config['features'].append(feat['name'])
 				except:
-					print "FEATURES: missing config key (%s)" %(e.message)
+					print("FEATURES: missing config key (%s)" %(e.message))
 					exit(1)	
 
 				try:	

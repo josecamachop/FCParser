@@ -1,1 +1,8 @@
+# Python
 *.pyc
+
+# Data assets
+*.csv
+
+# Generated output
+OUTPUT

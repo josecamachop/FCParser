@@ -4,31 +4,27 @@
 #
 #-----------------------------------------------------------------------
 # DataSources:
-#   Source1:   DataSource name
-#     config:    Configuration file for this datasource.
-#     data:      Input files.
+#   Source1:     DataSource name
+#     config:      Configuration file for this datasource.
+#     data:        Input files.
 #   Source2:
 #     ...
 #   SourceN:
 #     ...
 #
-# Processes:    Number of processes used by the program
+# Key:          Key variable to aggregate dataSources
 #
-# Online: 	Boolean variable to determine if online or offline mode
-#
-# Chunk_size:   Size of the chunk of files that are being processed at 
-# 	        the same time (Kilobytes)
 # Output:
-#   dir:       Output directory to write the output files.
-#   stats:     Log file to write the stats (lines, records, matches).
+#   dir:        Output directory to write the output parsed data.
+#   stats:      Log file to write the stats (lines, records, matches).
 #
 # Deparsing_output: 
-#  dir:          Output directory for deparsing process
-# treshold:     upper limit of log entries by datasource. 
+#  dir:         Output directory for deparsing process
+# treshold:     upper limit of log entries by datasource.  
 #
-# SPLIT:        split params for temporal samplig
-#   Time:
-#     window:   time windows for sampling in seconds
+# SPLIT:        split info for temporal samplig
+#   Time:        
+#     window    time windows for sampling in seconds
 #     start:    start and end time for sampling interval
 #     end:  
 #   
@@ -36,31 +32,42 @@
 #
 #-----------------------------------------------------------------------
 
-
-
-
-
-
 DataSources:
 
-  datasource_name:
-    config: 
-    data: 
+  flow:
+    config: ./config/flow.yaml
+    learning: ./simple_flow.csv
+    parsing: ./simple_flow.csv
+    deparsing: ./simple_flow.csv
+
+Online: False
+
+Processes: 1
+
+Max_chunk: 8
+
+Learning_perc: 0.05
+
+All: True
 
 Keys: 
+
+Learning_Output:
+  dir: ./OUTPUT_learn 
+  stats: stats.log
  
-Output:
-  dir: 
-  stats: 
+Parsing_Output:
+  dir: ./OUTPUT 
+  stats: stats.log
 
 Deparsing_output:
-  dir:
-  treshold: 
+  dir: ./OUTPUT_dep 
+  threshold: 50
 
 SPLIT: 
   Time:
-    window: 
-    start:
-    end:   
+
+    window: 1440
+    start: 2019-07-10 00:00:00
+    end: 2019-07-14 00:00:00
     
-  Output: 
