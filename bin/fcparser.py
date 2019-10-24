@@ -67,6 +67,7 @@ def main(call='external',configfile=''):
 	else:
 		data = offline_parsing(config, startTime, stats)
 		output_data = fuseObs_offline(data)
+		with open('fused_dict', 'w') as f: print(output_data, file=f)
 
 	# Output results
 	write_output(output_data, config)
@@ -101,7 +102,7 @@ def online_parsing(config):
 				finally:
 					f.close()
 		else:
-			separator = config['SEPARATOR'][source]
+			separator = config['RECORD_SEPARATOR'][source]
 			for fname in config['SOURCES'][source]['FILES']:
 
 				try:
@@ -147,9 +148,6 @@ def offline_parsing(config,startTime,stats):
 			
 		results[source] = process_multifile(config, source, stats['sizes'][source])
 
-	# import pprint
-	# pprint.pprint(str(results['flow'][1]['201907100000']), depth=4)
-
 	for source in results:
 		final_res[source] = results[source][0] # combine the outputs of the several processes
 		for result in results[source][1:]:
@@ -159,7 +157,6 @@ def offline_parsing(config,startTime,stats):
 				else:
 					final_res[source][key] = result[key]
 
-	#pprint.pprint(str(final_res['flow']['201907100000']), depth=4)
 	return final_res
 
 def process_multifile(config, source, lengths):
@@ -186,9 +183,8 @@ def process_multifile(config, source, lengths):
 			remain = lengths[i]
 			while cont: # cleans memory from processes
 				jobs = list()
-				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
-					#print("New job")
-					jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source]]) )
+				for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
+					jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source]]) )
 				else:
 					if fragStart+fragSize < lengths[i]:
 						remain = lengths[i] - fragStart+fragSize
@@ -212,6 +208,7 @@ def fuseObs_offline(resultado):
 	v = list(resultado.keys())
 	fused_res = resultado[v[0]]
 
+
 	for source in v[1:]:
 
 		arbitrary_len2 = len(next(iter(list(resultado[source].values()))).data)
@@ -220,11 +217,11 @@ def fuseObs_offline(resultado):
 		except:
 			arbitrary_len = 0
 
-
 		for date in resultado[source]:
 
 			if date not in fused_res:
-				fused_res[date] = resultado[source][date].zeroPadding(arbitrary_len)
+				fused_res[date] = resultado[source][date]
+				fused_res[date].zeroPadding(arbitrary_len, position=-1)
 			else:
 				fused_res[date].fuse(resultado[source][date].data) 
 
@@ -232,8 +229,9 @@ def fuseObs_offline(resultado):
 		for date2 in fused_res:
 
 			if date2 not in resultado[source]:
-
-				fused_res[date2].fuse([0]*arbitrary_len2)
+				fused_res[date].zeroPadding(arbitrary_len2, position=0)
+				#fused_res[date2].fuse([0]*arbitrary_len2)
+				breakpoint()
 
 	return fused_res
 	
@@ -309,10 +307,10 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 		f.close()
 
 	log = ''
-	#print(lines)
+
 	for line in lines:
 		log += line 
-
+		#print("Separator: " +str(repr(separator)))
 		if separator in log:
 			#print("Log: "+str(log))
 			tag, obs = process_log(log,config, source)
@@ -345,7 +343,7 @@ def process_log(log,config, source):
 	obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
 
 	#print(str(record)+ "Obs: " + str(obs))
-
+	#print("New log")
 	try:
 		if config['Keys']:
 			tag = list()
@@ -362,7 +360,7 @@ def process_log(log,config, source):
 			tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
 			tag = tag2.strftime("%Y%m%d%H%M")
 	except Exception as err:
-		print((str(err) + " Record value: "+ str(record)))
+		print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + str(log)+ "\nRecord value: "+ str(record)))
 	return tag, obs
 	
 def normalize_timestamps(timestamp, config, source):
@@ -388,7 +386,7 @@ def normalize_timestamps(timestamp, config, source):
 			t = t.replace(year = datetime.datetime.now().year)
 		return t
 	except Exception as err:
-		print("Normalizing error: "+str(err))
+		print("[!] Normalizing error: "+str(err))
 	return 0
 
 def create_stats(config):
@@ -422,7 +420,7 @@ def count_entries(config,stats):
 				stats['sizes'][source].append(s)
 
 			else:
-				(l,s) = file_uns_len(file,config['SEPARATOR'][source])
+				(l,s) = file_uns_len(file,config['RECORD_SEPARATOR'][source])
 				lines[source] += l
 				stats['sizes'][source].append(s)
 	
@@ -583,7 +581,8 @@ def write_output(output, config):
 		f.write(str(features))
 
 	if isinstance(output, dict):
-
+		
+		# List of files, one for each timestamp
 		lfiles = list();
 		for k in output:
 			if isinstance(k, tuple):
@@ -630,6 +629,7 @@ def write_output(output, config):
 						if tag in output:
 							for j in range(len(obs)):
 								output[tag].data[j].value += obs[j]
+								breakpoint()
 						else:
 							j = 0;
 							data = []
@@ -656,7 +656,7 @@ def write_output(output, config):
 				if isinstance(k, tuple):
 					tag2 = list(map(str.strip,k[1:]))
 					f.write(','.join(tag2)+': ')
-
+				
 				f.write(','.join(map(str,output[k].data))+ '\n')
 	else:
 		with open(config['OUTDIR'] + 'output.dat' , 'w') as f:

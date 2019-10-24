@@ -41,8 +41,10 @@ tag: flow
 structured: True
 
 timestamp_format: "%Y-%m-%d %H:%M:%S"
-  
-separator: ; 
+
+record_separator: "\n"
+
+separator: ";"
 
 timearg: 3
 

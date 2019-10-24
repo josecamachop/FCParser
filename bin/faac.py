@@ -599,6 +599,13 @@ class TotalFeature(Feature):
 
 		self.value += 1
 
+class NullFeature(Feature):
+	"""Null feature used to identify non-meaningful features in a observation
+	"""
+
+	def __init__(self):
+		super(NullFeature, self).__init__({'name': "Null", 'variable': 'null', 'value': 0})
+
 #-----------------------------------------------------------------------
 # Observation Class
 #-----------------------------------------------------------------------
@@ -708,9 +715,17 @@ class Observation(object):
 		self.data += data
 
 
-	def zeroPadding(self, N):
+	def zeroPadding(self, N, position=-1):
 
-		self.data = [0] * N + self.data
+		try:
+			if(position is 0):
+				self.data[:0] = [NullFeature()] * N
+			elif(position is -1):
+				self.data[-1:] = [NullFeature()] * N
+			else:
+				self.data[position:position] = [NullFeature()] * N
+		except:
+			raise PaddingError(message="Unsupported position")
 
 
 	def __repr__(self):
@@ -738,6 +753,15 @@ class AggregateError(Exception):
 		self.obj = obj
 		self.message = message
 		self.msg = "ERROR - Aggregate - %s" %(message)
+
+	def __str__(self):
+	        return repr(self.msg)
+
+class PaddingError(Exception):
+	def __init__(self, obj, message=''):
+		self.obj = obj
+		self.message = message
+		self.msg = "ERROR - Padding - %s" %(message)
 
 	def __str__(self):
 	        return repr(self.msg)
@@ -846,9 +870,9 @@ def loadConfig(output, dataSources, parserConfig):
 		config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
 		config['SOURCES'][source]['FILESDEP'] = glob.glob(dataSources[source]['deparsing'])
 
-	config ['FEATURES'] = {}
+	config['FEATURES'] = {}
 	config['STRUCTURED'] = {}
-	config['SEPARATOR'] = {}
+	config['RECORD_SEPARATOR'] = {}
 
 	for source in config['SOURCES']:
 		config['FEATURES'][source] = config['SOURCES'][source]['CONFIG']['FEATURES']
@@ -875,7 +899,7 @@ def loadConfig(output, dataSources, parserConfig):
 				config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
 
 		if not config['STRUCTURED'][source]:
-			config['SEPARATOR'][source] = config['SOURCES'][source]['CONFIG']['separator']	
+			config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG']['separator']	
 
 			for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
 				config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where'])
@@ -885,8 +909,11 @@ def loadConfig(output, dataSources, parserConfig):
 						config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value']+'$')
 
 		else:
-			config['SEPARATOR'][source] = "\n"
+			# TODO: Retrieve from yaml
+			
+			config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG'].get('record_separator') or "\n"
 
+			#print(config['RECORD_SEPARATOR'])
 			for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
 					if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
 						config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])

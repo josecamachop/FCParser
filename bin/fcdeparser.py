@@ -298,8 +298,8 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 			while line:
 				log += line 
 	
-				if len(log.split(config['SEPARATOR'][source])) > 1:
-					logExtract = log.split(config['SEPARATOR'][source])[0]
+				if len(log.split(config['RECORD_SEPARATOR'][source])) > 1:
+					logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
 					
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
@@ -315,7 +315,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 						pass
 						
 					log = ""
-					for n in logExtract.split(config['SEPARATOR'][source])[1::]:
+					for n in logExtract.split(config['RECORD_SEPARATOR'][source])[1::]:
 						log += n
 				line = input_file.readline()
 
@@ -358,9 +358,9 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 			log = "" + line 	
 			while line:
 				log += line 
-				if len(log.split(config['SEPARATOR'][source])) > 1:
+				if len(log.split(config['RECORD_SEPARATOR'][source])) > 1:
 					count_tot += 1	
-					logExtract = log.split(config['SEPARATOR'][source])[0]
+					logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
 					
 					# For each log, extract timestamp with regular expresions and check if it is in the 
 					# input timestamps
@@ -369,14 +369,14 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
 						if str(t).strip() in formated_timestamps:	
 							# Check if features appear in the log to write in the file.
 							if feat_appear[file][index] > features_needed:
-								output_file.write(logExtract + config['SEPARATOR'][source])
+								output_file.write(logExtract + config['RECORD_SEPARATOR'][source])
 								count_unstructured += 1	
 							index += 1
 					except:
 						pass
 
 					log = ""
-					for n in logExtract.split(config['SEPARATOR'][source])[1::]:
+					for n in logExtract.split(config['RECORD_SEPARATOR'][source])[1::]:
 						log += n
 				line = input_file.readline()
 
