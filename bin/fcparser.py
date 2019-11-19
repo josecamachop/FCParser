@@ -231,7 +231,6 @@ def fuseObs_offline(resultado):
 			if date2 not in resultado[source]:
 				fused_res[date].zeroPadding(arbitrary_len2, position=0)
 				#fused_res[date2].fuse([0]*arbitrary_len2)
-				breakpoint()
 
 	return fused_res
 	
@@ -259,15 +258,15 @@ def frag(fname, init, separator, size, max_chunk):
 
 	try:
 		if fname.endswith('.gz'):					
-			f = gzip.open(fname, 'r')
+			f = gzip.open(fname, 'r', newline="")
 		else:
-			f = open(fname, 'r')
+			f = open(fname, 'r', newline="")
 
 
 		f.seek(init)
 		end = f.tell()
 		init = end
-		#cont = True
+		separator_size = len(separator)
 		while end-init < max_chunk:
 			start = end
 			tmp = f.read(size)
@@ -275,8 +274,7 @@ def frag(fname, init, separator, size, max_chunk):
 			if i == -1:
 				yield start, len(tmp)
 				break
-
-			f.seek(start+i+1)
+			f.seek(start+i+separator_size)
 			end = f.tell()
 			#print("Frag: "+str([start, i, end]))
 
@@ -296,9 +294,9 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 
 	try:	
 		if file.endswith('.gz'):					
-			f = gzip.open(file, 'r')
+			f = gzip.open(file, 'r', newline="")
 		else:
-			f = open(file, 'r')
+			f = open(file, 'r', newline="")
 
 		f.seek(fragStart)
 		lines = f.read(fragSize)
@@ -306,6 +304,8 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 	finally:
 		f.close()
 
+	"""
+	# Old implementation
 	log = ''
 
 	for line in lines:
@@ -323,7 +323,24 @@ def process_file(file, fragStart, fragSize,config, source,separator):
 		if tag == 0:
 			tag = file.split('/')[-1]
 		add_observation(obsDict,obs,tag)
+	"""
+	for line in iter_split(lines, separator):
+		tag, obs = process_log(line, config, source)
+		if tag == 0:
+			tag = file.split("/")[-1]
+		add_observation(obsDict, obs, tag)
+
 	return obsDict
+
+def iter_split(line, delimiter):
+	start = 0
+	line_size = len(line)
+	delimiter_size = len(delimiter)
+	while start<line_size:
+		end = line.find(delimiter, start)
+		yield line[start:end]
+		if end == -1: break
+		start = end + delimiter_size
 
 def add_observation(obsDict,obs,tag):
 	'''
@@ -360,7 +377,7 @@ def process_log(log,config, source):
 			tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
 			tag = tag2.strftime("%Y%m%d%H%M")
 	except Exception as err:
-		print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + str(log)+ "\nRecord value: "+ str(record)))
+		print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
 	return tag, obs
 	
 def normalize_timestamps(timestamp, config, source):
@@ -629,7 +646,6 @@ def write_output(output, config):
 						if tag in output:
 							for j in range(len(obs)):
 								output[tag].data[j].value += obs[j]
-								breakpoint()
 						else:
 							j = 0;
 							data = []

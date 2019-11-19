@@ -3,7 +3,8 @@
 
 # Data assets
 *.csv
+*.dat
 
 # Generated output
-OUTPUT
-example/OUTPUT
+OUTPUT/
+example/OUTPUT/
