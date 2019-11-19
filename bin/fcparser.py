@@ -609,55 +609,56 @@ def write_output(output, config):
 				
 			if tag not in lfiles:
 				lfiles.append(tag)
-		
-		for i in range(len(lfiles)):
-			
-			tagt = lfiles[i]
-			fname = config['OUTDIR'] + 'output-'+ tagt + '.dat'
-			if os.path.isfile(fname):
-				with open(fname, 'r') as f:
+				
+		if config['Incremental']:
+			for i in range(len(lfiles)):
+				
+				tagt = lfiles[i]
+				fname = config['OUTDIR'] + 'output-'+ tagt + '.dat'
+				if os.path.isfile(fname):
+					with open(fname, 'r') as f:
 
-					for line in f:
+						for line in f:
 
-						if line.find(':')==-1:
-							obs_aux = line
-							tag = tagt
+							if line.find(':')==-1:
+								obs_aux = line
+								tag = tagt
 
-						else:
-							laux = line.rsplit(': ',2)
-							tag = [tagt]
+							else:
+								laux = line.rsplit(': ',2)
+								tag = [tagt]
 
-							tagso =  laux[0].split(',')
-							list(map(str.strip,tagso))
-							for j in range(len(tagso)):
-								tag.append(tagso[j])
+								tagso =  laux[0].split(',')
+								list(map(str.strip,tagso))
+								for j in range(len(tagso)):
+									tag.append(tagso[j])
 
-							obs_aux = laux[1]
-							tag = tuple(tag)
+								obs_aux = laux[1]
+								tag = tuple(tag)
 
-						obs = obs_aux.split(',')
+							obs = obs_aux.split(',')
 
-						try:
-							for j in range(len(obs)):
-								obs[j] = int(obs[j])
-						except:
-							obs = []
+							try:
+								for j in range(len(obs)):
+									obs[j] = int(obs[j])
+							except:
+								obs = []
 
-						if tag in output:
-							for j in range(len(obs)):
-								output[tag].data[j].value += obs[j]
-						else:
-							j = 0;
-							data = []
-							for source in config['SOURCES']:
-								for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
-									data.append(faac.Feature(feat))
-									data[j].value += obs[j]
-									j += 1
+							if tag in output:
+								for j in range(len(obs)):
+									output[tag].data[j].value += obs[j]
+							else:
+								j = 0;
+								data = []
+								for source in config['SOURCES']:
+									for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+										data.append(faac.Feature(feat))
+										data[j].value += obs[j]
+										j += 1
 
-							output[tag] = faac.Observation(data)
-			
-				open(fname, 'w').close()
+								output[tag] = faac.Observation(data)
+				
+					open(fname, 'w').close()
 
 
 		l = OrderedDict(sorted(output.items()))
@@ -668,7 +669,7 @@ def write_output(output, config):
 				tag = k
 				
 			fname = config['OUTDIR'] + 'output-'+ tag + '.dat'
-			with open(fname, 'a') as f:
+			with open(fname, 'w') as f:
 				if isinstance(k, tuple):
 					tag2 = list(map(str.strip,k[1:]))
 					f.write(','.join(tag2)+': ')

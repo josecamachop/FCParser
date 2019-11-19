@@ -825,6 +825,11 @@ def loadConfig(output, dataSources, parserConfig):
 	except:
 		config['Time'] = 0	
 
+	try:
+		config['Incremental'] = parserConfig['Incremental_Output']
+	except:
+		print("**ERROR** Config file missing field: Incremental_Output")
+
 	try: 
 		config['Cores'] = int(parserConfig['Processes'])
 

@@ -48,6 +48,8 @@ DataSources:
 
 Online: False
 
+Incremental_Output: True
+
 Processes: 8
 
 Max_chunck: 8

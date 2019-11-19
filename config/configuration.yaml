@@ -37,7 +37,7 @@ DataSources:
   flow:
     config: ./config/flow.yaml
     learning: ./simple_flow.csv
-    parsing: ./simple_flow.csv
+    parsing: ./fixed_flow.csv
     deparsing: ./simple_flow.csv
 
 Online: False
