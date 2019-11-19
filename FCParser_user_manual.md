@@ -59,19 +59,16 @@ The General configuration file contains the main information for the parsing pro
 datasources, aggregation keys, output directories and split configuration. An empty
 general configuration file look like this:
 
+![](assets/general_configuration.png)
+Figure 2: General configuration file
+
 **DataSources** : In this field, different data sources must be specified. For each data
 source, the name, the configuration file of that data source and where the data have to
 be specified. Input data can be in _csv_ format, text based log files or _nfcapd_ binary data.
 
 **Keys:** In this field, none, one or more aggregation keys are defined. These keys are the
 variables chosen to aggregate observation. For each unique value of said keys,
-conservation are grouped (e.g source IP: for each unique value of source ip one
-
-![](assets/general_configuration.png)
-Figure 2: General configuration file
-
-
-observartion of features is generated). Aggregation keys must be variables from the data
+conservation are grouped (e.g source IP: for each unique value of source ip one observartion of features is generated). Aggregation keys must be variables from the data
 sources. If the chosen aggregation key is not a variable for a data source, that data
 source won’t be parsed. If the field is empty, aggregation will not occur.
 
@@ -142,6 +139,8 @@ The input file format is adapted to the output of the MEDA-Toolbox [3]. This too
 a tool that can be utilized to analyze the parsed data. The format of the _deparsing_ input
 file look like this:
 
+![](assets/deparsing.png)
+Figure 4: Format of deparsing input file
 ## 4. EXAMPLE
 
 ### 4.1. PARSING
@@ -155,24 +154,19 @@ performed, therefore, observations will be grouped by timestamp. At the end of t
 there is the configuration for temporal sampling. In this case, the sampling rate is one
 minute.
 
-![](aasets/deparsing.png)
-Figure 4: Format of deparsing input file
-
 ![](assets/general_configuration.png)
 Figure 5: Example general configuration file
 
+![](assets/example_netflow.png)
+Figure 6: Example: netflow configuration file
 
 In Fig. 6 there is a fragment of the configuration file for a _netflow_ data source. It shows
 the mandatory attributes for a structured sources. Also, examples of variables for a
 structured source. In this case, _where_ attribute indicates the position of the variable in
 the log entry.
 
-![](assets/example_netflow.png)
-Figure 6: Example: netflow configuration file
-
 ![](assets/example_ids.png)
 Figure 7: Example: ids configuration file
-
 
 In Fig. 7, an unstructured source configuration file is shown. The mandatory attributes
 differs from the ones mandatory in _netflow_ configuration file(structured source). For
@@ -195,8 +189,10 @@ detection and diagnosis information, the original raw data records related to an
 are identified and presented to the analyst. Detection and diagnosis information is
 specified in the _deparsing_ input file. To run the program, use the following command:
 
+```
 $ python deparser/deparser.py Example/config/configuration.yaml
 Example/deparsing_input
+```
 
 The _deparsing_ program generates one file for each data source with the extracted logs
 related to the anomalies detected.
@@ -212,10 +208,13 @@ The program requires some python modules to work properly. Before using this too
 install the following packages:
 
 - Ipy – Python module for handling _IPv4_ and _IPv6_ addresses and networks [4]
+    ```
     $ pip install IPy
+    ```
 - PyYAML – _YAML_ analyzer for python [5].
+    ```
     $ pip install PyYAML
-
+    ```
 Nfdump [6]_._ In order to work with _netflow_ data in _nfcapd_ format, the _netflow_ processing
 tool _Nfdump_ is required.
 
