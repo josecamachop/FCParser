@@ -194,25 +194,28 @@ class IpVariable(Variable):
 class TimeVariable(Variable):
 	"""Variable containing a timestamp value.
 	"""
-		
-	def load(self, raw_value):
+	
+	def __init__(self, raw_value, tsformat):
+		"""Class constructor.
+
+		raw_value -- The raw value, in string format (eg. '2014-12-20 15:01:02'),
+		tsformat -- timestamp format
+		"""
+		self.value = self.load(raw_value,tsformat)
+	
+	def load(self, raw_value, tsformat):
 		"""Converts an input raw value into a timestamp.
 		Returns: Datetime object, if the conversion succeeds;
 		         None, if the conversion fails.
 
 		raw_value -- The raw value, in string format (eg. '2014-12-20 15:01:02'),
-		             or in milliseconds since Epoch  (eg. 1293581619000)
+		tsformat -- timestamp format
 		"""
-		if isinstance(raw_value, str):
-			try:
-				timestamp = datetime.strptime(raw_value, "%Y-%m-%d %H:%M:%S")
-			except:
-				timestamp = None
-		else:
-			try:
-				timestamp = datetime.utcfromtimestamp(float(raw_value)/1000)
-			except:
-				timestamp = None
+		try:
+			timestamp = datetime.strptime(raw_value, tsformat)
+		except:
+			timestamp = None
+		
 		return timestamp
 
 
@@ -315,7 +318,7 @@ class Record(object):
 		variables -- Dictionary of variables, indexed by their name.
 		
 	"""
-	def __init__(self, line, variables, structured, all=False):
+	def __init__(self, line, variables, structured, tsformat, all=False):
 		self.variables = {}
 		
 		# For structured sources
@@ -369,7 +372,7 @@ class Record(object):
 				elif vType == 'ip':
 					variable.append(IpVariable(vValue))
 				elif vType == 'time':
-					variable.append(TimeVariable(vValue))
+					variable.append(TimeVariable(vValue,tsformat))
 				elif vType == 'duration':
 					if isinstance(vvalue, list) and len(vValue) == 2:
 						variable.append(TimedeltaVariable(vValue[0], vValue[1]))
@@ -425,7 +428,7 @@ class Record(object):
 								variable.append(IpVariable(vValue))
 
 							elif vMatchType == 'time':
-								variable.append(TimeVariable(vValue))
+								variable.append(TimeVariable(vValue,tsformat))
 
 							elif vMatchType == 'duration':
 								if isinstance(vvalue, list) and len(vValue) == 2:

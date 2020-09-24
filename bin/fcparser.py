@@ -185,6 +185,7 @@ def process_multifile(config, source, lengths):
 				jobs = list()
 				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
 					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
+					#process_file(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source]) # use this to debug
 
 				else:
 					if fragStart+fragSize < lengths[i]:
@@ -337,12 +338,12 @@ def process_log(log,config, source):
 	'''
 	Function take on data entry as input an transform it into a preliminary observation
 	'''	 
-	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['SOURCES'][source]['CONFIG']['timestamp_format'], config['All'])
 	obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
 
 	if config['Keys']:
 		tag = list()		
-		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
+		tag2 = normalize_timestamps(record.variables[config['SOURCES'][source]['CONFIG']['timearg']][0],config, source)
 		tag.append(tag2.strftime("%Y%m%d%H%M"))
 		for i in range(len(config['Keys'])):
 			if len(record.variables[config['Keys'][i]]) > 0:
@@ -352,22 +353,20 @@ def process_log(log,config, source):
 		else:
 			tag = tag[0]		
 	else:
-		tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
+		tag2 = normalize_timestamps(record.variables[config['SOURCES'][source]['CONFIG']['timearg']][0],config['Time']['window'])
 		tag = tag2.strftime("%Y%m%d%H%M")
 
 	return tag, obs
 	
-def normalize_timestamps(timestamp, config, source):
+def normalize_timestamps(timestamp,window):
 	'''
 	Function that transform timestamps of data entries to a normalized format. It also do the 
 	time sampling using the time window defined in the configuration file.
 	'''	
-	try:
-		input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
-		window = config['Time']['window']
+	try: 
 		if window == 0:
 			return 0
-		t = datetime.datetime.strptime(str(timestamp), input_format)
+		t = datetime.datetime.strptime(str(timestamp),'%Y-%m-%d %H:%M:%S')
 		if window <= 60:
 			new_minute = t.minute - t.minute % window  
 			t = t.replace(minute = new_minute, second = 0)
@@ -377,9 +376,9 @@ def normalize_timestamps(timestamp, config, source):
 			new_hour = t.hour - t.hour % window_h  
 			t = t.replace(hour = new_hour, minute = 0, second = 0)			 	
 
-
 		if t.year == 1900:
 			t = t.replace(year = datetime.datetime.now().year)
+
 		return t
 	except:
 		

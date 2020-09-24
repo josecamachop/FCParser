@@ -44,7 +44,7 @@ timestamp_format: "%Y-%m-%d %H:%M:%S"
   
 # separator:  
 
-timearg: 0
+timearg: timestamp
 
 
 ## Variable Section
