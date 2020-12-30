@@ -1,10 +1,7 @@
 # Python
 *.pyc
+__init__.py
+__pycache__
 
-# Data assets
-*.csv
-*.dat
-
-# Generated output
-OUTPUT
-example/OUTPUT
+# macOS
+.DS_Store
