@@ -1,80 +1,85 @@
 #-----------------------------------------------------------------------
-#
-# Datasource- Configuration File
-#
+# Data source Configuration File
 #-----------------------------------------------------------------------
 #
-# tag: tag asociated with the files
+# tag: Identifier of the data source
 #
-# structured: Boolean ver to indicate if datasource is structured or not.
+# structured: Boolean variable to indicate if datasource is structured or not.
 #
-# timestamp_format: format of the timestamp of the logs in the files of 
-#                   this dataSource in python datetime format, see https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+# timestamp_format: format of the timestamp of the logs in the files of this dataSource in python datetime format.
+#                   See: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
 #
-# timestamp_regexp: regular expresion that matches the date format of the source (only needed for unstructured sources)
+# timestamp_regexp: regular expresion that matches the date format of the source.   ** Only for unstructured sources **
 #
-# separator: chars that delimits the log entries of the source (only needed in unstructured sources)
+# separator: chars that delimitates the log entries of the source.    ** Only for unstructured sources **
 #
-# timearg: position of the timestamp in the log entry (only needed in structured sources)
+# timearg: position of the timestamp in the log entry. Timearg is the name of the timestamp variable.    ** Only needed in structured sources **
 #
 # VARIABLES:
-#   - name:      Variable name.
-#     matchtype:      Variable matchtype {string, number, counter, ip, time, duration}.
-#     where:       Position of the field in the line (starts with 0).
+#   - name:       Variable name.
+#   - matchtype:  Variable matchtype {string, number, counter, ip, time, duration}.
+#   - where:      Position of the field in the line (starts with 0), if structured datasource
+#                 Regular expression that match the wanted field, if unstructured datasource.
 #
-#   - ...
+#   Note: There must be a variable called timestamp which collects the timestamps as strings.
 #
 # FEATURES:
-#   - name:      Feature name.
-#     variable:  Feature from which the feature is calculated.
-#     matchtype: Feature matchtype {single, multiple, range, default}
-#     value:     Value of the field that defines the feature.
-#                If the matchtype is 'single' use a single value.
-#                If the matchtype is 'multiple', use a list of values.
-#                If the matchtype is 'range', use a list of two values.
-#                If the matchtype is 'default', the value must be empty.
-#   - ...
+#   - name:       Feature name.
+#   - variable:   Variable from which the feature is calculated.
+#   - matchtype:  Feature matchtype {single, multiple, range, default, regexp}
+#   - value:      Value of the field that defines the feature.
+#                   If the matchtype is 'single' use a single value.
+#                   If the matchtype is 'multiple', use a list of values.
+#                   If the matchtype is 'range', use a list of two values.
+#                   If the matchtype is 'default', the value must be empty.
+#                   If the matchtype is 'regexp', the value is a string. (Regular expressions are only used in unstructured sources)
+#   - weight:     Optional parameter to assign different weights to the features. If value not specified, automatically set to one.
+#
 #-----------------------------------------------------------------------
 
-tag: 
+# Attributes
+# =================
 
-structured: 
+tag: source_name
+structured: False/True
+timestamp_format: "%Y-%m-%d %H:%M:%S" # for example
 
-timestamp_format: 
+# Unstructured sources
+timestamp_regexp:
+separator: " "
+#record_separator:
 
-timestamp_regexp: 
-
-separator: 
-
+# Structured sources
 timearg: 
 
 
-## Variable Section
+# Variables Section
 # =================
 
 VARIABLES:
 
 - name: 
   matchtype: 
-  where: 
+  where:
 
 - name: 
-  matchtype: 
+  matchtype:  
   where: 
 
 
-## Features Section
+# FEATURES Section
 # =================
 
 FEATURES:
 
 - name: 
   variable: 
-  matchtype: 
-  value: 
+  matchtype:
+  value:
 
 - name: 
-  variable: 
+  variable:
   matchtype: 
-  value: 
+  value:
+  weight:
 

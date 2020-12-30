@@ -1,54 +1,63 @@
 #-----------------------------------------------------------------------
-#
-# Parser - Configuration File
-#
+# Parser - General Configuration File
 #-----------------------------------------------------------------------
+#
 # DataSources:
-#   Source1:     DataSource name
-#     config:      Configuration file for this datasource.
-#     data:        Input files.
+#   Source1:        DataSource name
+#     config:         Configuration file for this datasource.
+#     data:           Input files.
 #   Source2:
 #     ...
 #   SourceN:
 #     ...
 #
-# Key:          Key variable to aggregate dataSources
+# Online:               Boolean variable to determine if online or offline mode
+# Incremental_output:   Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones
+# Processes:            Number of processes used by the program: [1, Ncores]
+# Max_chunck:           Size of the chunk of files that are being processed at the same time (Kilobytes)
+# Learning_perc:        Percentage of data used for learning process
 #
-# Output:
-#   dir:        Output directory to write the output parsed data.
-#   stats:      Log file to write the stats (lines, records, matches).
+# Keys:           Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
+#
+# Parsing_Output:
+#   dir:          Output directory to write the output parsed data.
+#   stats:        Log file to write the stats (lines, records, matches).
 #
 # Deparsing_output: 
-#  dir:         Output directory for deparsing process
-# treshold:     upper limit of log entries by datasource.  
+#  dir:           Output directory for deparsing process
+#  treshold:      upper limit of log entries by datasource.  
 #
 # SPLIT:        split info for temporal samplig
 #   Time:        
-#     window    time windows for sampling in seconds
-#     start:    start and end time for sampling interval
+#     window      time windows for sampling in minutes
+#     start:      start and end time for sampling interval
 #     end:  
 #   
-#    Output:    Output directory for split data      
+#   Output:    Output directory for split data      
 #
 #-----------------------------------------------------------------------
 
 DataSources:
 
-  flow:
-    config: ./config/flow.yaml
-    learning: ./simple_flow.csv
-    parsing: ./fixed_flow.csv
-    deparsing: ./simple_flow.csv
+  source1_name:
+    config: ./config/source1.yaml
+    learning: ./data/data1*
+    parsing: ./data/data1*
+    deparsing: ./data/data1*
+
+  source2_name:
+    config:
+    learning:
+    parsing:
+    deparsing:
+
 
 Online: False
-
-Processes: 1
-
+Incremental_Output: False
+Processes: 2
 Max_chunk: 8
-
 Learning_perc: 0.05
-
-All: True
+# All: True
 
 Keys: 
 
@@ -61,7 +70,7 @@ Parsing_Output:
   stats: stats.log
 
 Deparsing_output:
-  dir: ./OUTPUT_dep 
+  dir: ./deparsing_output 
   threshold: 50
 
 SPLIT: 

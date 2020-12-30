@@ -1,84 +1,77 @@
 General consideration for configuration files.
 
-General configuration -- configuration.yaml
+General configuration file -- configuration.yaml
 =============================================================
 
-
  DataSources:
-   Source1:   DataSource name
-     config:    Configuration file for this datasource.
-     data:      Input files.
+   Source1:        DataSource name
+     config:         Configuration file for this datasource.
+     data:           Input files.
    Source2:
      ...
    SourceN:
      ...
 
- Processes:    Number of processes used by the program. Use a number between 1 and the number of cores of 				your system.
+ Online:              Boolean variable to determine if online or offline mode. Online mode for real time application (only one process)
+                      while offline mode for processing already stored data sets (multiprocess).
+ Processes:           Number of processes used by the program. Use a number between 1 and the number of cores of your system
+ Incremental_output:  Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones
+ Max_chunck:          Size of the chunk of files that are being processed at the same time (Kilobytes)
+ Learning_perc:       Proportion (percentage) of data used for learning.
+ Keys:                Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
 
- Online: 	Boolean variable to determine if online or offline mode. Online mode for real time application (only one process). Offline mode for processing already stored data sets (multiprocess).
-
- Chunk_size:   Size of the chunk of files that are being processed at 
- 	        the same time (Kilobytes)
- Output:
-   dir:       Output directory to write the output files.
-   stats:     Log file to write the stats (lines, records, matches).
+ Parsing_Output:
+   dir:          Output directory to write the output parsed data.
+   stats:        Log file to write the stats (lines, records, matches).
 
  Deparsing_output: 
-  dir:          Output directory for deparsing process
- treshold:     upper limit of log entries by datasource. 
+  dir:           Output directory for deparsing process
+  treshold:      upper limit of log entries by datasource.  
 
  SPLIT:        split params for temporal samplig
-   Time:
-     window:   time windows for sampling in seconds
-     start:    start and end time for sampling interval
+   Time:        
+     window      time windows for sampling in minutes
+     start:      start and end time for sampling interval
      end:  
+   
+   Output:    Output directory for split data      
    
 
 
-
-
-Source configuration -- datsource.yaml
+Data Source configuration file -- datasource.yaml
 =============================================================
 
-General attributes 
+General attributes:
 
-tag:   Identifier of the data source
-
-structured:   boolean variable to determine if the source is structured or not
-
-timestamp_format: format of the timestamp of the logs in the files of this dataSource in python
-                  datetime format, see https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-
-
-
-
-timestamp_regexp: regular expresion that matches the date format of the source (only needed for unstructured sources)
-
-
-separator:  **Only for unsstructured sources** chars that delimitates the log entries of the source (only needed in unstructured sources)
-
-timearg: **Only for structured sources** position of the time stamp 
+tag: Identifier of the data source
+structured: Boolean variable to indicate if the datasource is structured or not.
+timestamp_format: format of the timestamp of the logs in the files of this dataSource in python datetime format.
+                  Check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
+timestamp_regexp: regular expresion that matches the date format of the source.   ** Only for unstructured sources **
+separator: chars that delimitates the log entries of the source.    ** Only for unstructured sources **
+timearg: position of the timestamp in the log entry. Timearg is the name of the timestamp variable.    ** Only for structured sources **
 
 
 VARIABLES:
+  - name:       Variable name.
+  - matchtype:  Variable matchtype {string, number, counter, ip, time, duration}.
+  - where:      Position of the field in the line (starts with 0), if structured datasource
+                Regular expression that matches the wanted field, if unstructured datasource.
 
-- name:      Variable name.
-  matchtype: Variable matchtype {string, number, counter, ip, time, duration}.
-  where:     Position of the field in the line (number for structured sources and regexp for unstructured sources.)
-
-*** IMPORTANT NOTE *** 
-There must be a variable called timestamp that collects the timestamps as strings.
-*** IMPORTANT NOTE *** 
+ Important note: There must be a variable called timestamp which collects the timestamps as strings.
 
 
 FEATURES:
-   - name:      Feature name.
-     variable:  Variable from which the feature is calculated.
-     matchtype: Feature matchtype {single, multiple, range, default}
-     value:     Value of the field that defines the feature.
-                If the matchtype is 'single' use a single value.
-                If the matchtype is 'multiple', use a list of values.
-                If the matchtype is 'range', use a list of two values.
-                If the matchtype is 'default', the value must be empty.
+  - name:       Feature name.
+  - variable:   Variable from which the feature is calculated.
+  - matchtype:  Feature matchtype {single, multiple, range, default, regexp}
+  - value:      Value of the field that defines the feature.
+                   If the matchtype is 'single' use a single value.
+                   If the matchtype is 'multiple', use a list of values.
+                   If the matchtype is 'range', use a list of two values.
+                   If the matchtype is 'default', the value must be empty.
+                   If the matchtype is 'regexp', the value is a string. (Regular expressions are only used in unstructured sources)
+  - weight:     Optional parameter to assign different weights to the features, to be considered in deparsing process.
+                if no weight is specified, its value is automatically set to one.
  
 
