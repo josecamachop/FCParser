@@ -1,34 +1,38 @@
 #-----------------------------------------------------------------------
-#
-# Parser - Configuration File
-#
+# Parser - General Configuration File
 #-----------------------------------------------------------------------
+#
 # DataSources:
-#   Source1:     DataSource name
-#     config:      Configuration file for this datasource.
-#     data:        Input files.
-#   Source2:
-#     ...
-#   SourceN:
-#     ...
+#   Source1:        DataSource1 name (structured source)
+#     config:         Configuration file for this datasource.
+#     data:           Input files.
+#   Source2:        DataSource2 name (unstructured source)
+#     config:         Configuration file for this datasource.
+#     data:           Input files.
 #
-# Key:          Key variable to aggregate dataSources
+# Online:             Boolean variable to determine if online or offline mode. For this example, offline mode is used.
+# Incremental_output: Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones
+# Processes:          Number of processes used by the program [1, Ncores]
+# Max_chunck:         Size of the chunk of files that are being processed at the same time (Kilobytes)
+# Learning_perc:      Percentage of data used for learning process
 #
-# Output:
-#   dir:        Output directory to write the output parsed data.
-#   stats:      Log file to write the stats (lines, records, matches).
+# Keys:               Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
+#
+# Parsing_Output:
+#   dir:              Output directory to write the output parsed data.
+#   stats:            Log file to write the stats (lines, records, matches).
 #
 # Deparsing_output: 
-#  dir:         Output directory for deparsing process
-# treshold:     upper limit of log entries by datasource.  
+#  dir:               Output directory for deparsing process
+#  treshold:          upper limit of log entries by datasource.  
 #
-# SPLIT:        split info for temporal samplig
+# SPLIT:              split info for temporal samplig
 #   Time:        
-#     window    time windows for sampling in seconds
-#     start:    start and end time for sampling interval
+#     window:           time windows for sampling in minutes
+#     start:            start and end time for sampling interval
 #     end:  
 #   
-#    Output:    Output directory for split data      
+#   Output:             Output directory for split data      
 #
 #-----------------------------------------------------------------------
 
@@ -46,16 +50,13 @@ DataSources:
     parsing: ./example/Examples_data/ids*
     deparsing: ./example/Examples_data/ids*
 
+
 Online: False
-
-Incremental_Output: True
-
+Incremental_Output: False
 Processes: 8
-
 Max_chunck: 8
-
 Learning_perc: 0.001
- 
+
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
 
 Parsing_Output:
@@ -63,7 +64,7 @@ Parsing_Output:
   stats: stats.log
  
 Deparsing_output:
-  dir: ./example/Deparsing_output/
+  dir: ./example/deparsing_output/
   threshold: 10
 
 SPLIT: 

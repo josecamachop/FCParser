@@ -1,55 +1,45 @@
 #-----------------------------------------------------------------------
-#
-# Snort- Configuration File
-#
+# IDS - Data source Configuration File
 #-----------------------------------------------------------------------
 #
 # tag: tag asociated with the files
-#
-# structured: Boolean ver to indicate if datasource is structured or not.
-#
-# timestamp_format: format of the timestamp of the logs in the files of 
-#                   this dataSource in python datetime format, see https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-#
-# timestamp_regexp: regular expresion that matches the date format of the source (only needed for unstructured sources)
-#
-# separator: chars that delimitates the log entries of the source (only needed in unstructured sources)
-#
-# timearg: position of the timestamp in the log entry (only needed in structured sources)
+# structured: Boolean variable to indicate if datasource is structured or not. In this case, ids.log is not structured.
+# timestamp_format: format of the timestamp of the logs in the files of this dataSource in python datetime format.
+# timestamp_regexp: regular expresion that matches the date format of the source.
+# separator: char that delimitates the log entries of the source. For ids.log, log entries are separated by two blank lines.
 #
 # VARIABLES:
-#   - name:      Variable name.
-#     matchtype:      Variable matchtype {string, number, counter, ip, time, duration}.
-#     where:       Position of the field in the line (starts with 0).
-#
-#   - ...
+#   - name:         Variable name.
+#   - matchtype:    Variable matchtype {string, number, counter, ip, time, duration}.
+#   - where:        Regular expression that match the wanted field.
 #
 # FEATURES:
 #   - name:      Feature name.
-#     variable:  Variable from which the feature is calculated.
-#     matchtype:      Feature matchtype {single, multiple, range, default}
-#     value:     Value of the field that defines the feature.
+#   - variable:  Variable from which the feature is calculated.
+#   - matchtype: Feature matchtype {single, multiple, range, default, regexp}
+#   - value:     Value of the field that defines the feature.
 #                If the matchtype is 'single' use a single value.
 #                If the matchtype is 'multiple', use a list of values.
 #                If the matchtype is 'range', use a list of two values.
 #                If the matchtype is 'default', the value must be empty.
-#   - ...
+#                If the matchtype is 'regexp', the value is a string.
+#   - weight:    Optional parameter to assign different weights to the features. If value is not specified, it is automatically set to one.
+#
 #-----------------------------------------------------------------------
 
+
+# Attributes
+# =================
 tag: ids
-
 structured: False
-
 timestamp_format: '%m/%d-%H:%M:%S'
-
-separator: "\n\n"
-
-# timearg: 
+separator: "\n\n" 
+#timearg: timestamp
 
 
-## variables Section
+# Variables Section
+# =================
 VARIABLES:
-
 
 - name: timestamp
   matchtype: string 
@@ -115,7 +105,9 @@ VARIABLES:
   matchtype: string
   where: '(?P<match>DF|CE|MF)'
 
-## Variables Section
+
+# FEATURES Section
+# =================
 FEATURES:
 
 - name: ids_ttl_low
@@ -1130,15 +1122,3 @@ FEATURES:
   matchtype: default
   value: 
   weight: 2
-
-
-
-
-
-
-
-
-
-
-
-
