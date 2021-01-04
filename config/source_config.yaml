@@ -50,7 +50,7 @@ separator: " "
 #record_separator:
 
 # Structured sources
-timearg: 
+timearg: timestamp
 
 
 # Variables Section
