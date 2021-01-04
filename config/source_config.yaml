@@ -58,8 +58,8 @@ timearg: timestamp
 
 VARIABLES:
 
-- name: 
-  matchtype: 
+- name: timestamp
+  matchtype: string
   where:
 
 - name: 
