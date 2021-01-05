@@ -54,7 +54,7 @@ DataSources:
 Online: False
 Incremental_Output: False
 Processes: 8
-Max_chunck: 8
+Max_chunk: 8
 Learning_perc: 0.001
 
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
