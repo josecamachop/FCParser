@@ -43,9 +43,7 @@ def main(call='external',configfile=''):
 
 	# Get configuration
 	parserConfig = faac.getConfiguration(configfile)
-	dataSources = parserConfig['DataSources']
-	output = parserConfig['Learning_Output']
-	config = faac.loadConfig(output, dataSources, parserConfig)
+	config = faac.loadConfig(parserConfig, 'fclearning')
 
 	# Print configuration summary
 	configSummary(config)
@@ -64,7 +62,7 @@ def main(call='external',configfile=''):
 	write_output(config, output_data, stats['total_lines'])
 			
 
-	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+	print ("Elapsed: %s \n" %(prettyTime(time.time() - startTime))	)
 
 
 def parsing(config,startTime,stats):
@@ -79,8 +77,8 @@ def parsing(config,startTime,stats):
 
 		results[source] = []
 		currentTime = time.time()
-		print "\n-----------------------------------------------------------------------\n"
-		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
+		print ("\n-----------------------------------------------------------------------\n")
+		print ("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))
 
 
 		results[source] = process_multifile(config, source, stats['sizes'][source])
@@ -108,7 +106,7 @@ def process_multifile(config, source, lengths):
 			tag = getTag(input_path)
 
 			#Print some progress stats
-			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag)
+			print ("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag))
 		
 			pool = mp.Pool(config['Cores'])
 			cont = True
@@ -325,14 +323,14 @@ def configSummary(config):
 	Print a summary of loaded parameters
 	'''
 
-	print "-----------------------------------------------------------------------"
-	print "Data Sources:"
+	print ("-----------------------------------------------------------------------")
+	print ("Data Sources:")
 	for source in config['SOURCES']:
-		print " * %s %s variables " %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2))
-	print
-	print "Output:"
-	print "  Stats file: %s" %(config['OUTSTATS'])
-	print "-----------------------------------------------------------------------\n"
+		print (" * %s %s variables " %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2)))
+	print ()
+	print ("Output:")
+	print ("  Stats file: %s" %(config['OUTSTATS']))
+	print ("-----------------------------------------------------------------------\n")
 	
 
 
@@ -458,7 +456,7 @@ def write_output(config, output_data, total):
 	yaml.add_representer(UnsortableOrderedDict, yaml.representer.SafeRepresenter.represent_dict)
 
 	for source in output_data.keys():
-		print "\nWriting configuration file " + config['SOURCES'][source]['CONFILE'] + "\n" 
+		print ("\nWriting configuration file " + config['SOURCES'][source]['CONFILE'] + "\n") 
 		for varkey in output_data[source].keys():
 			if varkey != 'count':
 
@@ -513,11 +511,11 @@ def write_output(config, output_data, total):
 
 		# write resuls in yaml
 		try:
-			f = file(config['SOURCES'][source]['CONFILE'], 'a')
+			f = open(config['SOURCES'][source]['CONFILE'], 'a')
 			f.write('\n\n')
 			yaml.dump(contentf, f, default_flow_style=False)
 		except:
-	    		print "Problem writing " + yamlfile
+	    		print ("Problem writing " + yamlfile)
 	    		quit()
 		finally:
 			f.close()
