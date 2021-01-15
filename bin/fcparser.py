@@ -39,6 +39,7 @@ def main(call='external',configfile=''):
         configfile = args.config
 
     # Get configuration
+    print("\nLOADING GENERAL CONFIGURATION FILE...")
     parserConfig = faac.getConfiguration(configfile)
     config = faac.loadConfig(parserConfig, 'fcparser')
 
@@ -180,6 +181,8 @@ def process_multifile(config, source, lengths):
                 jobs = list()
                 for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
                     jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source]]) )
+                    #process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
+                    # To debug, use: process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
                 else:
                     if fragStart+fragSize < lengths[i]:
                         remain = lengths[i] - fragStart+fragSize
@@ -235,7 +238,7 @@ def fuseObs_online(resultado):
     array form.
     '''
     fused_res = []
-    features = []
+    #features = []
 
     for source in resultado:
 
@@ -299,6 +302,12 @@ def process_file(file, fragStart, fragSize,config, source,separator):
     finally:
         f.close()
 
+    for line in iter_split(lines, separator):
+        tag, obs = process_log(line, config, source)
+        if tag == 0:
+            tag = file.split("/")[-1]
+        add_observation(obsDict, obs, tag)
+        
     """
     # Old implementation
     log = ''
@@ -319,11 +328,6 @@ def process_file(file, fragStart, fragSize,config, source,separator):
             tag = file.split('/')[-1]
         add_observation(obsDict,obs,tag)
     """
-    for line in iter_split(lines, separator):
-        tag, obs = process_log(line, config, source)
-        if tag == 0:
-            tag = file.split("/")[-1]
-        add_observation(obsDict, obs, tag)
 
     return obsDict
 
