@@ -14,6 +14,7 @@ Last Modification: 11/Aug/2018
 """
 
 from datetime import datetime, timedelta
+from sys import exit
 from IPy import IP
 import time
 import re
@@ -226,7 +227,10 @@ class TimeVariable(Variable):
         """
         if isinstance(raw_value, str):
             try:
+                #input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
+                #timestamp = datetime.strptime(raw_value, input_format)
                 timestamp = datetime.strptime(raw_value, "%Y-%m-%d %H:%M:%S")
+                
             except:
                 timestamp = None
         else:
@@ -811,56 +815,143 @@ def loadConfig(parserConfig, caller):
     Caller function is fcparser, fcdeparser or fclearning
     '''
     
-    # First get online, dataSources and output dicts from parserConfig and
-    # show message error to user if exceptions
+    # Config dictionary which stores all the entries necessary for processing (the parameters
+    # defined in general config. file and datasources config. files)
+    config = {}
     paramError = False
+    paramWarnings = 0
+    
+    # First get parameter dicts from parserConfig and show message error to user if exceptions
+    # parserConfig_low will have lowercase keys to avoid possible differences with user notation
+    parserConfig_low =  {k.lower(): v for k, v in parserConfig.items()}
     
     try:
-        dataSources = parserConfig['DataSources']
+        dataSources = parserConfig_low['datasources']
     except:
-        print("**CONFIG FILE ERROR** missing or improperly written field: DataSources.")
+        print('\033[31m'+ "**CONFIG FILE ERROR** field: DataSources" +'\033[m')
         paramError = True
+        
     
     if caller is 'fcparser':
+        # Online parameter
         try:
-            output = parserConfig['Parsing_Output']
+            online = parserConfig_low['online']
         except:
-            print("**CONFIG FILE ERROR** missing or improperly written field: Parsing_Output.")
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: Online" +'\033[m')
             paramError = True
             
+        # Parsing output directory
         try:
-            online = parserConfig['Online']
+            output = parserConfig_low['parsing_output']
         except:
-            print("**CONFIG FILE ERROR** missing or improperly written field: Online.")
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: Parsing_Output" +'\033[m')
             paramError = True
-    
+        
+        # Incremental_Output parameter
+        try:
+            config['Incremental'] = parserConfig_low['incremental_output']
+        except:
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Incremental_Output")
+            paramWarnings += 1
+            config['Incremental'] = False
+            print(" ** Setting default value: %s" %(config['Incremental']) +'\033[m')
+                  
     
     if caller is 'fcdeparser':
         try:
-            output = parserConfig['Deparsing_output']
+            output = parserConfig_low['deparsing_output']
         except:
-            print("**CONFIG FILE ERROR** missing or improperly written field: Deparsing_Output.")
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: Deparsing_Output" +'\033[m')
             paramError = True
             
         try:
-            threshold = parserConfig['Deparsing_output']['threshold']
+            parserConfig_low['deparsing_output']['threshold']
         except:
-            print("**CONFIG FILE ERROR** missing or improperly written field: threshold.")
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: threshold" +'\033[m')
             paramError = True
         
         
     if caller is 'fclearning':
+        # Online parameter
         try:
-            output = parserConfig['Learning_Output']
+            online = parserConfig_low['online']
         except:
-            print("**CONFIG FILE ERROR** missing or improperly written field: Learning_Output.")
+            online = False
+            
+        try:
+            output = parserConfig_low['learning_output']
+        except:
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: Learning_Output" +'\033[m')
             paramError = True
+            
+        if 'lperc' in parserConfig_low:
+            config['Lperc'] = float(parserConfig_low['lperc'])
+        else:
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Lperc")
+            paramWarnings += 1
+            config['Lperc'] = 0.01;
+            print(" ** Setting default value: Lperc=%s" %(config['Lperc']) +'\033[m')
+
+        if 'endlperc' in parserConfig_low:
+            config['EndLperc'] = float(parserConfig_low['endlperc'])
+        else:
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: EndLperc")
+            paramWarnings += 1
+            config['EndLperc'] = 0.0001;
+            print(" ** Setting default value: EndLperc=%s" %(config['EndLperc']) +'\033[m')
+            
+            
+    # Number of cores used by the program
+    if caller is 'fcparser' or caller is 'fclearning': 
+        try: 
+            config['Cores'] = int(parserConfig_low['processes'])
+    
+        except:
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
+            paramWarnings += 1
+            config['Cores'] = 8
+            print(" ** Setting default value: %d cores" %(config['Cores']) +'\033[m')
+            paramWarnings += 1
         
-    
-    
-    # Config dictionary which stores all the entries necessary for processing
-    # (all the parameters defined in general config. file and datasources config. files)
-    config = {}
+    # Time split parameters   
+    if caller is 'fcparser' or caller is 'fcdeparser':  
+        try: 
+            parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
+            config['Time'] = parserConfig_low['split']['time']
+        except KeyError as key:
+            if key.args[0] is 'split': 
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
+            elif key.args[0] is 'time': 
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Time in SPLIT field")
+            paramWarnings+=1
+            config['Time']['window'] = 5
+            print(" ** Setting default sampling time: %s min." %(config['Time']['window']) +'\033[m')
+
+    # Keys parameter
+    try: 
+        config['Keys'] = parserConfig_low['keys']
+
+    except:
+        config['Keys'] = []
+
+    # 'All' parameter
+    if 'All' in parserConfig:
+        config['All'] = bool(parserConfig_low['all'])
+    else:
+        config['All'] = False;
+        
+    # Chunk size parameter (only for offline mode)
+    try:
+        if online is False:
+            try: 
+                config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
+            except:
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
+                paramWarnings+=1
+                config['Csize'] = 1024 * 1024 * config['Cores'];
+                print(" ** Setting default chunk size: 1 MB" +'\033[m') # To understand why default chunk size is 1MB, check calling of frag function in fcparser.process_multifile()
+    except:
+        pass        
 
     # Output directory
     try:
@@ -876,8 +967,7 @@ def loadConfig(parserConfig, caller):
     except:
         pass
 
-    # Output directory named OUTPUT is created if none is defined in config. file
-    if not os.path.exists(config['OUTDIR']):
+    if not os.path.exists(config['OUTDIR']): # Output directory named OUTPUT is created if none is defined in config. file
         os.mkdir(config['OUTDIR'])
         print("** Creating directory %s" %(config['OUTDIR']))
 
@@ -894,103 +984,87 @@ def loadConfig(parserConfig, caller):
     except (KeyError, TypeError):
         config['OUTW'] = 'weights.dat'
         print(" ** Defining default weights file: '%s'" %(config['OUTW']))
-
-    # Time split parameters
-    try: 
-        config['Time'] = parserConfig['SPLIT']['Time']
-
-    except:
-        config['Time'] = 0
-        print(" ** Warning: Time window parameter is not defined in the configuration file")
-        #config['Time']={'window':0}
-
-    # Incremental_Output parameter
-    try:
-        config['Incremental'] = parserConfig['Incremental_Output']
-    except:
-        config['Incremental'] = False
-        print(" ** Setting default value for 'Incremental_Output': False")
-
-    # Number of cores used by the program
-    try: 
-        config['Cores'] = int(parserConfig['Processes'])
-
-    except:
-        print("**CONFIG FILE ERROR** missing or improperly written field: Processes")
-        paramError = True
-        
-    # If an exception occurs with some of the mandatory parameters, execution is finished
-    if paramError is True: exit(1)
-
-
-    try: 
-        config['Keys'] = parserConfig['Keys']
-
-    except:
-        config['Keys'] = []
-
-    try: 
-        config['Csize'] = 1024 * 1024 * int(parserConfig['Max_chunk'])
-
-    except:
-        config['Csize'] = 1024 * 1024 * config['Cores'];
-
-    if 'Lperc' in parserConfig:
-        config['Lperc'] = float(parserConfig['Lperc'])
-    else:
-        config['Lperc'] = 0.01;
-
-    if 'EndLperc' in parserConfig:
-        config['EndLperc'] = float(parserConfig['EndLperc'])
-    else:
-        config['EndLperc'] = 0.0001;
-
-    if 'All' in parserConfig:
-        config['All'] = bool(parserConfig['All'])
-    else:
-        config['All'] = False;
         
 
     # Sources settings. Data source config. file parameters stored in config[SOURCES] 
     config['SOURCES'] = {}
     for source in dataSources:
         config['SOURCES'][source] = {}
-        config['SOURCES'][source]['CONFILE'] = dataSources[source]['config']
-        config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
+        dataSources[source] =  {k.lower(): v for k, v in dataSources[source].items()}
+        
+        try:
+            config['SOURCES'][source]['CONFILE'] = dataSources[source]['config']
+        except:
+            print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'config' in %s field" %(source))
+            paramError = True
+            
         if caller is 'fcparser':
-            config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
+            try:
+                config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
+            except:
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'parsing' in '%s' field" %(source))
+                paramError = True
+                
         if caller is 'fcdeparser':
-            config['SOURCES'][source]['FILESDEP'] = glob.glob(dataSources[source]['deparsing'])
-        if caller is 'fclearning':   
-            config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
+            try:
+                config['SOURCES'][source]['FILESDEP'] = glob.glob(dataSources[source]['deparsing'])
+            except:
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'deparsing' in '%s' field" %(source))
+                paramError = True
+                
+        if caller is 'fclearning': 
+            try:
+                config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
+            except:
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learning' in '%s' field" %(source))
+                paramError = True
+                
+        
+    # Check everything is ok in general configuration file before loading datasources config. files
+    if paramError is True:
+        print('\n\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
+        exit(1)
+    else:
+        if paramWarnings:
+            print('\n\033[33m'+ "EXECUTING PROGRAM WITH %d WARNINGS" %(paramWarnings) +'\033[m')
+        else:
+            print('\n\033[32m'+ "GENERAL CONFIGURATION FILE... OK" +'\033[m')
+            
+            
+    # Loading parameters from datasources config. files
+    print("LOADING DATASOURCES CONFIGURATION FILES...")
+    for source in dataSources:
+        config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
         
     config['FEATURES'] = {}
     config['STRUCTURED'] = {}
     config['RECORD_SEPARATOR'] = {}
 
     for source in config['SOURCES']:
+        #config['SOURCES'][source]['CONFIG'] =  {k.lower(): v for k, v in config['SOURCES'][source]['CONFIG'].items()}
         config['FEATURES'][source] = config['SOURCES'][source]['CONFIG']['FEATURES']
         config['STRUCTURED'][source] = config['SOURCES'][source]['CONFIG']['structured']
         
         for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
-            # Validate name
+            # Validate variable name
             if config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']:
                 config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'])
             else:
-                raise ConfigError(self, "VARIABLE: empty id in variable")
+                raise ConfigError("VARIABLES: empty name/id in variable")
 
         for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
-            # Validate name
+            # Validate feature name
             if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']:
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'])
             else:
-                raise ConfigError(self, "FEATURES: missing variable name")
+                raise ConfigError(self, "FEATURES: missing feature name")
 
-            # Validate variable
+            # Validate variable field in feature
             try:                
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']
             except KeyError as e:
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+
 
         # If source is not structured
         if not config['STRUCTURED'][source]:
@@ -1030,7 +1104,8 @@ def loadConfig(parserConfig, caller):
                     os.remove(out_file)
                     os.remove(out_file.replace('temp',source))
                     config['SOURCES'][source]['FILES'] = out_files
-                    delete_nfcsv = out_files
+                    #delete_nfcsv = out_files
+    
     
         # Process weight and made a list of features
         config['features'] = []
