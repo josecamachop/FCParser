@@ -12,30 +12,35 @@ General configuration file -- configuration.yaml
    SourceN:
      ...
 
+ Processes:           Number of processes used by the program. Use a number between 1 and the number of cores of your system. If not specified, it is set to 8 by default.
  Online:              Boolean variable to determine if online or offline mode. Online mode for real time application (only one process)
                       while offline mode for processing already stored data sets (multiprocess).
- Processes:           Number of processes used by the program. Use a number between 1 and the number of cores of your system
- Incremental_output:  Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones
- Max_chunck:          Size of the chunk of files that are being processed at the same time (Kilobytes)
- Learning_perc:       Proportion (percentage) of data used for learning.
- Keys:                Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
-
+                      
+ SPLIT:        Timestamp visualization
+   Time:        
+     window      time windows for sampling in minutes. If not specified, it is set to 5 minutes by default.
+     start:      start time for sampling interval. It must be specified in format: YYYY-MM-DD HH:MM:SS
+     end:        end time for sampling interval.
+                      
+ - Parsing parameters: 
+ Incremental_output:  Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones. If not specified, it is set to False by default.
+ Max_chunck:          Size of the chunk of files that are being processed at the same time (Megabytes). If not specified, it is set to 1MB by default.
  Parsing_Output:
    dir:          Output directory to write the output parsed data.
    stats:        Log file to write the stats (lines, records, matches).
+   weight:       File which contains weights assigned to each feature in data source config. file
+ Keys:           Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
 
+- Deparsing parameters:
  Deparsing_output: 
   dir:           Output directory for deparsing process
   treshold:      upper limit of log entries by datasource.  
-
- SPLIT:        split params for temporal samplig
-   Time:        
-     window      time windows for sampling in minutes
-     start:      start and end time for sampling interval
-     end:  
-   
-   Output:    Output directory for split data      
-   
+  
+- Learning parameters:
+ Learning_Output:
+   dir:          Output directory to write the output parsed data
+ Lperc:       Proportion (percentage) of data used for learning.
+ EndLperc:
 
 
 Data Source configuration file -- datasource.yaml
@@ -47,24 +52,23 @@ tag: Identifier of the data source
 structured: Boolean variable to indicate if the datasource is structured or not.
 timestamp_format: format of the timestamp of the logs in the files of this dataSource in python datetime format.
                   Check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-timestamp_regexp: regular expresion that matches the date format of the source.   ** Only for unstructured sources **
-separator: chars that delimitates the log entries of the source.    ** Only for unstructured sources **
-timearg: position of the timestamp in the log entry. Timearg is the name of the timestamp variable.    ** Only for structured sources **
+separator: char that delimitates the log entries of the source. It is mandatory for unstructured sources while for structured sources /n is considered if none is specified. 
+timearg: Name of the timestamp variable.
 
 
 VARIABLES:
   - name:       Variable name.
-  - matchtype:  Variable matchtype {string, number, counter, ip, time, duration}.
+  - matchtype:  Variable matchtype {string, number, ip, time, duration}.
   - where:      Position of the field in the line (starts with 0), if structured datasource
                 Regular expression that matches the wanted field, if unstructured datasource.
 
- Important note: There must be a variable called timestamp which collects the timestamps as strings.
+ Important note: There must be a variable (whose name is defined in timearg atrribute) which collects the timestamps, and it must be defined as time matchtype.
 
 
 FEATURES:
   - name:       Feature name.
   - variable:   Variable from which the feature is calculated.
-  - matchtype:  Feature matchtype {single, multiple, range, default, regexp}
+  - matchtype:  Feature matchtype {single, multiple, range, regexp, default}
   - value:      Value of the field that defines the feature.
                    If the matchtype is 'single' use a single value.
                    If the matchtype is 'multiple', use a list of values.
