@@ -14,7 +14,7 @@ Last Modification: 11/Aug/2018
 """
 
 from datetime import datetime, timedelta
-from sys import exit
+from sys import exit, stdin
 from IPy import IP
 import time
 import re
@@ -195,42 +195,39 @@ class IpVariable(Variable):
 
 class TimeVariable(Variable):
     """Variable containing a timestamp value.
+    """
     
-    master commit 24/9/20:
     def __init__(self, raw_value, tsformat):
-        ""Class constructor.""
-
         self.value = self.load(raw_value, tsformat)
         
     def load(self, raw_value, tsformat):
-        ""Converts an input raw value into a timestamp.
+        """Converts an input raw value into a timestamp.
         raw_value -- the raw value in string format (eg. '2014-12-20 15:01:02')
         tsformat -- timestamp format
         Returns: Datetime object, if the conversion succeds;
                  None, if the conversion fails.
-        ""
-        try:
-			timestamp = datetime.strptime(raw_value, tsformat)
-		except:
-			timestamp = None
-		
-		return timestamp
-    """
-        
-    def load(self, raw_value):
-        """Converts an input raw value into a timestamp.
-        Returns: Datetime object, if the conversion succeeds;
-                 None, if the conversion fails.
-
-        raw_value -- The raw value, in string format (eg. '2014-12-20 15:01:02'),
-                     or in milliseconds since Epoch  (eg. 1293581619000)
         """
+        try:
+            timestamp = datetime.strptime(raw_value, tsformat)
+        except:
+            print('\033[31m'+ "Error while comparing %s with %s" %(raw_value, tsformat) +'\033[m')
+            timestamp = None
+             
+        # If no year is defined in log_timestamp, current year is set
+        try:
+            if timestamp.year == 1900:
+                timestamp = timestamp.replace(year = datetime.datetime.now().year)
+        except AttributeError:
+            pass
+            
+        return timestamp
+
+
+    """ Old implementation   
+    def load(self, raw_value):
         if isinstance(raw_value, str):
             try:
-                #input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
-                #timestamp = datetime.strptime(raw_value, input_format)
-                timestamp = datetime.strptime(raw_value, "%Y-%m-%d %H:%M:%S")
-                
+                timestamp = datetime.strptime(raw_value, "%Y-%m-%d %H:%M:%S")  
             except:
                 timestamp = None
         else:
@@ -239,6 +236,7 @@ class TimeVariable(Variable):
             except:
                 timestamp = None
         return timestamp
+    """
 
 
 class TimedeltaVariable(TimeVariable):
@@ -340,7 +338,7 @@ class Record(object):
         variables -- Dictionary of variables, indexed by their name.
         
     """
-    def __init__(self, line, variables, structured, all=False):
+    def __init__(self, line, variables, structured, tsformat, all=False):
         self.variables = {}
         
         # For structured sources
@@ -395,7 +393,7 @@ class Record(object):
                 elif vType == 'ip':
                     variable.append(IpVariable(vValue))
                 elif vType == 'time':
-                    variable.append(TimeVariable(vValue))
+                    variable.append(TimeVariable(vValue, tsformat))
                 elif vType == 'duration':
                     if isinstance(vValue, list) and len(vValue) == 2:
                         variable.append(TimedeltaVariable(vValue[0], vValue[1]))
@@ -908,7 +906,6 @@ def loadConfig(parserConfig, caller):
     
         except:
             print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
-            paramWarnings += 1
             config['Cores'] = 8
             print(" ** Setting default value: %d cores" %(config['Cores']) +'\033[m')
             paramWarnings += 1
@@ -918,14 +915,27 @@ def loadConfig(parserConfig, caller):
         try: 
             parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
             config['Time'] = parserConfig_low['split']['time']
+            config['Time']['window']
         except KeyError as key:
             if key.args[0] is 'split': 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
             elif key.args[0] is 'time': 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Time in SPLIT field")
             paramWarnings+=1
-            config['Time']['window'] = 5
-            print(" ** Setting default sampling time: %s min." %(config['Time']['window']) +'\033[m')
+            if key.args[0] is 'window':
+                config['Time']['window'] = 5
+            else:
+                config['Time'] = {'window':5}
+            print(" ** Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
+            
+        try:
+            if 'start' in config['Time']:
+                config['Time']['start'] = datetime.strptime(str(config['Time']['start']), "%Y-%m-%d %H:%M:%S")
+            if 'end' in config['Time']:
+                config['Time']['end'] = datetime.strptime(str(config['Time']['end']), "%Y-%m-%d %H:%M:%S")
+        except ValueError as val_error:
+            print('\033[31m'+ val_error.args[0] +'\033[m')
+            paramError = True
 
     # Keys parameter
     try: 
@@ -961,6 +971,8 @@ def loadConfig(parserConfig, caller):
     except (KeyError, TypeError):
         config['OUTDIR'] = 'OUTPUT/'
         print(" ** Defining default output directory: '%s'" %(config['OUTDIR']))
+    except:
+        pass
 
     try:
         shutil.rmtree(config['OUTDIR']+'/')
@@ -977,6 +989,8 @@ def loadConfig(parserConfig, caller):
     except (KeyError, TypeError):
         config['OUTSTATS'] = 'stats.log'
         print(" ** Defining default log file: '%s'" %(config['OUTSTATS']))
+    except:
+        pass
         
     # Weights file
     try:
@@ -984,6 +998,8 @@ def loadConfig(parserConfig, caller):
     except (KeyError, TypeError):
         config['OUTW'] = 'weights.dat'
         print(" ** Defining default weights file: '%s'" %(config['OUTW']))
+    except:
+        pass
         
 
     # Sources settings. Data source config. file parameters stored in config[SOURCES] 
@@ -1039,36 +1055,85 @@ def loadConfig(parserConfig, caller):
     config['FEATURES'] = {}
     config['STRUCTURED'] = {}
     config['RECORD_SEPARATOR'] = {}
+    config['TIMEARG'] = {}
+    config['TSFORMAT'] = {}
 
+    # First, we check if all mandatory attributes are defined
     for source in config['SOURCES']:
+        
         #config['SOURCES'][source]['CONFIG'] =  {k.lower(): v for k, v in config['SOURCES'][source]['CONFIG'].items()}
+        try:
+            config['STRUCTURED'][source] = config['SOURCES'][source]['CONFIG']['structured']
+        except:
+            paramError = True
+            print('\n\033[31m'+ "** missing attribute: 'structured' in  %s data source'" %(source) +'\033[m')
+        
+        try:
+            config['TSFORMAT'][source] = config['SOURCES'][source]['CONFIG']['timestamp_format']
+        except:
+            paramError = True
+            print('\n\033[31m'+ "** missing attribute: 'timestamp_format' in  %s data source'" %(source) +'\033[m')
+            
+        try:
+            config['TIMEARG'][source] = config['SOURCES'][source]['CONFIG']['timearg']
+        except:
+            print('\033[33m'+ "** missing attribute: 'timearg' in %s data source" %(source))
+            print(" ** Assuming default timearg: 'timestamp' variable" +'\033[m')
+            config['TIMEARG'][source] = 'timestamp'
+            
+        # unstructured source
+        if not config['STRUCTURED'][source]:
+            try:
+                config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG']['separator'] 
+            except:
+                paramError = True
+                print('\n\033[31m'+ "** missing attribute: 'separator' in %s data source'" %(source) +'\033[m')
+        # structured source
+        else:
+            config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG'].get('separator') or "\n"
+        
+        if paramError is True:
+            print('\n\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
+            exit(1)
+    
+    
+    # Now, variables and features are processed        
+    for source in config['SOURCES']:    
+        
         config['FEATURES'][source] = config['SOURCES'][source]['CONFIG']['FEATURES']
-        config['STRUCTURED'][source] = config['SOURCES'][source]['CONFIG']['structured']
+        
         
         for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
             # Validate variable name
             if config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']:
                 config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'])
             else:
-                raise ConfigError("VARIABLES: empty name/id in variable")
+                paramError = True
+                print('\033[31m'+ "** ConfigError - VARIABLES: empty name/id in variable %d" %(i) +'\033[m')
 
         for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
             # Validate feature name
             if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']:
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'])
             else:
-                raise ConfigError(self, "FEATURES: missing feature name")
+                paramError = True
+                print('\033[31m'+ "** ConfigError - FEATURES: missing name in feature %d" %(i) +'\033[m')
 
             # Validate variable field in feature
             try:                
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']
             except KeyError as e:
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+        
+        if paramError:
+            print("Some errors in features or variables have been detected. Do you want to proceed anyway? [Y/N]: ")
+            option = stdin.read(1)
+            if option is 'N' or option is 'n':
+                exit(1)
 
 
         # If source is not structured
         if not config['STRUCTURED'][source]:
-            config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG']['separator']    
 
             for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
                 config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where'])
@@ -1077,12 +1142,9 @@ def loadConfig(parserConfig, caller):
                     if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
                         config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value']+'$')
 
-        # If source is structured
         else:
             # TODO: Retrieve from yaml
-            
-            config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG'].get('record_separator') or "\n"
-
+            #config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG'].get('record_separator') or "\n"
             #print(config['RECORD_SEPARATOR'])
             for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
                     if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
@@ -1117,7 +1179,7 @@ def loadConfig(parserConfig, caller):
             for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
                 try:    
                     config['features'].append(feat['name'])
-                except:
+                except Exception as e:
                     print("FEATURES: missing config key (%s)" %(e.message))
                     exit(1)    
 
