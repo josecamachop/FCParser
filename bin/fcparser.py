@@ -50,6 +50,7 @@ def main(call='external',configfile=''):
     outputWeight(config)
     
     # Create stats file and write data entries log in it
+    #global stats
     stats = create_stats(config)
     stats = count_entries(config,stats) 
 
@@ -136,13 +137,13 @@ def offline_parsing(config,startTime,stats):
     final_res = {}
 
     for source in config['SOURCES']:
-
+        file_size = stats['sizes'][source]
         results[source] = []
         currentTime = time.time()
         print("\n-----------------------------------------------------------------------\n")
         print("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))    
             
-        results[source] = process_multifile(config, source, stats['sizes'][source])
+        results[source] = process_multifile(config, source, file_size)   
 
     for source in results:
         final_res[source] = results[source][0] # combine the outputs of the several processes
@@ -181,8 +182,8 @@ def process_multifile(config, source, lengths):
                 jobs = list()
                 for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
                     jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source]]) )
+                    # To debug, use:
                     #process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
-                    # To debug, use: process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
                 else:
                     if fragStart+fragSize < lengths[i]:
                         remain = lengths[i] - fragStart+fragSize
@@ -306,7 +307,9 @@ def process_file(file, fragStart, fragSize,config, source,separator):
         tag, obs = process_log(line, config, source)
         if tag == 0:
             tag = file.split("/")[-1]
-        add_observation(obsDict, obs, tag)
+        if obs is not None:
+            add_observation(obsDict, obs, tag)
+            #stats['processed_logs'][source] += 1
         
     """
     # Old implementation
@@ -355,41 +358,58 @@ def process_log(log,config, source):
     '''
     Function take on data entry as input an transform it into a preliminary observation
     '''     
-    record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+    record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
     obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
-
     #print(str(record)+ "Obs: " + str(obs))
     #print("New log")
-    try:
-        if config['Keys']:
-            tag = list()
-            tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
-            tag.append(tag2.strftime("%Y%m%d%H%M"))
-            for i in range(len(config['Keys'])):
-                if len(record.variables[config['Keys'][i]]) > 0:
-                    tag.append(str(record.variables[config['Keys'][i]][0]))    # Careful!, only works (intentionally) for the first instance of a variable in a record
-            if len(tag) > 1:
-                tag = tuple(tag)
+    
+    invalid_log=0
+    timearg = config['TIMEARG'][source] # name of variable which contains timestamp 
+    log_timestamp = record.variables[timearg][0].value
+    if isinstance((record.variables[timearg][0].value), str):
+        print('\033[31m'+ "%s variable - matchtype: string. Please define it as 'matchype: time'" %(timearg)  +'\033[m')
+
+    # Check if log_timestamp will be considered according to time sampling parameters
+    if 'start' in config['Time']:
+        if log_timestamp < config['Time']['start']:
+            invalid_log = 1
+    if 'end' in config['Time']:
+        if log_timestamp > config['Time']['end']:
+            invalid_log = 1 
+    
+    if not invalid_log:
+        window = config['Time']['window']            
+        try:
+            if config['Keys']:
+                tag = list()
+                tag2 = normalize_timestamps(log_timestamp, window)
+                tag.append(tag2.strftime("%Y%m%d%H%M"))
+                for i in range(len(config['Keys'])):
+                    if len(record.variables[config['Keys'][i]]) > 0:
+                        tag.append(str(record.variables[config['Keys'][i]][0]))    # Careful!, only works (intentionally) for the first instance of a variable in a record
+                if len(tag) > 1:
+                    tag = tuple(tag)
+                else:
+                    tag = tag[0]        
             else:
-                tag = tag[0]        
-        else:
-            tag2 = normalize_timestamps(record.variables['timestamp'][0],config, source)
-            tag = tag2.strftime("%Y%m%d%H%M")
-    except Exception as err:
-        print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
+                tag2 = normalize_timestamps(log_timestamp, window)
+                tag = tag2.strftime("%Y%m%d%H%M")
+        except Exception as err:
+            print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
+    
+    else:
+        tag, obs = None, None
+        
     return tag, obs
     
-def normalize_timestamps(timestamp, config, source):
+def normalize_timestamps(t, window):
     '''
     Function that transform timestamps of data entries to a normalized format. It also do the 
     time sampling using the time window defined in the configuration file.
     '''    
     try:
-        input_format = config['SOURCES'][source]['CONFIG']['timestamp_format']
-        window = config['Time']['window']
         if window == 0:
             return 0
-        t = datetime.datetime.strptime(str(timestamp), input_format)
         if window <= 60:
             new_minute = t.minute - t.minute % window  
             t = t.replace(minute = new_minute, second = 0)
@@ -398,9 +418,8 @@ def normalize_timestamps(timestamp, config, source):
             window_h = int((window - window_m) / 60)
             new_hour = t.hour - t.hour % window_h  
             t = t.replace(hour = new_hour, minute = 0, second = 0)                 
-        if t.year == 1900:
-            t = t.replace(year = datetime.datetime.now().year)
         return t
+    
     except Exception as err:
         print("[!] Normalizing error: "+str(err))
     return 0
@@ -430,11 +449,13 @@ def count_entries(config,stats):
         lines[source] = 0
         stats['sizes'][source] = list()
         for file in config['SOURCES'][source]['FILES']:
+            
             if config['STRUCTURED'][source]:
                 (l,s) = file_len(file)
                 lines[source] += l
                 stats['sizes'][source].append(s)
-
+                
+            # unstructured source
             else:
                 (l,s) = file_uns_len(file,config['RECORD_SEPARATOR'][source])
                 lines[source] += l
@@ -450,6 +471,11 @@ def count_entries(config,stats):
         stats['lines'][source] = lines[source]
 
     stats['total_lines'] = total_lines
+    
+    # Empty field processed_logs to be use in offline_parsing function
+    #stats['processed_logs'] = {}
+    #for source in config['SOURCES']:
+        #stats['processed_logs'][source] = 0
 
     statsStream = open(stats['statsPath'], 'a')
 
