@@ -250,6 +250,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
     '''
     OUTDIR = config['OUTDIR']
     features = deparsInput['features']
+    timearg = config['TIMEARG'][source] # name of variable which contains timestamp 
 
     selection = []
     for i in range(len(config['FEATURES'][source])):
@@ -300,10 +301,10 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
                     # input timestamps
                     try:
 
-                        t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])                    
+                        t = getUnstructuredTime(logExtract, VARIABLES[timearg]['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])                    
                         if str(t).strip() in formated_timestamps:    
                             # Check if features appear in the log to write in the file.
-                            record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+                            record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['SOURCES'][source]['CONFIG']['timestamp_format'], config['All'])
                             obs = faac.Observation.fromRecord(record, FEATURES_sel)
                             feat_appear[file].append(sum( [obs.data[i].value for i in range(len(obs.data))]))
                     except:
@@ -317,9 +318,9 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
             # Deal with the last log, not processed during while loop.
             log += line
             try:                                
-                t = getUnstructuredTime(log, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])
+                t = getUnstructuredTime(log, VARIABLES[timearg]['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])
                 if str(t) in timestamps:
-                    record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+                    record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['SOURCES'][source]['CONFIG']['timestamp_format'], config['All'])
                     obs = faac.Observation.fromRecord(record, FEATURES_sel)
                     feat_appear[file].append(sum( [obs.data[i].value for i in range(len(obs.data))]))
             except:
@@ -360,7 +361,7 @@ def unstr_deparsing(config, threshold, sourcepath, deparsInput, source, formated
                     # For each log, extract timestamp with regular expresions and check if it is in the 
                     # input timestamps
                     try:
-                        t = getUnstructuredTime(logExtract, VARIABLES['timestamp']['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])                                                
+                        t = getUnstructuredTime(logExtract, VARIABLES[timearg]['where'], config['SOURCES'][source]['CONFIG']['timestamp_format'])                                                
                         if str(t).strip() in formated_timestamps:    
                             # Check if features appear in the log to write in the file.
                             if feat_appear[file][index] > features_needed:
