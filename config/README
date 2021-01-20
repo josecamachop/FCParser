@@ -28,7 +28,7 @@ General configuration file -- configuration.yaml
  Parsing_Output:
    dir:          Output directory to write the output parsed data.
    stats:        Log file to write the stats (lines, records, matches).
-   weight:       File which contains weights assigned to each feature in data source config. file
+   weights:       File which contains weights assigned to each feature in data source config. file
  Keys:           Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
 
 - Deparsing parameters:
