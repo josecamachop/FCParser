@@ -67,7 +67,7 @@ Python3 is required to run this programme.
 If you are using an older version of Python, you might update your Python libraries or
 create a Python3 virtual environment using virtualenv, for example:
 
-	$ virtualenv --python=python3 FCParser/env
+	$ virtualenv --python=python3 FCParser/env/
 	$ source FCParser/env/bin/activate 
 
 #### Dependencies
