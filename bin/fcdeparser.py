@@ -27,7 +27,7 @@ def main():
     configfile = getArguments()
     parserConfig = faac.getConfiguration(configfile.config)
     config = faac.loadConfig(parserConfig, 'fcdeparser')
-    threshold = parserConfig['Deparsing_output']['threshold']
+    threshold = config['threshold']
     deparsInput = getDeparsInput(configfile,config)
 
 
@@ -499,7 +499,7 @@ def getConfiguration(config_file):
     '''
 
     stream = open(config_file, 'r')
-    conf = yaml.load(stream)
+    conf = yaml.safe_load(stream) # conf = yaml.load(stream)
     stream.close()
     return conf
 
