@@ -42,17 +42,16 @@ def main(call='external',configfile=''):
     print("\nLOADING GENERAL CONFIGURATION FILE...")
     parserConfig = faac.getConfiguration(configfile)
     config = faac.loadConfig(parserConfig, 'fcparser')
-
+    
     # Print configuration summary
     configSummary(config)
 
     # Output Weights
     outputWeight(config)
     
-    # Create stats file and write data entries log in it
-    #global stats
+    # Create stats file and count data entries
     stats = create_stats(config)
-    stats = count_entries(config,stats) 
+    stats = count_entries(config,stats)
 
     # processing files. Online mode
     if parserConfig['Online']:
@@ -61,15 +60,24 @@ def main(call='external',configfile=''):
 
     # process offline 
     else:
-        data = offline_parsing(config, startTime, stats)
+        split_logs, data = offline_parsing(config, startTime, stats)
         output_data = fuseObs_offline(data)
         with open('fused_dict', 'w') as f: print(output_data, file=f)
+        
+    # write in stats file
+    write_stats(config, stats)
 
     # Output results
     write_output(output_data, config)
+    
+    # Output data split
+    if 'SPLIT_OUT' in config:
+        write_split_data(split_logs, config)
+    
+    print("Elapsed: %s \n" %(prettyTime(time.time() - startTime))) 
+    
 
-    print("Elapsed: %s \n" %(prettyTime(time.time() - startTime)))    
-
+    
 def online_parsing(config):
     '''
     Main process for online parsing. In this case, the program generates one output for the 
@@ -135,15 +143,15 @@ def offline_parsing(config,startTime,stats):
     '''
     results = {}
     final_res = {}
+    split_logs = {}
 
     for source in config['SOURCES']:
-        file_size = stats['sizes'][source]
         results[source] = []
         currentTime = time.time()
         print("\n-----------------------------------------------------------------------\n")
         print("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))    
             
-        results[source] = process_multifile(config, source, file_size)   
+        split_logs[source], results[source] = process_multifile(config, source, stats) 
 
     for source in results:
         final_res[source] = results[source][0] # combine the outputs of the several processes
@@ -154,9 +162,9 @@ def offline_parsing(config,startTime,stats):
                 else:
                     final_res[source][key] = result[key]
 
-    return final_res
+    return split_logs, final_res
 
-def process_multifile(config, source, lengths):
+def process_multifile(config, source, stats):
     '''
     processing files procedure for sources in offline parsing. In this function the pool 
     of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
@@ -165,6 +173,7 @@ def process_multifile(config, source, lengths):
     '''
     results = []
     count = 0
+    lengths = stats['sizes'][source] #file size
 
     for i in range(len(config['SOURCES'][source]['FILES'])):
         input_path = config['SOURCES'][source]['FILES'][i]
@@ -190,12 +199,27 @@ def process_multifile(config, source, lengths):
                         init = fragStart+fragSize 
                     else:
                         cont = False
-
+                
+                split_logs = {}
                 for job in jobs:
-                    results.append(job.get())
+                    job_data = job.get()
+                    logDict = job_data[0]
+                    obsDict = job_data[1]
+                    
+                    processed_lines = sum(len(lst) for lst in logDict.values())
+                    stats['processed_lines'][source] += processed_lines
+                    
+                    shared_keys = set(split_logs).intersection(logDict)
+                    log_aux = dict(split_logs)
+                    split_logs.update(logDict)
+                    for key in shared_keys:
+                        split_logs[key]=log_aux[key]+split_logs[key]
+                    
+                    results.append(obsDict)
 
             pool.close()
-    return results
+
+    return split_logs, results
 
 
     
@@ -303,13 +327,17 @@ def process_file(file, fragStart, fragSize,config, source,separator):
     finally:
         f.close()
 
+    logDict = {}
     for line in iter_split(lines, separator):
         tag, obs = process_log(line, config, source)
         if tag == 0:
             tag = file.split("/")[-1]
         if obs is not None:
             add_observation(obsDict, obs, tag)
-            #stats['processed_logs'][source] += 1
+            if not tag in logDict:
+                logDict[tag] = []
+            logDict[tag].append(line)
+
         
     """
     # Old implementation
@@ -332,7 +360,7 @@ def process_file(file, fragStart, fragSize,config, source,separator):
         add_observation(obsDict,obs,tag)
     """
 
-    return obsDict
+    return logDict, obsDict
 
 def iter_split(line, delimiter):
     start = 0
@@ -366,8 +394,6 @@ def process_log(log,config, source):
     invalid_log=0
     timearg = config['TIMEARG'][source] # name of variable which contains timestamp 
     log_timestamp = record.variables[timearg][0].value
-    if isinstance((record.variables[timearg][0].value), str):
-        print('\033[31m'+ "%s variable - matchtype: string. Please define it as 'matchype: time'" %(timearg)  +'\033[m')
 
     # Check if log_timestamp will be considered according to time sampling parameters
     if 'start' in config['Time']:
@@ -394,8 +420,10 @@ def process_log(log,config, source):
             else:
                 tag2 = normalize_timestamps(log_timestamp, window)
                 tag = tag2.strftime("%Y%m%d%H%M")
+
         except Exception as err:
             print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
+            tag, obs = None, None
     
     else:
         tag, obs = None, None
@@ -444,9 +472,11 @@ def count_entries(config,stats):
     '''
 
     lines = {}
+    stats['processed_lines'] = {}
     stats['sizes'] = {}
     for source in config['SOURCES']:
         lines[source] = 0
+        stats['processed_lines'][source] = 0
         stats['sizes'][source] = list()
         for file in config['SOURCES'][source]['FILES']:
             
@@ -472,26 +502,25 @@ def count_entries(config,stats):
 
     stats['total_lines'] = total_lines
     
-    # Empty field processed_logs to be use in offline_parsing function
-    #stats['processed_logs'] = {}
-    #for source in config['SOURCES']:
-        #stats['processed_logs'][source] = 0
+    
+    return stats
 
+
+def write_stats(config,stats):
+    
     statsStream = open(stats['statsPath'], 'a')
 
     for source in config['SOURCES']:
         statsStream.write( " * %s \n" %((source).ljust(18)))
         statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
         statsStream.write( "\t\t %s features \n" %(len(config['SOURCES'][source]['CONFIG']['FEATURES'])))
-        statsStream.write( "\t\t %d logs \n" %(stats['lines'][source]))
-        statsStream.write( "\t\t %d bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
+        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source]+1, stats['processed_lines'][source]))
+        statsStream.write( "\t\t %d total bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
                                                            (sum(stats['sizes'][source]))*1e-6))
 
     statsStream.write("\n=================================================\n\n")
 
     statsStream.close()
-
-    return stats
 
 def outputWeight(config):
     '''
@@ -518,6 +547,8 @@ def configSummary(config):
     print("  Directory: %s" %(config['OUTDIR']))
     print("  Stats file: %s" %(config['OUTSTATS']))
     print("  Weights file: %s" %(config['OUTW']))
+    if 'SPLIT_OUT' in config:
+        print("  Split data directory: %s" %(config['SPLIT_OUT']))
     print("-----------------------------------------------------------------------\n")
     
 
@@ -705,6 +736,19 @@ def write_output(output, config):
     else:
         with open(config['OUTDIR'] + 'output.dat' , 'w') as f:
             f.write(','.join(map(str,output.data)))
+            
+
+def write_split_data(split_logs, config):
+    
+    for source in config['SOURCES']:
+        separator = config['RECORD_SEPARATOR'][source]
+        extension = os.path.splitext(config['SOURCES'][source]['FILES'][0])[1]
+        for key in split_logs[source]:
+            with open(config['SPLIT_OUT']+source+'-'+key+extension, 'w') as f:
+                for i in range(len(split_logs[source][key])-1):
+                    f.write(split_logs[source][key][i]+separator)
+                f.write(split_logs[source][key][i+1])
+            f.close()  
 
     
 class obsDict_online(object):
@@ -729,3 +773,6 @@ class obsDict_online(object):
 if __name__ == "__main__":
     
     main()
+
+# with open('filename.pickle','wb') as f: pickle.dump(variablename, f)
+# variablename = pickle.load(open('filename.pickle','rb'))

@@ -216,7 +216,7 @@ class TimeVariable(Variable):
         # If no year is defined in log_timestamp, current year is set
         try:
             if timestamp.year == 1900:
-                timestamp = timestamp.replace(year = datetime.datetime.now().year)
+                timestamp = timestamp.replace(year = datetime.now().year)
         except AttributeError:
             pass
             
@@ -449,7 +449,7 @@ class Record(object):
                                 variable.append(IpVariable(vValue))
 
                             elif vMatchType == 'time':
-                                variable.append(TimeVariable(vValue))
+                                variable.append(TimeVariable(vValue, tsformat))
 
                             elif vMatchType == 'duration':
                                 if isinstance(vValue, list) and len(vValue) == 2:
@@ -799,7 +799,7 @@ def getConfiguration(config_file):
     Function to load config file. It is used for general and datasources config. files
     '''
     stream = open(config_file, 'r')
-    conf = yaml.load(stream)
+    conf = yaml.safe_load(stream) # conf = yaml.load(stream)
     if 'FEATURES' not in conf:
         conf['FEATURES'] = {}
 
@@ -834,6 +834,10 @@ def loadConfig(parserConfig, caller):
         # Online parameter
         try:
             online = parserConfig_low['online']
+            if online is True:
+                print("* Online mode")
+            elif online is False:
+                print("* Offline mode (multiprocess)")
         except:
             print('\033[31m'+ "**CONFIG FILE ERROR** field: Online" +'\033[m')
             paramError = True
@@ -842,17 +846,18 @@ def loadConfig(parserConfig, caller):
         try:
             output = parserConfig_low['parsing_output']
         except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** field: Parsing_Output" +'\033[m')
-            paramError = True
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Parsing_Output" +'\033[m')
+            paramWarnings += 1
         
         # Incremental_Output parameter
         try:
             config['Incremental'] = parserConfig_low['incremental_output']
+            print("* Incremental_output: "+str(config['Incremental']))
         except:
             print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Incremental_Output")
             paramWarnings += 1
             config['Incremental'] = False
-            print(" ** Setting default value: %s" %(config['Incremental']) +'\033[m')
+            print(" * Setting default value: %s" %(config['Incremental']) +'\033[m')
                   
     
     if caller is 'fcdeparser':
@@ -863,7 +868,8 @@ def loadConfig(parserConfig, caller):
             paramError = True
             
         try:
-            parserConfig_low['deparsing_output']['threshold']
+            config['threshold'] = parserConfig_low['deparsing_output']['threshold']
+            print("Threshold: "+str(config['threshold']))
         except:
             print('\033[31m'+ "**CONFIG FILE ERROR** field: threshold" +'\033[m')
             paramError = True
@@ -884,38 +890,56 @@ def loadConfig(parserConfig, caller):
             
         if 'lperc' in parserConfig_low:
             config['Lperc'] = float(parserConfig_low['lperc'])
+            print("* Lperc: "+str(config['Lperc']))
         else:
             print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Lperc")
             paramWarnings += 1
             config['Lperc'] = 0.01;
-            print(" ** Setting default value: Lperc=%s" %(config['Lperc']) +'\033[m')
+            print(" * Setting default value: Lperc=%s" %(config['Lperc']) +'\033[m')
 
         if 'endlperc' in parserConfig_low:
             config['EndLperc'] = float(parserConfig_low['endlperc'])
+            print("* EndLperc: "+str(config['EndLperc']))
         else:
             print('\033[33m'+ "**CONFIG FILE WARNING** missing field: EndLperc")
             paramWarnings += 1
             config['EndLperc'] = 0.0001;
-            print(" ** Setting default value: EndLperc=%s" %(config['EndLperc']) +'\033[m')
+            print(" * Setting default value: EndLperc=%s" %(config['EndLperc']) +'\033[m')
             
             
     # Number of cores used by the program
     if caller is 'fcparser' or caller is 'fclearning': 
         try: 
             config['Cores'] = int(parserConfig_low['processes'])
+            print("* Cores: "+str(config['Cores']))
     
         except:
             print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
             config['Cores'] = 8
-            print(" ** Setting default value: %d cores" %(config['Cores']) +'\033[m')
+            print(" * Setting default value: %d cores" %(config['Cores']) +'\033[m')
             paramWarnings += 1
+            
+    # Chunk size parameter (only for offline mode)
+    try:
+        if online is False:
+            try: 
+                config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
+            except:
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
+                paramWarnings+=1
+                config['Csize'] = 1024 * 1024 * config['Cores'];
+                print(" * Setting default chunk size: 1 MB" +'\033[m') # To understand why default chunk size is 1MB, check calling of frag function in fcparser.process_multifile()
+    except:
+        pass   
         
+    
     # Time split parameters   
     if caller is 'fcparser' or caller is 'fcdeparser':  
         try: 
             parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
             config['Time'] = parserConfig_low['split']['time']
             config['Time']['window']
+            print("* Time sampling window: %d minutes" %(config['Time']['window']))
         except KeyError as key:
             if key.args[0] is 'split': 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
@@ -926,17 +950,40 @@ def loadConfig(parserConfig, caller):
                 config['Time']['window'] = 5
             else:
                 config['Time'] = {'window':5}
-            print(" ** Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
+            print(" * Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
             
         try:
             if 'start' in config['Time']:
                 config['Time']['start'] = datetime.strptime(str(config['Time']['start']), "%Y-%m-%d %H:%M:%S")
+                print("* Start time: %s" %(config['Time']['start']))
             if 'end' in config['Time']:
                 config['Time']['end'] = datetime.strptime(str(config['Time']['end']), "%Y-%m-%d %H:%M:%S")
+                print("* End time: %s" %(config['Time']['end']))
         except ValueError as val_error:
             print('\033[31m'+ val_error.args[0] +'\033[m')
             paramError = True
-
+    
+    # Split data parameter (data is split in files according to time window)
+    if caller is 'fcparser':
+        try:
+            config['SPLIT_OUT'] = parserConfig_low['split']['output']
+            if config['SPLIT_OUT'] == None:
+                config['SPLIT_OUT'] = 'DATA_SPLIT/'
+                print(" ** Defining default split-output directory: '%s'" %(config['SPLIT_OUT']))
+            elif not config['SPLIT_OUT'].endswith('/'):
+                config['SPLIT_OUT'] = config['SPLIT_OUT'] + '/'
+            try:
+                shutil.rmtree(config['SPLIT_OUT']+'/')
+            except:
+                pass
+            if not os.path.exists(config['SPLIT_OUT']): 
+                os.mkdir(config['SPLIT_OUT'])
+                print("** Creating directory %s" %(config['SPLIT_OUT']))  
+                
+        except KeyError as key:
+            if key.args[0] is 'output':
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Output in SPLIT field")
+            
     # Keys parameter
     try: 
         config['Keys'] = parserConfig_low['keys']
@@ -949,26 +996,14 @@ def loadConfig(parserConfig, caller):
         config['All'] = bool(parserConfig_low['all'])
     else:
         config['All'] = False;
-        
-    # Chunk size parameter (only for offline mode)
-    try:
-        if online is False:
-            try: 
-                config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
-            except:
-                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
-                paramWarnings+=1
-                config['Csize'] = 1024 * 1024 * config['Cores'];
-                print(" ** Setting default chunk size: 1 MB" +'\033[m') # To understand why default chunk size is 1MB, check calling of frag function in fcparser.process_multifile()
-    except:
-        pass        
+             
 
     # Output directory
     try:
         config['OUTDIR'] = output['dir']
         if not config['OUTDIR'].endswith('/'):
             config['OUTDIR'] = config['OUTDIR'] + '/'
-    except (KeyError, TypeError):
+    except (KeyError, TypeError, UnboundLocalError):
         config['OUTDIR'] = 'OUTPUT/'
         print(" ** Defining default output directory: '%s'" %(config['OUTDIR']))
     except:
@@ -986,7 +1021,7 @@ def loadConfig(parserConfig, caller):
     # Stats file
     try:
         config['OUTSTATS'] = output['stats']
-    except (KeyError, TypeError):
+    except (KeyError, TypeError, UnboundLocalError):
         config['OUTSTATS'] = 'stats.log'
         print(" ** Defining default log file: '%s'" %(config['OUTSTATS']))
     except:
@@ -995,7 +1030,7 @@ def loadConfig(parserConfig, caller):
     # Weights file
     try:
         config['OUTW'] = output['weights']
-    except (KeyError, TypeError):
+    except (KeyError, TypeError, UnboundLocalError):
         config['OUTW'] = 'weights.dat'
         print(" ** Defining default weights file: '%s'" %(config['OUTW']))
     except:
@@ -1078,7 +1113,7 @@ def loadConfig(parserConfig, caller):
             config['TIMEARG'][source] = config['SOURCES'][source]['CONFIG']['timearg']
         except:
             print('\033[33m'+ "** missing attribute: 'timearg' in %s data source" %(source))
-            print(" ** Assuming default timearg: 'timestamp' variable" +'\033[m')
+            print(" ** Assuming default variable labeled 'timestamp'" +'\033[m')
             config['TIMEARG'][source] = 'timestamp'
             
         # unstructured source
@@ -1151,7 +1186,20 @@ def loadConfig(parserConfig, caller):
                         config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])
     
     
+        # Check if timestamp variable for each datasource is defined as matchtype=time to avoid future errors in parsing
+        for source in config['SOURCES']: 
+            timestamp_ok=0
+            for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+                if config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'] == config['TIMEARG'][source]:
+                    timestamp_ok=1
+                    if config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['matchtype'] == 'string':    
+                        config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['matchtype'] = 'time'
+                        print('\033[33m'+ "Timestamp variable: '%s' from source: '%s' - matchtype is reassigned from 'string' to 'time'" %(config['TIMEARG'][source], source) +'\033[m')
+                    break;
+            if not timestamp_ok:
+                print('\033[33m'+ "No timestamp variable has been found for '%s' data source" %(source) +'\033[m')                    
     
+        
         # Preprocessing nfcapd files to obtain csv files.
         for source in dataSources:
             out_files = []
