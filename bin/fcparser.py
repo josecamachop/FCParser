@@ -16,25 +16,25 @@ Last Modification: 16/Jul/2018
 """
 import multiprocessing as mp
 import argparse
-#import datetime
 import os
 import gzip
 import re
 import time
-#import subprocess
 from operator import add
 import faac
 import math
-#import copy
 from collections import OrderedDict
-    
+#import datetime
+#import subprocess
+#import copy    
+
 def main(call='external',configfile=''):
 
     startTime = time.time()
 
     # if called from terminal
     # if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
-    if call is 'external':
+    if call == 'external':
         args = getArguments()
         configfile = args.config
 
@@ -62,7 +62,7 @@ def main(call='external',configfile=''):
     else:
         data = offline_parsing(config, startTime, stats)
         output_data = fuseObs_offline(data)
-        with open('fused_dict', 'w') as f: print(output_data, file=f)
+        with open(config['OUTDIR']+'fused_dict', 'w') as f: print(output_data, file=f)
         
     # write in stats file
     write_stats(config, stats)
@@ -71,65 +71,8 @@ def main(call='external',configfile=''):
     write_output(output_data, config)
     
     print("Elapsed: %s \n" %(prettyTime(time.time() - startTime))) 
-    
 
-    
-def online_parsing(config):
-    '''
-    Main process for online parsing. In this case, the program generates one output for the 
-    the input file, wich means, no time splitting. Online parsing is designed to be integrated
-    in other program with would be in charge of the input management. 
-    '''
-    results = {}
 
-    for source in config['SOURCES']:
-        obsDict = obsDict_online()
-        
-        # If structured datasource
-        if config['SOURCES'][source]['CONFIG']['structured']:
-            for fname in config['SOURCES'][source]['FILES']:
-
-                try:
-    
-                    if fname.endswith('.gz'):                    
-                        f = gzip.open(fname, 'r')
-                    else:
-                        f = open(fname, 'r')
-                
-                    lines = f.readlines()
-                    for line in lines:
-                        tag, obs = process_log(line,config,source)
-                        obsDict.add(obs)
-                finally:
-                    f.close()
-        else:
-            separator = config['RECORD_SEPARATOR'][source]
-            for fname in config['SOURCES'][source]['FILES']:
-
-                try:
-    
-                    if fname.endswith('.gz'):                    
-                        f = gzip.open(fname, 'r')
-                    else:
-                        f = open(fname, 'r')
-
-                    lines = f.read()
-                    log = ''
-                    for line in lines:
-                        log += line 
-                        if separator in log:
-                            tag, obs = process_log(log,config, source)
-                            obsDict.add(obs)
-                            log = ''    
-
-                    tag, obs = process_log(log,config, source)
-                    obsDict.add(obs)
-
-                finally:
-                    f.close()
-
-        results[source] = obsDict
-    return results
 
 def offline_parsing(config,startTime,stats):
     '''
@@ -158,6 +101,7 @@ def offline_parsing(config,startTime,stats):
                     final_res[source][key] = result[key]
 
     return final_res
+
 
 def process_multifile(config, source, stats):
     '''
@@ -205,94 +149,9 @@ def process_multifile(config, source, stats):
 
             pool.close()
 
-    return results
-
-
-def fuseObs_offline(resultado):
-    '''
-    Sources Fusion in a single stream. 
-    '''
-
-    v = list(resultado.keys())
-    fused_res = resultado[v[0]]
-
-
-    for source in v[1:]:
-
-        arbitrary_len2 = len(next(iter(list(resultado[source].values()))).data)
-        try:
-            arbitrary_len = len(next(iter(list(fused_res.values()))).data)
-        except:
-            arbitrary_len = 0
-
-        for date in resultado[source]:
-
-            if date not in fused_res:
-                fused_res[date] = resultado[source][date]
-                fused_res[date].zeroPadding(arbitrary_len, position=-1)
-            else:
-                fused_res[date].fuse(resultado[source][date].data) 
-
-
-        for date2 in fused_res:
-
-            if date2 not in resultado[source]:
-                fused_res[date].zeroPadding(arbitrary_len2, position=0)
-                #fused_res[date2].fuse([0]*arbitrary_len2)
-
-    return fused_res
-    
-def fuseObs_online(resultado):
-    '''
-    Function to fuse all the results obtained from all the processes to form a single observation in 
-    array form.
-    '''
-    fused_res = []
-    #features = []
-
-    for source in resultado:
-
-        fused_res = fused_res + resultado[source].obsList
-
-    return fused_res
-
-
-def frag(fname, init, separator, size, max_chunk):
-    '''
-    Function to fragment files in chunks to be parallel processed for structured files by lines
-    '''
-
-    #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
-
-    try:
-        if fname.endswith('.gz'):                    
-            f = gzip.open(fname, 'r', newline="")
-        else:
-            f = open(fname, 'r', newline="")
-
-
-        f.seek(init)
-        end = f.tell()
-        init = end
-        separator_size = len(separator)
-        while end-init < max_chunk:
-            start = end
-            tmp = f.read(size)
-            i = tmp.rfind(separator)
-            if i == -1:
-                yield start, len(tmp)
-                break
-            f.seek(start+i+separator_size)
-            end = f.tell()
-            #print("Frag: "+str([start, i, end]))
-
-            yield start, end-start
-
-
-
-    finally:
-        f.close()    
-
+    return results 
+        
+        
 def process_file(file, fragStart, fragSize,config, source,separator):
     '''
     Function that uses each process to get data entries from  data using the separator defined
@@ -347,26 +206,6 @@ def process_file(file, fragStart, fragSize,config, source,separator):
     return processed_lines, obsDict
 
 
-def iter_split(line, delimiter):
-    start = 0
-    line_size = len(line)
-    delimiter_size = len(delimiter)
-    while start<line_size:
-        end = line.find(delimiter, start)
-        yield line[start:end]
-        if end == -1: break
-        start = end + delimiter_size
-
-def add_observation(obsDict,obs,tag):
-    '''
-    Adds an observation (obs) to dictionary (obsDict) in an entry (tag) 
-    '''
-    if tag in list(obsDict.keys()):
-        obsDict[tag].aggregate(obs)
-    else:
-        obsDict[tag] = obs
-
-
 def process_log(log,config, source):
     '''
     Function take on data entry as input an transform it into a preliminary observation
@@ -415,6 +254,7 @@ def process_log(log,config, source):
         
     return tag, obs
     
+
 def normalize_timestamps(t, window):
     '''
     Function that transform timestamps of data entries to a normalized format. It also do the 
@@ -437,6 +277,212 @@ def normalize_timestamps(t, window):
         print("[!] Normalizing error: "+str(err))
     return 0
 
+
+def frag(fname, init, separator, size, max_chunk):
+    '''
+    Function to fragment files in chunks to be parallel processed for structured files by lines
+    '''
+
+    #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
+
+    try:
+        if fname.endswith('.gz'):                    
+            f = gzip.open(fname, 'r', newline="")
+        else:
+            f = open(fname, 'r', newline="")
+
+
+        f.seek(init)
+        end = f.tell()
+        init = end
+        separator_size = len(separator)
+        while end-init < max_chunk:
+            start = end
+            tmp = f.read(size)
+            i = tmp.rfind(separator)
+            if i == -1:
+                yield start, len(tmp)
+                break
+            f.seek(start+i+separator_size)
+            end = f.tell()
+            #print("Frag: "+str([start, i, end]))
+
+            yield start, end-start
+
+    finally:
+        f.close()
+        
+        
+def fuseObs_offline(resultado):
+    '''
+    Sources Fusion in a single stream. 
+    '''
+
+    v = list(resultado.keys())
+    fused_res = resultado[v[0]]
+
+
+    for source in v[1:]:
+
+        arbitrary_len2 = len(next(iter(list(resultado[source].values()))).data)
+        try:
+            arbitrary_len = len(next(iter(list(fused_res.values()))).data)
+        except:
+            arbitrary_len = 0
+
+        for date in resultado[source]:
+
+            if date not in fused_res:
+                fused_res[date] = resultado[source][date]
+                fused_res[date].zeroPadding(arbitrary_len, position=-1)
+            else:
+                fused_res[date].fuse(resultado[source][date].data) 
+
+
+        for date2 in fused_res:
+
+            if date2 not in resultado[source]:
+                fused_res[date].zeroPadding(arbitrary_len2, position=0)
+                #fused_res[date2].fuse([0]*arbitrary_len2)
+
+    return fused_res
+
+
+def iter_split(line, delimiter):
+    start = 0
+    line_size = len(line)
+    delimiter_size = len(delimiter)
+    while start<line_size:
+        end = line.find(delimiter, start)
+        yield line[start:end]
+        if end == -1: break
+        start = end + delimiter_size
+
+
+def add_observation(obsDict,obs,tag):
+    '''
+    Adds an observation (obs) to dictionary (obsDict) in an entry (tag) 
+    '''
+    if tag in list(obsDict.keys()):
+        obsDict[tag].aggregate(obs)
+    else:
+        obsDict[tag] = obs
+    
+
+def getTag(filename):
+    '''
+    function to identify data source by the input file
+    '''
+    tagSearch = re.search("(\w*)\.\w*$", filename)
+    if tagSearch:
+        return tagSearch.group(1)
+    else:
+        return None
+
+
+def file_len(fname):
+    '''
+    Function to get lines from a file
+    '''
+    count_log = 0
+    try:
+        if fname.endswith('.gz'):
+            input_file = gzip.open(fname,'r')
+        else:
+            input_file = open(fname,'r')
+
+        for count_log, l in enumerate(input_file):
+            pass
+
+    finally:
+        size = input_file.tell()
+        input_file.close()
+
+    return count_log,size
+
+
+def file_uns_len(fname, separator):
+    '''
+    Function determine de number of logs for a unstructured file 
+    '''
+    count_log = 0
+    try:
+        if fname.endswith('.gz'):
+            input_file = gzip.open(fname,'r')
+        else:
+            input_file = open(fname,'r')
+
+        log ="" 
+        for line in input_file:        
+            log += line 
+
+            splitt = log.split(separator);
+            if len(splitt) > 1:
+                count_log += 1    
+                log = log[len(splitt[0])+1:]
+
+    finally:
+        size = input_file.tell()
+        input_file.close()
+
+    return count_log,size                
+    
+
+def prettyTime(elapsed):
+    '''
+    Function to format time for print.
+    '''
+    hours = int(elapsed // 3600)
+    minutes = int(elapsed // 60 % 60)
+    seconds = int(elapsed % 60)
+    pretty = str(seconds) + " secs"
+    if minutes or hours:
+        pretty = str(minutes) + " mins, " + pretty
+    if hours:
+        pretty = str(hours) + " hours, " + pretty
+    return pretty
+
+
+def getArguments():
+    '''
+    Function to get input arguments from configuration file
+    '''
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+    description='''Multivariate Analysis Parsing Tool.''')
+    parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
+    args = parser.parse_args()
+    return args
+
+
+def configSummary(config):
+    '''
+    Print a summary of loaded parameters
+    '''
+
+    print("-----------------------------------------------------------------------")
+    print("Data Sources:")
+    for source in config['SOURCES']:
+        print(" * %s %s variables   %s features" %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2), str(len(config['SOURCES'][source]['CONFIG']['FEATURES'])).ljust(3)))
+    print(" TOTAL %s features" %(str(sum(len(l) for l in config['FEATURES'].values()))))
+    print()
+    print("Output:")
+    print("  Directory: %s" %(config['OUTDIR']))
+    print("  Stats file: %s" %(config['OUTSTATS']))
+    print("  Weights file: %s" %(config['OUTW']))
+    print("-----------------------------------------------------------------------\n")
+    
+    
+def outputWeight(config):
+    '''
+    Generate output file with the weights assigned to each feature.
+    '''
+    weightsPath = config['OUTDIR'] + config['OUTW']
+    weightsStream = open(weightsPath, 'w')
+    weightsStream.write(', '.join(config['features']) + '\n')
+    weightsStream.write(', '.join(config['weights']) + '\n')
+    weightsStream.close()
+    
+
 def create_stats(config):
     '''
     Legacy function - To be updated
@@ -450,6 +496,7 @@ def create_stats(config):
     stats['statsPath'] = statsPath
 
     return stats
+
 
 def count_entries(config,stats):
     '''
@@ -499,129 +546,13 @@ def write_stats(config,stats):
         statsStream.write( " * %s \n" %((source).ljust(18)))
         statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
         statsStream.write( "\t\t %s features \n" %(len(config['SOURCES'][source]['CONFIG']['FEATURES'])))
-        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source]+1, stats['processed_lines'][source]))
+        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source], stats['processed_lines'][source]-1))
         statsStream.write( "\t\t %d total bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
                                                            (sum(stats['sizes'][source]))*1e-6))
 
     statsStream.write("\n=================================================\n\n")
 
     statsStream.close()
-
-def outputWeight(config):
-    '''
-    Generate output file with the weights assigned to each feature.
-    '''
-    weightsPath = config['OUTDIR'] + config['OUTW']
-    weightsStream = open(weightsPath, 'w')
-    weightsStream.write(', '.join(config['features']) + '\n')
-    weightsStream.write(', '.join(config['weights']) + '\n')
-    weightsStream.close()
-
-def configSummary(config):
-    '''
-    Print a summary of loaded parameters
-    '''
-
-    print("-----------------------------------------------------------------------")
-    print("Data Sources:")
-    for source in config['SOURCES']:
-        print(" * %s %s variables   %s features" %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2), str(len(config['SOURCES'][source]['CONFIG']['FEATURES'])).ljust(3)))
-    print(" TOTAL %s features" %(str(sum(len(l) for l in config['FEATURES'].values()))))
-    print()
-    print("Output:")
-    print("  Directory: %s" %(config['OUTDIR']))
-    print("  Stats file: %s" %(config['OUTSTATS']))
-    print("  Weights file: %s" %(config['OUTW']))
-    print("-----------------------------------------------------------------------\n")
-    
-
-
-def getTag(filename):
-    '''
-    function to identify data source by the input file
-    '''
-    tagSearch = re.search("(\w*)\.\w*$", filename)
-    if tagSearch:
-        return tagSearch.group(1)
-    else:
-        return None
-
-
-
-def file_len(fname):
-    '''
-    Function to get lines from a file
-    '''
-    count_log = 0
-    try:
-        if fname.endswith('.gz'):
-            input_file = gzip.open(fname,'r')
-        else:
-            input_file = open(fname,'r')
-
-        for count_log, l in enumerate(input_file):
-            pass
-
-    finally:
-        size = input_file.tell()
-        input_file.close()
-
-    return count_log,size
-
-
-def file_uns_len(fname, separator):
-    '''
-    Function determine de number of logs for a unstructured file 
-    '''
-    count_log = 0
-    try:
-        if fname.endswith('.gz'):
-            input_file = gzip.open(fname,'r')
-        else:
-            input_file = open(fname,'r')
-
-        log ="" 
-        for line in input_file:        
-            log += line 
-
-            splitt = log.split(separator);
-            if len(splitt) > 1:
-                count_log += 1    
-                log = log[len(splitt[0])+1:]
-
-    
-    finally:
-        size = input_file.tell()
-        input_file.close()
-
-    return count_log,size                
-    
-def prettyTime(elapsed):
-    '''
-    Function to format time for print.
-    '''
-    hours = int(elapsed // 3600)
-    minutes = int(elapsed // 60 % 60)
-    seconds = int(elapsed % 60)
-    pretty = str(seconds) + " secs"
-    if minutes or hours:
-        pretty = str(minutes) + " mins, " + pretty
-    if hours:
-        pretty = str(hours) + " hours, " + pretty
-    return pretty
-
-
-
-def getArguments():
-    '''
-    Function to get input arguments from configuration file
-    '''
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-    description='''Multivariate Analysis Parsing Tool.''')
-    parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
-    args = parser.parse_args()
-    return args
-
 
 
 def write_output(output, config):
@@ -719,6 +650,79 @@ def write_output(output, config):
     else:
         with open(config['OUTDIR'] + 'output.dat' , 'w') as f:
             f.write(','.join(map(str,output.data)))
+            
+            
+def online_parsing(config):
+    '''
+    Main process for online parsing. In this case, the program generates one output for the 
+    the input file, wich means, no time splitting. Online parsing is designed to be integrated
+    in other program with would be in charge of the input management. 
+    '''
+    results = {}
+
+    for source in config['SOURCES']:
+        obsDict = obsDict_online()
+        
+        # If structured datasource
+        if config['SOURCES'][source]['CONFIG']['structured']:
+            for fname in config['SOURCES'][source]['FILES']:
+
+                try:
+    
+                    if fname.endswith('.gz'):                    
+                        f = gzip.open(fname, 'r')
+                    else:
+                        f = open(fname, 'r')
+                
+                    lines = f.readlines()
+                    for line in lines:
+                        tag, obs = process_log(line,config,source)
+                        obsDict.add(obs)
+                finally:
+                    f.close()
+        else:
+            separator = config['RECORD_SEPARATOR'][source]
+            for fname in config['SOURCES'][source]['FILES']:
+
+                try:
+    
+                    if fname.endswith('.gz'):                    
+                        f = gzip.open(fname, 'r')
+                    else:
+                        f = open(fname, 'r')
+
+                    lines = f.read()
+                    log = ''
+                    for line in lines:
+                        log += line 
+                        if separator in log:
+                            tag, obs = process_log(log,config, source)
+                            obsDict.add(obs)
+                            log = ''    
+
+                    tag, obs = process_log(log,config, source)
+                    obsDict.add(obs)
+
+                finally:
+                    f.close()
+
+        results[source] = obsDict
+    return results
+
+
+def fuseObs_online(resultado):
+    '''
+    Function to fuse all the results obtained from all the processes to form a single observation in 
+    array form.
+    '''
+    fused_res = []
+    #features = []
+
+    for source in resultado:
+
+        fused_res = fused_res + resultado[source].obsList
+
+    return fused_res
 
     
 class obsDict_online(object):

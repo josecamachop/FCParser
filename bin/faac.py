@@ -14,14 +14,15 @@ Last Modification: 11/Aug/2018
 """
 
 from datetime import datetime, timedelta
-from sys import exit, stdin
+from sys import exit
 from IPy import IP
-#import time
 import re
 import os
 import yaml
 import glob
 import shutil
+#import time
+#from sys import stdin
 
 
 #-----------------------------------------------------------------------
@@ -129,7 +130,9 @@ class NumberVariable(Variable):
         try:
             value = int(raw_value)
         except:
+            #print('\033[33m'+ "Error while processing %s as an int value" %(raw_value) +'\033[m')
             value = None
+            
         return value
 
 class RegexpVariable(Variable):
@@ -189,7 +192,9 @@ class IpVariable(Variable):
         try:
             ipaddr = IP(raw_value)
         except:
+            print('\033[33m'+ "Error while processing IP: '%s'" %(raw_value) +'\033[m')
             ipaddr = None
+            
         return ipaddr
 
 
@@ -608,12 +613,15 @@ class DefaultFeature(Feature):
     def add(self, record, data):
 
         counter = 0
-        for i in range(len(data)):
-            if data[i].fVariable == self.fVariable:
+        for i in range(len(data)):  # For each feature...
+            if data[i].fVariable == self.fVariable:     # If variable field in default feature matches variable field in other feature...
                 counter += data[i].value
-
+    
         self.value += len(record.variables[self.fVariable]) - counter
-
+        
+        #if counter == 0: self.value += 1
+        
+        
 class TotalFeature(Feature):
     """Counter of number of variable instances 
     """
@@ -697,13 +705,12 @@ class Observation(object):
             # Iterate through all the features in the conf file. For each iteration, check the matchtype of the variable 
             # involved. Then, check the value of the variable asociated to the feature. If there is a match, the counters
             # of the observations are increased. --> FaaC (Feature as a counter)
-
-            variable = record.variables[FEATURES[i]['variable']]        
+            variable = record.variables[FEATURES[i]['variable']]
 
             data[i]  = feature
             
             for var in variable:
-                if var is not None:
+                if var.value is not None:
                     if fType == 'default':
                         if i not in defaults:
                             defaults.append(i)
@@ -741,9 +748,9 @@ class Observation(object):
     def zeroPadding(self, N, position=-1):
 
         try:
-            if(position is 0):
+            if(position == 0):
                 self.data[:0] = [NullFeature()] * N
-            elif(position is -1):
+            elif(position == -1):
                 self.data[-1:] = [NullFeature()] * N
             else:
                 self.data[position:position] = [NullFeature()] * N
@@ -830,7 +837,7 @@ def loadConfig(parserConfig, caller):
         paramError = True
         
     
-    if caller is 'fcparser':
+    if caller == 'fcparser':
         # Online parameter
         try:
             online = parserConfig_low['online']
@@ -860,7 +867,7 @@ def loadConfig(parserConfig, caller):
             print(" * Setting default value: %s" %(config['Incremental']) +'\033[m')
                   
     
-    if caller is 'fcdeparser':
+    if caller == 'fcdeparser':
         try:
             output = parserConfig_low['deparsing_output']
         except:
@@ -875,7 +882,7 @@ def loadConfig(parserConfig, caller):
             paramError = True
         
         
-    if caller is 'fclearning':
+    if caller == 'fclearning':
         # Online parameter
         try:
             online = parserConfig_low['online']
@@ -908,7 +915,7 @@ def loadConfig(parserConfig, caller):
             
             
     # Number of cores used by the program
-    if caller is 'fcparser' or caller is 'fclearning': 
+    if caller == 'fcparser' or caller == 'fclearning': 
         try: 
             config['Cores'] = int(parserConfig_low['processes'])
             print("* Cores: "+str(config['Cores']))
@@ -934,19 +941,24 @@ def loadConfig(parserConfig, caller):
         
     
     # Time split parameters   
-    if caller is 'fcparser' or caller is 'fcdeparser':  
+    if caller == 'fcparser' or caller == 'fcdeparser':  
         try: 
             parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
             config['Time'] = parserConfig_low['split']['time']
-            config['Time']['window']
-            print("* Time sampling window: %d minutes" %(config['Time']['window']))
+            if config['Time']['window'] <= 60:
+                print("* Time sampling window: %d minutes" %(config['Time']['window']))
+            elif config['Time']['window'] <= 1440:
+                print("* Time sampling window: %dh %dmin" %(config['Time']['window']/60, config['Time']['window']%60))
+            else:
+                print('\033[31m'+ "**CONFIG FILE ERROR** Time sampling window above day is not implemented" +'\033[m')
+                exit(1)
         except KeyError as key:
-            if key.args[0] is 'split': 
+            if key.args[0] == 'split': 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
-            elif key.args[0] is 'time': 
+            elif key.args[0] == 'time': 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Time in SPLIT field")
             paramWarnings+=1
-            if key.args[0] is 'window':
+            if key.args[0] == 'window':
                 config['Time']['window'] = 5
             else:
                 config['Time'] = {'window':5}
@@ -996,7 +1008,7 @@ def loadConfig(parserConfig, caller):
 
     if not os.path.exists(config['OUTDIR']): # Output directory named OUTPUT is created if none is defined in config. file
         os.mkdir(config['OUTDIR'])
-        print("** Creating directory %s" %(config['OUTDIR']))
+        print("** Creating output directory %s" %(config['OUTDIR']))
 
     # Stats file
     try:
@@ -1025,35 +1037,47 @@ def loadConfig(parserConfig, caller):
         
         try:
             config['SOURCES'][source]['CONFILE'] = dataSources[source]['config']
+            if not os.path.exists(config['SOURCES'][source]['CONFILE']):
+                print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['config']) +'\033[m')
+                paramError = True
         except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'config' in %s field" %(source))
+            print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'config' in %s field" %(source) +'\033[m')
             paramError = True
             
-        if caller is 'fcparser':
+        if caller == 'fcparser':
             try:
                 config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
+                if not config['SOURCES'][source]['FILES']:
+                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['parsing']) +'\033[m')
+                    paramError = True
             except:
-                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'parsing' in '%s' field" %(source))
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'parsing' in '%s' field" %(source) +'\033[m')
                 paramError = True
                 
-        if caller is 'fcdeparser':
+        if caller == 'fcdeparser':
             try:
                 config['SOURCES'][source]['FILESDEP'] = glob.glob(dataSources[source]['deparsing'])
+                if not config['SOURCES'][source]['FILESDEP']:
+                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['deparsing']) +'\033[m')
+                    paramError = True
             except:
-                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'deparsing' in '%s' field" %(source))
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'deparsing' in '%s' field" %(source) +'\033[m')
                 paramError = True
                 
-        if caller is 'fclearning': 
+        if caller == 'fclearning': 
             try:
                 config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
+                if not config['SOURCES'][source]['FILESTRAIN']:
+                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['learning']) +'\033[m')
+                    paramError = True
             except:
-                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learning' in '%s' field" %(source))
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learning' in '%s' field" %(source) +'\033[m')
                 paramError = True
                 
         
     # Check everything is ok in general configuration file before loading datasources config. files
     if paramError is True:
-        print('\n\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
+        print('\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
         exit(1)
     else:
         if paramWarnings:
@@ -1063,7 +1087,7 @@ def loadConfig(parserConfig, caller):
             
             
     # Loading parameters from datasources config. files
-    print("LOADING DATASOURCES CONFIGURATION FILES...")
+    print("LOADING DATA SOURCES CONFIGURATION FILES...")
     for source in dataSources:
         config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
         
@@ -1113,15 +1137,17 @@ def loadConfig(parserConfig, caller):
     
     
     # Now, variables and features are processed        
-    for source in config['SOURCES']:    
+    for source in config['SOURCES']:  
+        print("* File: %s" %(config['SOURCES'][source]['CONFILE']))
         
         config['FEATURES'][source] = config['SOURCES'][source]['CONFIG']['FEATURES']
-        
+        var_names = []
         
         for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
             # Validate variable name
             if config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']:
                 config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'])
+                var_names.append(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name'])
             else:
                 paramError = True
                 print('\033[31m'+ "** ConfigError - VARIABLES: empty name/id in variable %d" %(i) +'\033[m')
@@ -1135,16 +1161,19 @@ def loadConfig(parserConfig, caller):
                 print('\033[31m'+ "** ConfigError - FEATURES: missing name in feature %d" %(i) +'\033[m')
 
             # Validate variable field in feature
-            try:                
-                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']
-            except KeyError as e:
+            if not 'variable' in config['SOURCES'][source]['CONFIG']['FEATURES'][i]:
+                print('\033[31m'+ "** ConfigError - FEATURES: missing variable field in feature '%s'" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']) +'\033[m')
+                paramError = True
+                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+            elif not config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] in var_names:
+                print('\033[31m' + "Feature with name '%s' is defined using '%s'variable but this variable has not been defined previously" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'], config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']) +'\033[m')
+                paramError = True
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
         
+        
         if paramError:
-            print("Some errors in features or variables have been detected. Do you want to proceed anyway? [Y/N]: ")
-            option = stdin.read(1)
-            if option is 'N' or option is 'n':
-                exit(1)
+            print("Some errors in features or variables have been detected. Program execution is interrupted.")
+            exit(1)
 
 
         # If source is not structured
