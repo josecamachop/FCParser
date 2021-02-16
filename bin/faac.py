@@ -16,7 +16,7 @@ Last Modification: 11/Aug/2018
 from datetime import datetime, timedelta
 from sys import exit, stdin
 from IPy import IP
-import time
+#import time
 import re
 import os
 import yaml
@@ -962,27 +962,7 @@ def loadConfig(parserConfig, caller):
         except ValueError as val_error:
             print('\033[31m'+ val_error.args[0] +'\033[m')
             paramError = True
-    
-    # Split data parameter (data is split in files according to time window)
-    if caller is 'fcparser':
-        try:
-            config['SPLIT_OUT'] = parserConfig_low['split']['output']
-            if config['SPLIT_OUT'] == None:
-                config['SPLIT_OUT'] = 'DATA_SPLIT/'
-                print(" ** Defining default split-output directory: '%s'" %(config['SPLIT_OUT']))
-            elif not config['SPLIT_OUT'].endswith('/'):
-                config['SPLIT_OUT'] = config['SPLIT_OUT'] + '/'
-            try:
-                shutil.rmtree(config['SPLIT_OUT']+'/')
-            except:
-                pass
-            if not os.path.exists(config['SPLIT_OUT']): 
-                os.mkdir(config['SPLIT_OUT'])
-                print("** Creating directory %s" %(config['SPLIT_OUT']))  
-                
-        except KeyError as key:
-            if key.args[0] is 'output':
-                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Output in SPLIT field")
+            
             
     # Keys parameter
     try: 
