@@ -22,7 +22,8 @@ import yaml
 import glob
 import shutil
 #import time
-#from sys import stdin
+from sys import stdin
+from collections import defaultdict
 
 
 #-----------------------------------------------------------------------
@@ -610,16 +611,16 @@ class DefaultFeature(Feature):
     """Counter of number of variable instances not identified in other features
     """
                 
-    def add(self, record, data):
-
-        counter = 0
-        for i in range(len(data)):  # For each feature...
-            if data[i].fVariable == self.fVariable:     # If variable field in default feature matches variable field in other feature...
-                counter += data[i].value
-    
-        self.value += len(record.variables[self.fVariable]) - counter
+    def add(self, variables, matched_variables):
         
-        #if counter == 0: self.value += 1
+        counter = 0
+        
+        for variable_name in variables:
+            for var in variables[variable_name]:
+                if var not in matched_variables and variable_name == self.fVariable:
+                    counter += 1
+        
+        self.value += counter
         
         
 class TotalFeature(Feature):
@@ -672,8 +673,10 @@ class Observation(object):
         record    -- Record object.
         FEATURES -- List of features configurations."""
 
-        data  = [None] * len(FEATURES)    # Data array (counters)
+        data  = [None] * len(FEATURES)      # Data array (counters)
         defaults = []                       # tracks default features
+        matched_variables = []              # List of variables from record matching at least one defined feature
+        
 
         for i in range(len(FEATURES)):
             try:
@@ -710,17 +713,21 @@ class Observation(object):
             data[i]  = feature
             
             for var in variable:
-                if var.value is not None:
-                    if fType == 'default':
-                        if i not in defaults:
-                            defaults.append(i)
-                    
-                    else:
-                        data[i].add(var)
-                            
-        # Manage default variables
+                if var is not None:     # It is necessary to differentiate between var==None (no valid object) and 
+                    if var.value is not None:       # var.value==None (valid object but a None in the value field)       
+                        if fType == 'default':
+                            if i not in defaults:
+                                defaults.append(i)
+                        else:
+                            old_data_value = data[i].value
+                            data[i].add(var)    # This method sums 1 or 0 depending if variable satisfies feature value
+                            if (data[i].value - old_data_value) > 0 and (var not in matched_variables):
+                                matched_variables.append(var)
+
+        # Calculate default features counters
         for d in defaults:
-            data[d].add(record,data)    
+            data[d].add(record.variables, matched_variables)
+            
 
         return cls(data)        
 
@@ -814,7 +821,7 @@ def getConfiguration(config_file):
     return conf
 
 
-def loadConfig(parserConfig, caller):
+def loadConfig(parserConfig, caller, debugmode):
     '''
     Function to load configuration from the config files.
     Caller function is fcparser, fcdeparser or fclearning
@@ -841,30 +848,36 @@ def loadConfig(parserConfig, caller):
         # Online parameter
         try:
             online = parserConfig_low['online']
-            if online is True:
-                print("* Online mode")
-            elif online is False:
-                print("* Offline mode (multiprocess)")
+            if not debugmode:
+                if online is True:
+                    print("* Online mode")
+                elif online is False:
+                    print("* Offline mode (multiprocess)")
         except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** field: Online" +'\033[m')
             paramError = True
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: Online" +'\033[m')
+            
             
         # Parsing output directory
         try:
             output = parserConfig_low['parsing_output']
         except:
-            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Parsing_Output" +'\033[m')
             paramWarnings += 1
+            if not debugmode:
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Parsing_Output" +'\033[m')
+            
         
         # Incremental_Output parameter
         try:
             config['Incremental'] = parserConfig_low['incremental_output']
-            print("* Incremental_output: "+str(config['Incremental']))
+            if not debugmode:
+                print("* Incremental_output: "+str(config['Incremental']))
         except:
-            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Incremental_Output")
             paramWarnings += 1
             config['Incremental'] = False
-            print(" * Setting default value: %s" %(config['Incremental']) +'\033[m')
+            if not debugmode:
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Incremental_Output")
+                print(" * Setting default value: %s" %(config['Incremental']) +'\033[m')
                   
     
     if caller == 'fcdeparser':
@@ -918,13 +931,16 @@ def loadConfig(parserConfig, caller):
     if caller == 'fcparser' or caller == 'fclearning': 
         try: 
             config['Cores'] = int(parserConfig_low['processes'])
-            print("* Cores: "+str(config['Cores']))
+            if not debugmode:
+                print("* Cores: "+str(config['Cores']))
     
         except:
-            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
-            config['Cores'] = 8
-            print(" * Setting default value: %d cores" %(config['Cores']) +'\033[m')
             paramWarnings += 1
+            config['Cores'] = 8
+            if not debugmode:
+                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
+                print(" * Setting default value: %d cores" %(config['Cores']) +'\033[m')
+            
             
     # Chunk size parameter (only for offline mode)
     try:
@@ -932,10 +948,11 @@ def loadConfig(parserConfig, caller):
             try: 
                 config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
             except:
-                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
                 paramWarnings+=1
                 config['Csize'] = 1024 * 1024 * config['Cores'];
-                print(" * Setting default chunk size: 1 MB" +'\033[m') # To understand why default chunk size is 1MB, check calling of frag function in fcparser.process_multifile()
+                if not debugmode:
+                    print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
+                    print(" * Setting default chunk size: 1 MB" +'\033[m') # To understand why default chunk size is 1MB, check calling of frag function in fcparser.process_multifile()
     except:
         pass   
         
@@ -945,24 +962,27 @@ def loadConfig(parserConfig, caller):
         try: 
             parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
             config['Time'] = parserConfig_low['split']['time']
-            if config['Time']['window'] <= 60:
-                print("* Time sampling window: %d minutes" %(config['Time']['window']))
-            elif config['Time']['window'] <= 1440:
-                print("* Time sampling window: %dh %dmin" %(config['Time']['window']/60, config['Time']['window']%60))
-            else:
-                print('\033[31m'+ "**CONFIG FILE ERROR** Time sampling window above day is not implemented" +'\033[m')
-                exit(1)
+            if not debugmode:
+                if config['Time']['window'] <= 60:
+                    print("* Time sampling window: %d minutes" %(config['Time']['window']))
+                elif config['Time']['window'] <= 1440:
+                    print("* Time sampling window: %dh %dmin" %(config['Time']['window']/60, config['Time']['window']%60))
+                else:
+                    print('\033[31m'+ "**CONFIG FILE ERROR** Time sampling window above day is not implemented" +'\033[m')
+                    exit(1)
         except KeyError as key:
-            if key.args[0] == 'split': 
+            if key.args[0] == 'split' and not debugmode: 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
-            elif key.args[0] == 'time': 
+            elif key.args[0] == 'time' and not debugmode: 
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Time in SPLIT field")
             paramWarnings+=1
-            if key.args[0] == 'window':
+            if key.args[0] == 'window' and not debugmode:
                 config['Time']['window'] = 5
             else:
                 config['Time'] = {'window':5}
-            print(" * Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
+                
+            if not debugmode:
+                print(" * Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
             
         try:
             if 'start' in config['Time']:
@@ -990,6 +1010,7 @@ def loadConfig(parserConfig, caller):
         config['All'] = False;
              
 
+    
     # Output directory
     try:
         config['OUTDIR'] = output['dir']
@@ -1001,14 +1022,15 @@ def loadConfig(parserConfig, caller):
     except:
         pass
 
-    try:
-        shutil.rmtree(config['OUTDIR']+'/')
-    except:
-        pass
-
-    if not os.path.exists(config['OUTDIR']): # Output directory named OUTPUT is created if none is defined in config. file
-        os.mkdir(config['OUTDIR'])
-        print("** Creating output directory %s" %(config['OUTDIR']))
+    if not debugmode:
+        try:
+            shutil.rmtree(config['OUTDIR']+'/')
+        except:
+            pass
+    
+        if not os.path.exists(config['OUTDIR']): # Output directory named OUTPUT is created if none is defined in config. file
+            os.mkdir(config['OUTDIR'])
+            print("** Creating output directory %s" %(config['OUTDIR']))
 
     # Stats file
     try:
@@ -1080,16 +1102,24 @@ def loadConfig(parserConfig, caller):
         print('\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
         exit(1)
     else:
-        if paramWarnings:
-            print('\n\033[33m'+ "EXECUTING PROGRAM WITH %d WARNINGS" %(paramWarnings) +'\033[m')
-        else:
-            print('\n\033[32m'+ "GENERAL CONFIGURATION FILE... OK" +'\033[m')
+        if not debugmode:
+            if paramWarnings:
+                print('\033[33m'+ "EXECUTING PROGRAM WITH %d WARNINGS" %(paramWarnings) +'\033[m')
+            else:
+                print('\033[32m'+ "GENERAL CONFIGURATION FILE... OK" +'\033[m')
             
             
     # Loading parameters from datasources config. files
     print("LOADING DATA SOURCES CONFIGURATION FILES...")
     for source in dataSources:
-        config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
+        try:
+            config['SOURCES'][source]['CONFIG'] = getConfiguration(dataSources[source]['config'])
+        except:
+            print('\033[31m'+ "Error while loading YAML file: %s'" %(dataSources[source]['config']) +'\033[m')
+            print("Please, verify the file content fulfill the YAML format.")
+            exit(1)
+    
+            
         
     config['FEATURES'] = {}
     config['STRUCTURED'] = {}
@@ -1169,7 +1199,6 @@ def loadConfig(parserConfig, caller):
                 print('\033[31m' + "Feature with name '%s' is defined using '%s'variable but this variable has not been defined previously" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'], config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']) +'\033[m')
                 paramError = True
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
-        
         
         if paramError:
             print("Some errors in features or variables have been detected. Program execution is interrupted.")
@@ -1259,3 +1288,112 @@ def loadConfig(parserConfig, caller):
 
     return config
 
+
+
+def debugProgram(caller, args):
+    '''
+    Function to debug program in order to obtain more information about execution process.
+    Caller function is fcparser, fcdeparser or fclearning.
+    Exec_point is related to the moment when we want to debug
+    Args is the required data to print according to the exec point.
+    '''
+    
+    if caller == 'fcparser.init_message':
+        print('\033[33m'+ "Initializing debug mode...")
+        print("-----------------------------------------------------------------------\n")
+        print("\t\t\t DEBUGGING MODE")
+        print("\n-----------------------------------------------------------------------")
+        print("Press ENTER to process the next log entry")
+        print("Enter \"go N\" to show the entry log number N, e.g.: go 78")
+        print("Enter \"search string\" to show the next entry log matching that string, e.g.: search 12:45:01")
+        print("Enter q for exit"+'\033[m')
+        
+        # Global regular expressions for matching user input
+        global regex_goline; regex_goline=re.compile("go [0-9]+")
+        global regex_searchstring; regex_searchstring=re.compile("search .+")
+        
+        return
+    
+    
+    if 'fcparser' in caller:
+        
+        # Print data source
+        if 'process_file.source' in caller:
+            source = args[0]
+            Nlogs = args[1]
+            print("\n** Source: %s - %d entry logs **" %(source, Nlogs))
+            return
+        
+        # Read user input
+        if caller=='fcparser.user_input':
+            actual_line = args[0]
+            option = input("$ ")                     #option = ''    # go through the whole file                
+            if option == 'q' or option == 'Q':
+                exit(1)
+            elif regex_goline.match(option):
+                goline = int(regex_goline.search(option)[0][3:])
+                return goline
+            elif regex_searchstring.match(option):
+                searchstring = regex_searchstring.search(option)[0][7:]
+                return searchstring
+            elif not option:
+                return actual_line
+            else:
+                print('\033[31m'+ "Invalid option" +'\033[m')
+                return 0
+                
+        # Print entry log
+        if 'process_file.line' in caller:
+            nEntry = args[0]
+            log = args[1]
+            print("\nEntry Log %d:\n%s" %(nEntry, log))
+            return
+        
+        # Print record
+        if 'process_log.record' in caller:
+            record = args[0]
+            #stdin.read(1)
+            print("\nRecord with format 'variable_name': log_data\n%s" %(str(record)))
+            
+            none_variables = []
+            none_value_variables = []
+            for variable in record.variables:                    
+                for i in range(len(record.variables[variable])):    # There might be more than one item in a variable (unstructured data)  
+                    if record.variables[variable][i] is None:
+                        none_variables.append(variable)                     # Invalid object (var=None)
+                    elif hasattr(record.variables[variable][i], 'value'):
+                        if record.variables[variable][i].value is None:     # Valid object but error while formatting value (var.value=None)
+                            none_value_variables.append(variable)
+            if none_variables:
+                print('\033[33m'+ "Detected some None variables: %s" %(none_variables) +'\033[m')
+            if none_value_variables:
+                print('\033[33m'+ "Detected some None values in variables: %s" %(none_value_variables) +'\033[m')
+            if not none_variables and not none_value_variables:
+                print('\033[32m'+ "No invalid values detected"  +'\033[m')
+                
+            #if none_variables or none_value_variables: stdin.read(1)
+            
+                
+        if 'process_log.observation' in caller:
+            observation = args[0].data
+            print("\nObservation vector: %s" %(str(observation)))
+            
+            features_counter = {}
+            for obs in observation:
+                if obs.value:
+                    features_counter[obs.fName] = obs.value
+                    
+            print("Features with counter>0: %s\n" %(features_counter))
+            
+            #if 'daddr_private' not in features_counter and 'daddr_public' not in features_counter: stdin.read(1)
+              
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        

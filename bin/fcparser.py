@@ -37,11 +37,12 @@ def main(call='external',configfile=''):
     if call == 'external':
         args = getArguments()
         configfile = args.config
+        global debugmode; debugmode = args.debug
 
     # Get configuration
-    print("\nLOADING GENERAL CONFIGURATION FILE...")
+    print("LOADING GENERAL CONFIGURATION FILE...")
     parserConfig = faac.getConfiguration(configfile)
-    config = faac.loadConfig(parserConfig, 'fcparser')
+    config = faac.loadConfig(parserConfig, 'fcparser', debugmode)
     
     # Print configuration summary
     configSummary(config)
@@ -60,6 +61,12 @@ def main(call='external',configfile=''):
 
     # process offline 
     else:
+        if debugmode:
+            faac.debugProgram('fcparser.init_message', [])
+        else:
+            print('\033[33m'+ "Note: Malformed logs or inaccurate data source configuration files will result in None variables which will not be counted in any feature.")
+            print("Run program in debug mode with -d option to check how the records are parsed." +'\033[m')
+        
         data = offline_parsing(config, startTime, stats)
         output_data = fuseObs_offline(data)
         with open(config['OUTDIR']+'fused_dict', 'w') as f: print(output_data, file=f)
@@ -86,8 +93,9 @@ def offline_parsing(config,startTime,stats):
     for source in config['SOURCES']:
         results[source] = []
         currentTime = time.time()
-        print("\n-----------------------------------------------------------------------\n")
-        print("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))    
+        if not debugmode:
+            print("\n-----------------------------------------------------------------------\n")
+            print("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))    
             
         results[source] = process_multifile(config, source, stats) 
 
@@ -119,9 +127,8 @@ def process_multifile(config, source, stats):
         if input_path:
             count += 1
             tag = getTag(input_path)
-
-            #Print some progress stats
-            print("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag))    
+            if not debugmode:   #Print some progress stats
+                print("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag))
             pool = mp.Pool(config['Cores'])
             cont = True
             init = 0
@@ -129,9 +136,10 @@ def process_multifile(config, source, stats):
             while cont: # cleans memory from processes
                 jobs = list()
                 for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
-                    jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source]]) )
-                    # To debug, use:
-                    #process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
+                    if not debugmode:
+                        jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source]]) )
+                    else: # If debug flag is True, process file line by line without multiprocessing
+                        process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
                 else:
                     if fragStart+fragSize < lengths[i]:
                         remain = lengths[i] - fragStart+fragSize
@@ -166,14 +174,31 @@ def process_file(file, fragStart, fragSize,config, source,separator):
         else:
             f = open(file, 'r', newline="")
 
-        f.seek(fragStart)
-        lines = f.read(fragSize)
-    
+        if not debugmode:
+            f.seek(fragStart)
+            lines = f.read(fragSize)
+        else:
+            lines = f.read()    # read the whole file (no frag) if debugging mode
     finally:
         f.close()
 
-    
+    if debugmode:
+        faac.debugProgram('fcparser.process_file.source', [source, len(lines.split(separator))])
+        read_input = True
+        
     for line in iter_split(lines, separator):
+        if debugmode:
+            if read_input:
+                user_input = faac.debugProgram('fcparser.user_input', [processed_lines+1])
+                
+            if ( isinstance(user_input, int) and user_input==(processed_lines+1) ) or (isinstance(user_input, str) and user_input in line):
+                faac.debugProgram('fcparser.process_file.line', [processed_lines+1, line])
+                read_input = True
+            else:
+                processed_lines+=1       # skip processing this log entry
+                read_input = False
+                continue
+                
         tag, obs = process_log(line, config, source)
         if tag == 0:
             tag = file.split("/")[-1]
@@ -181,6 +206,10 @@ def process_file(file, fragStart, fragSize,config, source,separator):
         if obs is not None:
             add_observation(obsDict, obs, tag)
             processed_lines+=1
+    
+    if debugmode:
+        print("* End of file %s *" %(file))
+        print("Loading data source...")
             
     """
     # Old implementation
@@ -210,8 +239,13 @@ def process_log(log,config, source):
     '''
     Function take on data entry as input an transform it into a preliminary observation
     '''     
+    
     record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
+    if debugmode:
+        faac.debugProgram('fcparser.process_log.record', [record])
+    
     obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
+    if debugmode: faac.debugProgram('fcparser.process_log.observation', [obs])
     #print(str(record)+ "Obs: " + str(obs))
     #print("New log")
     
@@ -447,9 +481,9 @@ def getArguments():
     '''
     Function to get input arguments from configuration file
     '''
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-    description='''Multivariate Analysis Parsing Tool.''')
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''Multivariate Analysis Parsing Tool.''')
     parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
+    parser.add_argument('--debug', '-debug', '-d', '-g', action='store_true', help="Optional debugging mode")
     args = parser.parse_args()
     return args
 
@@ -465,10 +499,13 @@ def configSummary(config):
         print(" * %s %s variables   %s features" %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2), str(len(config['SOURCES'][source]['CONFIG']['FEATURES'])).ljust(3)))
     print(" TOTAL %s features" %(str(sum(len(l) for l in config['FEATURES'].values()))))
     print()
-    print("Output:")
-    print("  Directory: %s" %(config['OUTDIR']))
-    print("  Stats file: %s" %(config['OUTSTATS']))
-    print("  Weights file: %s" %(config['OUTW']))
+    
+    if not debugmode:
+        print("Output:")
+        print("  Directory: %s" %(config['OUTDIR']))
+        print("  Stats file: %s" %(config['OUTSTATS']))
+        print("  Weights file: %s" %(config['OUTW']))
+
     print("-----------------------------------------------------------------------\n")
     
     
@@ -477,10 +514,11 @@ def outputWeight(config):
     Generate output file with the weights assigned to each feature.
     '''
     weightsPath = config['OUTDIR'] + config['OUTW']
-    weightsStream = open(weightsPath, 'w')
-    weightsStream.write(', '.join(config['features']) + '\n')
-    weightsStream.write(', '.join(config['weights']) + '\n')
-    weightsStream.close()
+    if not debugmode:
+        weightsStream = open(weightsPath, 'w')
+        weightsStream.write(', '.join(config['features']) + '\n')
+        weightsStream.write(', '.join(config['weights']) + '\n')
+        weightsStream.close()
     
 
 def create_stats(config):
@@ -489,10 +527,11 @@ def create_stats(config):
     '''
     stats = {}
     statsPath = config['OUTDIR'] + config['OUTSTATS']
-    statsStream = open(statsPath, 'w')
-    statsStream.write("STATS\n")
-    statsStream.write("=================================================\n\n\n")
-    statsStream.close()
+    if not debugmode:
+        statsStream = open(statsPath, 'w')
+        statsStream.write("STATS\n")
+        statsStream.write("=================================================\n\n\n")
+        statsStream.close()
     stats['statsPath'] = statsPath
 
     return stats
@@ -546,7 +585,7 @@ def write_stats(config,stats):
         statsStream.write( " * %s \n" %((source).ljust(18)))
         statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
         statsStream.write( "\t\t %s features \n" %(len(config['SOURCES'][source]['CONFIG']['FEATURES'])))
-        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source], stats['processed_lines'][source]-1))
+        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source]+1, stats['processed_lines'][source]))
         statsStream.write( "\t\t %d total bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
                                                            (sum(stats['sizes'][source]))*1e-6))
 
