@@ -106,7 +106,7 @@ program without knowledge of the internal programing. They are located in the sa
 
 The structure of these configuration files is shown in Figure 3:
 
-<p align="center"> <img width="600" height="643" src="assets/data_source_configuration.png"> </p>
+<p align="center"> <img width="627" height="532" src="assets/data_source_configuration.png"> </p>
 <div align="center"><i>Figure 3: Data Source configuration file</i></div><br />
 
 **<ins>Attributes:</ins>**
@@ -185,6 +185,13 @@ This way, if there is some mismatch between the log and the configuration file (
 Therefore, it is recommendable to run fcparser in debugging mode to check if the configuration files are correct before running the parsing process for the first time. 
 
 When running the debugger, the data source is loaded and the number of logs in it is depicted.
+
+    $ python bin/fcparser.py -d example/config/configuration.yaml
+
+<p align="center"> <img width="555" height="170" src="assets/debugger1.png"> </p>
+<div align="center"><i>Figure 5: Example - Debugging mode</i></div><br />
+
+
 Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER. Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown.
 - To process an specific log entry. In this case, we can "jump" to a specific entry by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which corresponds with the line 34 for structured sources). Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 12:34:01".
