@@ -55,8 +55,8 @@ In FCParser, there are two kinds of configuration files: <ins>general configurat
 <ins>data sources configuration files</ins>.
 
 The General configuration file contains the main information for the parsing process:
-datasources, aggregation keys, output directories and split configuration. An empty
-general configuration file look like this:
+datasources, aggregation keys, output directories and split configuration, along with some processing parameters.
+An empty general configuration file look like this:
 
 <p align="center"> <img width="704" height="550" src="assets/general_configuration.png"> </p>
 <div align="center"><i>Figure 2: General configuration file [configuration.yaml]</i></div><br />
@@ -73,7 +73,7 @@ source won’t be parsed. If the field is empty, aggregation will not occur, so 
 **Online**: Boolean variable to determine if online or offline mode. Online mode is set for real time application
               (only one process) while offline mode is used for processing already stored data sets (multiprocess).
 
-**Processes**: Number of processes used by the program. Use a number between 1 and the number of cores of your system. If this parameter is not specified, the program will parallelise the work using 8 threads.
+**Processes**: Number of processes used by the program. Use a number between 1 and the number of cores of your system. If this parameter is not specified, 80% of maximum possible cores of the system will be set.
 
 **Split:** In this field, the temporal sampling parameters are specified. Time window in
 minutes, as well as start time and end time for sampling interval. Time parameters format must be YYYY-MM-DD hh:mm:ss.
@@ -116,8 +116,8 @@ The structure of these configuration files is shown in Figure 3:
 - _Structured_: boolean variable to identify if a source is structured or unstructured.
 - _Timestamp_format_: timestamp format for the logs in the files of the data source
     in python datetime format [2].
-- _Separator_: Char that delimits the log entries of the source. It is mandatory for unstructured sources while for structured sources /n is considered if none is specified.
-- _Timearg_: Timearg is the name of the timestamp variable.
+- _Separator_: Char that delimits the log entries of the source, i.e, the separator between records. It is mandatory for unstructured sources while for structured sources /n is considered if none is specified.
+- _Timearg_: Timearg is the name of the timestamp variable. If the timearg attribute is not defined, the timestamp will be considered to be defined in a variable named 'timestamp'.
 
 **<ins>Variables:</ins>** Variables are fields that are extracted from a log entry (e.g source ip,
 destination port, etc). Variables attributes differ depending if the data source is
