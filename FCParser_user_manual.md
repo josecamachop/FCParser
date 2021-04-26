@@ -178,9 +178,26 @@ file look like this:
 <div align="center"><i>Figure 4: Format of deparsing input file</i></div><br />
 
 
-## 4. EXAMPLE
+## 4. DEBUGGER
 
-### 4.1. PARSING
+Debugger execution mode has been implemented by running fcparser with -d (--debug) option. This mode allows us to process the data source line by line, showing how every log is being parsed into records (according to our defined variables), as well as generating the observation vector according to our defined features.
+This way, if there is some mismatch between the log and the configuration file (eg. if the regular expression for a variable is not correct), we can detect and correct this mistakes by running this mode. For incorrectly parsed variables, None values are set and highlighted by the debugger.
+Therefore, it is recommendable to run fcparser in debugging mode to check if the configuration files are correct before running the parsing process for the first time. 
+
+When running the debugger, the data source is loaded and the number of logs in it is depicted.
+Then, a simple terminal is given to the user with two possibilites:
+- To process the next log entry by pressing ENTER. Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown.
+- To process an specific log entry. In this case, we can "jump" to a specific entry by specifying the log entry number with go command, eg. "go 34" will show entry log number 34 (which corresponds with line number 34 for structured sources). Or we can also type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 12:34:01".
+This option is really useful if some errors are detected during the parsing process and we want to know why they did happen.
+
+The program allows us to surf between the entry logs combining the presented possibilities. When reaching the end of the file, it is loaded again.
+We can end the execution by typing letter 'q'.
+
+Some examples using debugger are presented in the 5.3 section.
+
+## 5. EXAMPLE
+
+### 5.1. PARSING
 
 An example with structured and unstructured sources can be found in the FCParser _example_ directory.
 For this example, data sources are _netflow_ (structured data, in _csv_ file) and _ids_ logs (unstructured log entries, where one log each entry consists of a paragraph).
@@ -249,7 +266,7 @@ The structure of these files look as depicted:
 Where the number of times a given event (feature) occurs is recorded as comma-separated values, for each of the 285 features.
 
 
-### 4.2. DEPARSING
+### 5.2. DEPARSING
 
 The _deparsing_ process uses the same configuration files used before. Using both
 detection and diagnosis information, the original raw data records related to anomaly
@@ -271,7 +288,7 @@ related to the anomalies detected, as well as stats file with the number of stru
 <div align="center"><i>Figure 12: Example - Deparsing output</i></div><br />
 
 
-## 5. INSTALLATION REQUIREMENTS
+## 6. INSTALLATION REQUIREMENTS
 
 FCParser is designed to work on UNIX system with python installed. Almost every
 linux distribution come with python pre-installed. For library compatibility, python 3 is the required version.
