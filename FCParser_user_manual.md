@@ -181,16 +181,16 @@ file look like this:
 ## 4. DEBUGGER
 
 Debugger execution mode has been implemented by running fcparser with -d (--debug) option. This mode allows us to process the data source line by line, showing how every log is being parsed into records (according to our defined variables), as well as generating the observation vector according to our defined features.
-This way, if there is some mismatch between the log and the configuration file (eg. if the regular expression for a variable is not correct), we can detect and correct this mistakes by running this mode. For incorrectly parsed variables, None values are set and highlighted by the debugger.
+This way, if there is some mismatch between the log and the configuration file (eg. if the regular expression for a variable is not correct), we can detect and correct this mistakes by running this mode. For incorrectly parsed variables, their content is set to None and then highlighted by the debugger.
 Therefore, it is recommendable to run fcparser in debugging mode to check if the configuration files are correct before running the parsing process for the first time. 
 
 When running the debugger, the data source is loaded and the number of logs in it is depicted.
 Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER. Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown.
-- To process an specific log entry. In this case, we can "jump" to a specific entry by specifying the log entry number with go command, eg. "go 34" will show entry log number 34 (which corresponds with line number 34 for structured sources). Or we can also type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 12:34:01".
+- To process an specific log entry. In this case, we can "jump" to a specific entry by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which corresponds with the line 34 for structured sources). Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 12:34:01".
 This option is really useful if some errors are detected during the parsing process and we want to know why they did happen.
 
-The program allows us to surf between the entry logs combining the presented possibilities. When reaching the end of the file, it is loaded again.
+The program allows us to surf between all the entry logs by combining the presented functionalities. When reaching the end of the file, it is loaded again.
 We can end the execution by typing letter 'q'.
 
 Some examples using debugger are presented in the 5.3 section.
