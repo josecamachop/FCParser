@@ -86,7 +86,7 @@ are defined. Headers.dat (containing a list of feature names) and weights.dat fi
 
 **Incremental_output**: Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones. The default value for this parameter is False in case it is not defined. 
 
-**Max_chunck**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 1MB are considered by default.
+**Max_chunck**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 100MB are considered by default.
 Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory.
 
 <p align="center">-Deparsing parameters-</p>
