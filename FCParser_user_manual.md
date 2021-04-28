@@ -17,18 +17,17 @@ records related to anomaly are identified and presented to the analyst.
 ## 2. PARSER
 
 The parser transform heterogeneous data into observations arrays. This program is
-designed to take any text based file as input, alongside general configuration file
-and configuration files appropriately customized for each data source.
+designed to take any text based file as input, alongside configuration files appropriately customized for each data source.
 Data sources, such as logs from network and security related programs, have an uneven format.
 They can be structured (e.g _csv_ files) or unstructured (e.g one log entry each paragraph).
 With expertise in regular expressions, both of them can be handled with this parsing approach.
 
 Feature as a counter ( _FaaC_ ) is the algorithm chosen to generate observations. Each
-feature contains the number of times a given event (e.g the apparition of a word in a log
+feature contains the number of times a given event (e.g the presence of a word in a log
 file) takes place. This general definition makes it possible to handle most data sources
 [1].
 
-To provide flexibility to the tool, observation can be grouped to specific criteria. This is
+To provide flexibility to the tool, observation can be grouped according to specific criteria. This is
 called aggregation (e.g aggregate observation by source IP) and it is defined in general configuration file.
 
 <p align="center"> <img width="700" height="418" src="assets/block_diagram.png"> </p>
@@ -36,10 +35,11 @@ called aggregation (e.g aggregate observation by source IP) and it is defined in
 
 Temporal sampling is a process included in the parsing program. This
 procedure is performed by splitting input files into smaller files, each of those contains
-log entries from a specific time window. Time window and other splitting parameters
-are defined in the general configuration file as well.
+log entries from a specific time window. This way, output files (counters) will be grouped
+according the temporal sampling configuration.
+Time window and other splitting parameters are defined in the general configuration file as well.
 
-The program generates one file for each observation following this naming scheme:
+The program then generates one file for each observation following this naming scheme:
 _output-yyyymmddhhmm.dat_, according to the specified time window. Those files contain the observation array and aggregation
 keys if they are used. Also, the program generates a header file with a list feature names and a stats
 file. The directory where these files are saved is defined in the general configuration
@@ -67,17 +67,17 @@ be specified. Input data can be in _csv_ format, text based log files or _nfcapd
 
 **Keys:** In this field, none, one or more aggregation keys are defined. These keys are the
 variables chosen to aggregate observation. For each unique value of said keys,
-conservation are grouped (e.g source IP: for each unique value of source ip one observation of features is generated). Aggregation keys must be variables from the data sources. If the chosen aggregation key is not a variable for a data source, that data
-source won’t be parsed. If the field is empty, aggregation will not occur, so it is analyzed by timestamp.
+conservation are grouped (e.g source IP: for each unique value of source ip one observation of features is generated). Aggregation keys must be variables from the data sources. If the chosen aggregation key is not a variable for a data source, that data source won’t be parsed. 
+If the field is empty, aggregation will not occur, so it is analyzed by timestamp.
 
 **Online**: Boolean variable to determine if online or offline mode. Online mode is set for real time application
               (only one process) while offline mode is used for processing already stored data sets (multiprocess).
 
-**Processes**: Number of processes used by the program. Use a number between 1 and the number of cores of your system. If this parameter is not specified, 80% of maximum possible cores of the system will be set.
+**Processes**: Number of processes used by the program. Use a number between 1 and the number of cores of your system. If this parameter is not specified, 80% of maximum possible cores of the system will be set as the default value.
 
 **Split:** In this field, the temporal sampling parameters are specified. Time window in
 minutes, as well as start time and end time for sampling interval. Time parameters format must be YYYY-MM-DD hh:mm:ss.
-If no time window is defined, 5 minutes is considered as default value.
+If no time window is defined, 5 minutes is considered as the default value.
 
 <p align="center">-Parsing parameters-</p>
 
@@ -86,7 +86,8 @@ are defined. Headers.dat (containing a list of feature names) and weights.dat fi
 
 **Incremental_output**: Boolean variable for incremental features. If true and output files exist, new counters are added to the old ones. The default value for this parameter is False in case it is not defined. 
 
-**Max_chunck**: Size (in megabytes) of the chunk of files that are being processed at the same time. Chunks of 1MB are considered by default.
+**Max_chunck**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 1MB are considered by default.
+Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory.
 
 <p align="center">-Deparsing parameters-</p>
 
