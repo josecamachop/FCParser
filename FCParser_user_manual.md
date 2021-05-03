@@ -197,13 +197,15 @@ Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER. Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown. In the next picture we can see a parsing example of an unstructured entry log.
 <p align="center"> <img width="555" height="338" src="assets/debugger2.png"> </p>
 <div align="center"><i>Figure 6: Example - Debugger output</i></div><br />
-At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.  
-<br />
+At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.
+
+
 - To process an specific log entry. In this case, we can "jump" to a specific log by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which would correspond with the line 34 for structured sources). 
 <p align="center"> <img width="555" height="338" src="assets/debugger3.png"> </p>
 <div align="center"><i>Figure 7: Example - Debugger output. Unstructured source</i></div><br />
-In this example, entry log number number 34 is loaded due to the use of go command. All the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined.  
-<br />
+In this example, entry log number number 34 is loaded due to the use of go command. All the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined.
+
+
 Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 12:34:01".
 <p align="center"> <img width="555" height="338" src="assets/debugger4.png"> </p>
 <div align="center"><i>Figure 8: Example - Debugger output. Structured source</i></div><br />
@@ -223,9 +225,9 @@ We can end the execution by typing letter 'q'.
 An example with structured and unstructured sources can be found in the FCParser _example_ directory.
 For this example, data sources are _netflow_ (structured data, in _csv_ file) and _ids_ logs (unstructured log entries, where one log each entry consists of a paragraph).
 
-Fig. 5 shows the general configuration file for this example.  
+Fig. 9 shows the general configuration file for this example.  
 <p align="center"> <img src="assets/example_general_config.png"> </p>
-<div align="center"><i>Figure 5: Example - General configuration file</i></div><br />
+<div align="center"><i>Figure 9: Example - General configuration file</i></div><br />
 
 
 In the upper part, the different data sources are specified (netflow and IDS), including the data directory and the path where data source configuration file is located. Keys field is unused, aggregation is not performed and observations will then be grouped by timestamp.
@@ -234,29 +236,29 @@ At the end of the file, there is the configuration for temporal sampling. In thi
 Let's now see what the data looks like so that we can specify the configuration files for these data sources.
 So, for netflow data, we can find the data file (nf.csv) in Examples_data directory and netflow configuration file in the config directory (netflow.yaml). If we take a look at the data, it consists of comma separated values where every line is an entry.
 
-An example of the structure of some entries (lines) is depicted in Figure 6:  
+An example of the structure of some entries (lines) is depicted in Figure 10:  
 
 ![](assets/example_netflow_data.png)
-<div align="center"><i>Figure 6: Example - Netflow datasource</i></div><br />
+<div align="center"><i>Figure 10: Example - Netflow datasource</i></div><br />
 Based on this structure, we can create our data source configuration file, where the attributes, variables and features will be defined according to our goals:<br />  
 
 
 <p align="center"> <img width="500" height="613" src="assets/example_netflow_config.png"> </p>
-<div align="center"><i>Figure 7: Example - Netflow configuration file</i></div><br />
-In figure 7, we can see a fragment of the configuration file for a _netflow_ data source.
+<div align="center"><i>Figure 11: Example - Netflow configuration file</i></div><br />
+In figure 11, we can see a fragment of the configuration file for a _netflow_ data source.
 It shows the mandatory attributes for structured sources. As we mentioned before, timearg attribute represents the instant at which a certain event occurred, and it is defined by means of the timestamp variable. The _where_ value of the timestamp variable (zero) matches the position in the entry line (the first column of every entry in data log corresponds with the time instant). Timestamp format is also specified according to the data file.<br />  
 For more information about the timestamp format, check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
 
 <br />In the case of IDS data source, the data file in Examples_data directory is named _ids.log_ and IDS configuration file in the config directory is named _ids.yaml_.
 
-In Figure 8, we can see an example of unstructured data, where each log entry consists of a paragraph.
+In Figure 12, we can see an example of unstructured data, where each log entry consists of a paragraph.
 <p align="center"> <img width="800" height="367" src="assets/example_ids_data.png"> </p>
-<div align="center"><i>Figure 8: Example - IDS log entries</i></div><br />
+<div align="center"><i>Figure 12: Example - IDS log entries</i></div><br />
 
 
-In Figure 9, an unstructured source configuration file is depicted, where some variables and features are defined using regular expressions. When building the IDS configuration file, the mandatory attributes differ from those ones in netflow configuration file (structured source) as, for these kind of sources, regular expressions are needed to extract the data. These regular expressions are used to search variables in the log entries.
+In Figure 13, an unstructured source configuration file is depicted, where some variables and features are defined using regular expressions. When building the IDS configuration file, the mandatory attributes differ from those ones in netflow configuration file (structured source) as, for these kind of sources, regular expressions are needed to extract the data. These regular expressions are used to search variables in the log entries.
 <p align="center"> <img width="900" height="620" src="assets/example_ids_config.png"> </p>
-<div align="center"><i>Figure 9: Example - IDS configuration file</i></div><br />
+<div align="center"><i>Figure 13: Example - IDS configuration file</i></div><br />
 
 For this case, it is necessary to define the separator between entries (two blank lines). We can also see how regular expressions are used to define the variables, including the timestamp variable. Some features are also depicted in the figure, for which differents weights are assigned. Using these weight values will be useful for the deparsing process.
 
@@ -266,7 +268,7 @@ In order to run the example and parse the data, just run the following command i
     $ python bin/fcparser.py example/config/configuration.yaml
 
 <p align="center"> <img width="400" height="288" src="assets/example_parser.png"> </p>
-<div align="center"><i>Figure 10: Example - Parsing data</i></div><br />
+<div align="center"><i>Figure 14: Example - Parsing data</i></div><br />
 
 The parser output consists of:
 - The stats file, which includes number of variables, log entries and size in bytes:
@@ -296,7 +298,7 @@ specified in the _deparsing_ input file.
 
 An example of deparsing input file is depicted in figure 11:
 <p align="center"> <img width="390" height="320" src="assets/example_deparsing_input.png"> </p>
-<div align="center"><i>Figure 11: Example - Deparsing input file</i></div><br />
+<div align="center"><i>Figure 15: Example - Deparsing input file</i></div><br />
 
 To run the program, use the following command:
 
@@ -306,7 +308,7 @@ The _deparsing_ program generates one file for each data source with the extract
 related to the anomalies detected, as well as stats file with the number of structured and unstructured logs deparsed.
 
 <p align="center"> <img width="800" height="323" src="assets/example_deparsing_output.png"> </p>
-<div align="center"><i>Figure 12: Example - Deparsing output</i></div><br />
+<div align="center"><i>Figure 16: Example - Deparsing output</i></div><br />
 
 
 ## 6. INSTALLATION REQUIREMENTS
