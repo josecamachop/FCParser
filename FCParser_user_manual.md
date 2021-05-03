@@ -197,8 +197,7 @@ Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER. Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown. In the next picture we can see a parsing example of an unstructured entry log.
 <p align="center"> <img width="555" height="338" src="assets/debugger2.png"> </p>
 <div align="center"><i>Figure 6: Example - Debugger output</i></div><br />
-At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.
-
+At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.  
 
 - To process an specific log entry. In this case, we can "jump" to a specific log by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which would correspond with the line 34 for structured sources). 
 <p align="center"> <img width="555" height="338" src="assets/debugger3.png"> </p>
