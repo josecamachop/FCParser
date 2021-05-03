@@ -197,18 +197,18 @@ Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER. Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown. In the next picture we can see a parsing example of an unstructured entry log.
 <p align="center"> <img width="555" height="338" src="assets/debugger2.png"> </p>
 <div align="center"><i>Figure 6: Example - Debugger output</i></div><br />
+At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.
 
 - To process an specific log entry. In this case, we can "jump" to a specific log by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which would correspond with the line 34 for structured sources). 
 <p align="center"> <img width="555" height="338" src="assets/debugger3.png"> </p>
 <div align="center"><i>Figure 7: Example - Debugger output. Unstructured source</i></div><br />
-In this picture, entry log number number 34 is loaded due to the use of go command. At the top of the picture we can see the raw entry log and how it is parsed into variables. In this example, all the data is correctly parsed but dst_port variable which is set to None. This happened because the regular expression used to define this variable was not properly defined. 
-In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. 
+In this example, entry log number number 34 is loaded due to the use of go command. All the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined. 
 
 Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 12:34:01".
 <p align="center"> <img width="555" height="338" src="assets/debugger4.png"> </p>
 <div align="center"><i>Figure 8: Example - Debugger output. Structured source</i></div><br />
 In this picture, we can see an example of a structured source (comma-separated value data), in which we use the search command to load directly the log entry with a certain timestamp. For structured sources, the variables are defined in order according to the different data fields. Eg: timestamp is the first field, then duration, source ip, etc.
-Sometimes, we can find malformed logs in which some of the fields are empty, as it happens in this example for src_ip variable. Then, this variable is set to None.
+Sometimes, we can find malformed logs in which some of the fields are empty, as it happens in this example for src_ip variable. Then, this variable is set to None.  
 
 This command is really useful if some errors are detected during the parsing process and we want to know why they did happen.
 The program allows us to surf between all the entry logs by combining the presented functionalities. When reaching the end of the file, it is loaded again.
