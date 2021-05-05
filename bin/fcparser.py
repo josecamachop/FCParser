@@ -24,9 +24,11 @@ from operator import add
 import faac
 import math
 from collections import OrderedDict
+from math import floor
 #import datetime
 #import subprocess
 #import copy    
+
 
 def main(call='external',configfile=''):
 
@@ -37,7 +39,7 @@ def main(call='external',configfile=''):
     if call == 'external':
         args = getArguments()
         configfile = args.config
-        global debugmode; debugmode = args.debug
+        global debugmode; debugmode = args.debug    # debugmode defined as global as it will be used in many functions
 
     # Get configuration
     print("LOADING GENERAL CONFIGURATION FILE...")
@@ -63,6 +65,7 @@ def main(call='external',configfile=''):
     else:
         if debugmode:
             faac.debugProgram('fcparser.init_message', [])
+            global user_input; user_input = None   # Global variable storing user input command
         else:
             print('\033[33m'+ "Note: Malformed logs or inaccurate data source configuration files will result in None variables which will not be counted in any feature.")
             print("Run program in debug mode with -d option to check how the records are parsed." +'\033[m')
@@ -127,46 +130,78 @@ def process_multifile(config, source, stats):
         if input_path:
             count += 1
             tag = getTag(input_path)
-            if not debugmode:   #Print some progress stats
-                print("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag))
-            pool = mp.Pool(config['Cores'])
             cont = True
             init = 0
-            remain = lengths[i]
-            while cont: # cleans memory from processes
+            remain = lengths[i]     
+            
+            #Print some progress stats
+            if not debugmode:   
+                print("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILES'])), tag))
+            else:
+                faac.debugProgram('fcparser.process_multifile.source', [source, stats['lines'][source]])
+
+            # Recalculate Ncores if nlogs < ncores for this datasource
+            ncores_bkp = config['Cores']
+            nlogs = stats['lines'][source]
+            if config['Cores']>1 and 10*config['Cores'] > nlogs:     
+                config['Cores'] = max(1, floor(nlogs/10))
+            
+            # Multiprocessing
+            pool = mp.Pool(config['Cores'])
+            while cont:                          # cleans memory from processes
                 jobs = list()
                 for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
                     if not debugmode:
-                        jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source]]) )
-                    else: # If debug flag is True, process file line by line without multiprocessing
-                        process_file(input_path,fragStart,fragSize,config,source,config['RECORD_SEPARATOR'][source])
+                        jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source, stats]) )
+                    else:
+                        stats['processed_lines'][source], obsDict = process_file(input_path,fragStart,fragSize,config,source,stats)
+                        
                 else:
                     if fragStart+fragSize < lengths[i]:
                         remain = lengths[i] - fragStart+fragSize
                         init = fragStart+fragSize 
                     else:
-                        cont = False
-                
+                        if not debugmode:
+                            cont = False
+                        else:
+                            print('\033[33m'+ "* End of file %s *" %(input_path) +'\033[m')
+                            print("Loading file again...")
+                            init=0
+                            stats['processed_lines'][source] = 0  # reset lines
+                            remain = lengths[i] 
+                            global user_input; user_input = None
+
+                            
                 for job in jobs:
                     job_data = job.get()
                     processed_lines = job_data[0]
                     obsDict = job_data[1]
-                    
                     stats['processed_lines'][source] += processed_lines
                     results.append(obsDict)
-
+            
             pool.close()
+            config['Cores'] = ncores_bkp
 
     return results 
         
         
-def process_file(file, fragStart, fragSize,config, source,separator):
+def process_file(file, fragStart, fragSize, config, source, stats):
     '''
     Function that uses each process to get data entries from  data using the separator defined
     in configuration files that will be transformed into observations. This is used only in offline parsing. 
     '''
     obsDict = {}
     processed_lines = 0
+    separator = config['RECORD_SEPARATOR'][source]
+    
+    if debugmode:
+        processed_lines = stats['processed_lines'][source]
+        global opmode
+        global user_input
+        if user_input:
+            read_input = False
+        else:
+            read_input = True
 
     try:    
         if file.endswith('.gz'):                    
@@ -174,28 +209,26 @@ def process_file(file, fragStart, fragSize,config, source,separator):
         else:
             f = open(file, 'r', newline="")
 
-        if not debugmode:
-            f.seek(fragStart)
-            lines = f.read(fragSize)
-        else:
-            lines = f.read()    # read the whole file (no frag) if debugging mode
+        f.seek(fragStart)
+        lines = f.read(fragSize)
+        #if debugmode: print("[Loaded set of %d logs]\n" %(len(lines.split(separator))))
+            
     finally:
         f.close()
-
-    if debugmode:
-        faac.debugProgram('fcparser.process_file.source', [source, len(lines.split(separator))])
-        read_input = True
         
-    for line in iter_split(lines, separator):
+   
+    for line in iter_split(lines, separator):  
+
         if debugmode:
             if read_input:
-                user_input = faac.debugProgram('fcparser.user_input', [processed_lines+1])
+                opmode, user_input = faac.debugProgram('fcparser.user_input', [processed_lines+1])
                 
-            if ( isinstance(user_input, int) and user_input==(processed_lines+1) ) or (isinstance(user_input, str) and user_input in line):
+            if (opmode=='enter') or (opmode=='goline' and user_input==(processed_lines+1)) or (opmode=='searchstr' and user_input in line):
                 faac.debugProgram('fcparser.process_file.line', [processed_lines+1, line])
-                read_input = True
+                read_input = True        # after a match, will process line and read user input again
+                user_input = None        # Reset user_input after a match
             else:
-                processed_lines+=1       # skip processing this log entry
+                processed_lines+=1       # skip processing this log entry because no match
                 read_input = False
                 continue
                 
@@ -203,34 +236,13 @@ def process_file(file, fragStart, fragSize,config, source,separator):
         if tag == 0:
             tag = file.split("/")[-1]
 
-        if obs is not None:
+        if debugmode:
+            processed_lines+=1 
+        elif obs is not None:
             add_observation(obsDict, obs, tag)
             processed_lines+=1
     
-    if debugmode:
-        print("* End of file %s *" %(file))
-        print("Loading data source...")
-            
-    """
-    # Old implementation
-    log = ''
-
-    for line in lines:
-        log += line 
-        #print("Separator: " +str(repr(separator)))
-        if separator in log:
-            #print("Log: "+str(log))
-            tag, obs = process_log(log,config, source)
-            if tag == 0:
-                tag = file.split('/')[-1]
-            add_observation(obsDict,obs,tag)
-            log = log.split(separator)[1]
-    if log:
-        tag, obs = process_log(log,config, source)
-        if tag == 0:
-            tag = file.split('/')[-1]
-        add_observation(obsDict,obs,tag)
-    """
+    #if debugmode: print('\033[33m'+ "End of file chunk. Loading next chunk..." +'\033[m')
 
     return processed_lines, obsDict
 
@@ -239,29 +251,31 @@ def process_log(log,config, source):
     '''
     Function take on data entry as input an transform it into a preliminary observation
     '''     
-    
-    record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
-    if debugmode:
-        faac.debugProgram('fcparser.process_log.record', [record])
-    
-    obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
-    if debugmode: faac.debugProgram('fcparser.process_log.observation', [obs])
-    #print(str(record)+ "Obs: " + str(obs))
-    #print("New log")
-    
-    invalid_log=0
-    timearg = config['TIMEARG'][source] # name of variable which contains timestamp 
-    log_timestamp = record.variables[timearg][0].value
 
-    # Check if log_timestamp will be considered according to time sampling parameters
-    if 'start' in config['Time']:
-        if log_timestamp < config['Time']['start']:
-            invalid_log = 1
-    if 'end' in config['Time']:
-        if log_timestamp > config['Time']['end']:
-            invalid_log = 1 
+    ignore_log = 0      # flag to skip processing this log
+    if not log or not log.strip():  
+        ignore_log=1    # do not process empty logs or containing only spaces
+        print('\033[31m'+ "The entry log is empty and will not be processed\n" +'\033[m')
+
+    if not ignore_log:
+        record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
+        if debugmode: faac.debugProgram('fcparser.process_log.record', [record])
+        
+        obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
+        if debugmode: faac.debugProgram('fcparser.process_log.observation', [obs])
+        
+        timearg = config['TIMEARG'][source] # name of variable which contains timestamp 
+        log_timestamp = record.variables[timearg][0].value
     
-    if not invalid_log:
+        # Check if log_timestamp will be considered according to time sampling parameters
+        if 'start' in config['Time']:
+            if log_timestamp < config['Time']['start']:
+                ignore_log = 1
+        if 'end' in config['Time']:
+            if log_timestamp > config['Time']['end']:
+                ignore_log = 1 
+    
+    if not ignore_log:
         window = config['Time']['window']            
         try:
             if config['Keys']:
@@ -279,9 +293,12 @@ def process_log(log,config, source):
                 tag2 = normalize_timestamps(log_timestamp, window)
                 tag = tag2.strftime("%Y%m%d%H%M")
 
-        except Exception as err:
-            print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
+        except: 
+            # Exception as err
+            #print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
             tag, obs = None, None
+            if debugmode:
+                print('\033[31m'+ "This entry log would be ignored due to errors" +'\033[m')
     
     else:
         tag, obs = None, None
@@ -294,21 +311,20 @@ def normalize_timestamps(t, window):
     Function that transform timestamps of data entries to a normalized format. It also do the 
     time sampling using the time window defined in the configuration file.
     '''    
-    try:
-        if window == 0:
-            return 0
-        if window <= 60:
-            new_minute = t.minute - t.minute % window  
-            t = t.replace(minute = new_minute, second = 0)
-        elif window <= 1440:
-            window_m = window % 60  # for simplicity, if window > 60 we only use the hours
-            window_h = int((window - window_m) / 60)
-            new_hour = t.hour - t.hour % window_h  
-            t = t.replace(hour = new_hour, minute = 0, second = 0)                 
-        return t
-    
-    except Exception as err:
-        print("[!] Normalizing error: "+str(err))
+    #try:
+    if window == 0:
+        return 0
+    if window <= 60:
+        new_minute = t.minute - t.minute % window  
+        t = t.replace(minute = new_minute, second = 0)
+    elif window <= 1440:
+        window_m = window % 60  # for simplicity, if window > 60 we only use the hours
+        window_h = int((window - window_m) / 60)
+        new_hour = t.hour - t.hour % window_h  
+        t = t.replace(hour = new_hour, minute = 0, second = 0)                 
+    return t
+    #except Exception as err: print("[!] Normalizing error: "+str(err))
+        
     return 0
 
 
@@ -316,9 +332,8 @@ def frag(fname, init, separator, size, max_chunk):
     '''
     Function to fragment files in chunks to be parallel processed for structured files by lines
     '''
-
     #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
-
+    
     try:
         if fname.endswith('.gz'):                    
             f = gzip.open(fname, 'r', newline="")
@@ -432,7 +447,7 @@ def file_len(fname):
         size = input_file.tell()
         input_file.close()
 
-    return count_log,size
+    return count_log+1,size
 
 
 def file_uns_len(fname, separator):
@@ -445,7 +460,7 @@ def file_uns_len(fname, separator):
             input_file = gzip.open(fname,'r')
         else:
             input_file = open(fname,'r')
-
+        
         log ="" 
         for line in input_file:        
             log += line 
@@ -454,12 +469,72 @@ def file_uns_len(fname, separator):
             if len(splitt) > 1:
                 count_log += 1    
                 log = log[len(splitt[0])+1:]
+        
+        if not log or not log.strip():
+            pass
+        else: 
+            count_log+=1    # count last log when it is not empty or containing spaces only
 
     finally:
         size = input_file.tell()
         input_file.close()
 
-    return count_log,size                
+    return count_log,size    
+
+
+def create_stats(config):
+    '''
+    Legacy function - To be updated
+    '''
+    stats = {}
+    statsPath = config['OUTDIR'] + config['OUTSTATS']
+    if not debugmode:
+        statsStream = open(statsPath, 'w')
+        statsStream.write("STATS\n")
+        statsStream.write("=================================================\n\n\n")
+        statsStream.close()
+    stats['statsPath'] = statsPath
+
+    return stats
+
+
+def count_entries(config,stats):
+    '''
+    Function to get the amount of data entries and bytes for each data source
+    '''
+
+    lines = {}
+    stats['processed_lines'] = {}
+    stats['sizes'] = {}
+    for source in config['SOURCES']:
+        lines[source] = 0
+        stats['processed_lines'][source] = 0
+        stats['sizes'][source] = list()
+        for file in config['SOURCES'][source]['FILES']:
+            
+            if config['STRUCTURED'][source]:
+                (l,s) = file_len(file)
+                lines[source] += l
+                stats['sizes'][source].append(s)
+                
+            # unstructured source
+            else:
+                (l,s) = file_uns_len(file,config['RECORD_SEPARATOR'][source])
+                lines[source] += l
+                stats['sizes'][source].append(s)
+
+    # Sum lines from all datasources to obtain total lines.
+    total_lines = 0
+
+    stats['lines'] = {}
+    for source in lines:
+        total_lines += lines[source]
+        stats['lines'][source] = lines[source]
+
+    stats['total_lines'] = total_lines
+    
+    
+    return stats            
     
 
 def prettyTime(elapsed):
@@ -521,62 +596,6 @@ def outputWeight(config):
         weightsStream.close()
     
 
-def create_stats(config):
-    '''
-    Legacy function - To be updated
-    '''
-    stats = {}
-    statsPath = config['OUTDIR'] + config['OUTSTATS']
-    if not debugmode:
-        statsStream = open(statsPath, 'w')
-        statsStream.write("STATS\n")
-        statsStream.write("=================================================\n\n\n")
-        statsStream.close()
-    stats['statsPath'] = statsPath
-
-    return stats
-
-
-def count_entries(config,stats):
-    '''
-    Function to get the amount of data entries and bytes for each data source
-    '''
-
-    lines = {}
-    stats['processed_lines'] = {}
-    stats['sizes'] = {}
-    for source in config['SOURCES']:
-        lines[source] = 0
-        stats['processed_lines'][source] = 0
-        stats['sizes'][source] = list()
-        for file in config['SOURCES'][source]['FILES']:
-            
-            if config['STRUCTURED'][source]:
-                (l,s) = file_len(file)
-                lines[source] += l
-                stats['sizes'][source].append(s)
-                
-            # unstructured source
-            else:
-                (l,s) = file_uns_len(file,config['RECORD_SEPARATOR'][source])
-                lines[source] += l
-                stats['sizes'][source].append(s)
-    
-
-    # Sum lines from all datasources to obtain total lines.
-    total_lines = 0
-
-    stats['lines'] = {}
-    for source in lines:
-        total_lines += lines[source]
-        stats['lines'][source] = lines[source]
-
-    stats['total_lines'] = total_lines
-    
-    
-    return stats
-
-
 def write_stats(config,stats):
     
     statsStream = open(stats['statsPath'], 'a')
@@ -585,7 +604,7 @@ def write_stats(config,stats):
         statsStream.write( " * %s \n" %((source).ljust(18)))
         statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
         statsStream.write( "\t\t %s features \n" %(len(config['SOURCES'][source]['CONFIG']['FEATURES'])))
-        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source]+1, stats['processed_lines'][source]))
+        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source], stats['processed_lines'][source]))
         statsStream.write( "\t\t %d total bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
                                                            (sum(stats['sizes'][source]))*1e-6))
 
@@ -680,7 +699,7 @@ def write_output(output, config):
                 tag = k
                 
             fname = config['OUTDIR'] + 'output-'+ tag + '.dat'
-            with open(fname, 'w') as f:
+            with open(fname, 'a') as f:
                 if isinstance(k, tuple):
                     tag2 = list(map(str.strip,k[1:]))
                     f.write(','.join(tag2)+': ')

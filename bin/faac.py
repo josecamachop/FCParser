@@ -21,10 +21,10 @@ import os
 import yaml
 import glob
 import shutil
+import multiprocessing as mp
+from math import floor
+#from sys import stdin
 #import time
-from sys import stdin
-from collections import defaultdict
-
 
 #-----------------------------------------------------------------------
 # Variable Class
@@ -129,10 +129,12 @@ class NumberVariable(Variable):
         raw_value -- The input raw value.
         """
         try:
-            value = int(raw_value)
+            value = float(raw_value)
+            if value.is_integer():
+                value = int(value)
         except:
-            #print('\033[33m'+ "Error while processing %s as an int value" %(raw_value) +'\033[m')
             value = None
+            #print('\033[33m'+ "Error while processing %s as an int value" %(raw_value) +'\033[m')
             
         return value
 
@@ -193,8 +195,8 @@ class IpVariable(Variable):
         try:
             ipaddr = IP(raw_value)
         except:
-            print('\033[33m'+ "Error while processing IP: '%s'" %(raw_value) +'\033[m')
             ipaddr = None
+            print('\033[33m'+ "Error while processing IP: '%s'" %(raw_value) +'\033[m')           
             
         return ipaddr
 
@@ -227,22 +229,6 @@ class TimeVariable(Variable):
             pass
             
         return timestamp
-
-
-    """ Old implementation   
-    def load(self, raw_value):
-        if isinstance(raw_value, str):
-            try:
-                timestamp = datetime.strptime(raw_value, "%Y-%m-%d %H:%M:%S")  
-            except:
-                timestamp = None
-        else:
-            try:
-                timestamp = datetime.utcfromtimestamp(float(raw_value)/1000)
-            except:
-                timestamp = None
-        return timestamp
-    """
 
 
 class TimedeltaVariable(TimeVariable):
@@ -385,7 +371,10 @@ class Record(object):
                             vValue = raw_values[vWhere]
 
                 except (TypeError, IndexError) as e:
-                    raise ConfigError(self, "VARIABLES: illegal arg in \'%s\' (%s)" %(vName, e.message))
+                    if not line:
+                        vValue = None   # for empty line
+                    else:
+                        raise ConfigError(self, "VARIABLES: illegal arg in \'%s\' (%s)" %(vName, e.message))
 
                 except:
                     vValue = None
@@ -436,9 +425,9 @@ class Record(object):
 
                     try:
                         if all:
-                            vValues = vComp.findall(line)
+                            vValues = vComp.findall(line)   # consider all the matches for a variable
                         else:
-                            vV = vComp.search(line)
+                            vV = vComp.search(line)         # consider only first match of a variable
                             vValues = [vV.group(0)]
 
                         variable = list();
@@ -615,6 +604,7 @@ class DefaultFeature(Feature):
         
         counter = 0
         
+        # Add to the counter the variables that do not match any feature and share the variable field with the actual default feature
         for variable_name in variables:
             for var in variables[variable_name]:
                 if var not in matched_variables and variable_name == self.fVariable:
@@ -722,7 +712,7 @@ class Observation(object):
                             old_data_value = data[i].value
                             data[i].add(var)    # This method sums 1 or 0 depending if variable satisfies feature value
                             if (data[i].value - old_data_value) > 0 and (var not in matched_variables):
-                                matched_variables.append(var)
+                                matched_variables.append(var)   # store variables that match at least one feature 
 
         # Calculate default features counters
         for d in defaults:
@@ -855,7 +845,8 @@ def loadConfig(parserConfig, caller, debugmode):
                     print("* Offline mode (multiprocess)")
         except:
             paramError = True
-            print('\033[31m'+ "**CONFIG FILE ERROR** field: Online" +'\033[m')
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: Online")
+            print("Set Online parameter in config.file... Online:True or Online:False" +'\033[m')
             
             
         # Parsing output directory
@@ -929,17 +920,19 @@ def loadConfig(parserConfig, caller, debugmode):
             
     # Number of cores used by the program
     if caller == 'fcparser' or caller == 'fclearning': 
-        try: 
-            config['Cores'] = int(parserConfig_low['processes'])
-            if not debugmode:
+        if debugmode:
+            config['Cores'] = 1
+        else:
+            try: 
+                config['Cores'] = int(parserConfig_low['processes'])
                 print("* Cores: "+str(config['Cores']))
-    
-        except:
-            paramWarnings += 1
-            config['Cores'] = 8
-            if not debugmode:
+        
+            except:
+                # If Ncores not specified, use 80% of maximum possible cores of the system 
+                config['Cores'] = max(1, floor(0.8*mp.cpu_count))    
                 print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
-                print(" * Setting default value: %d cores" %(config['Cores']) +'\033[m')
+                print(" * Setting 80% cpu of the system: " + str(config['Cores']) +' cores\033[m')
+                paramWarnings += 1
             
             
     # Chunk size parameter (only for offline mode)
@@ -947,12 +940,15 @@ def loadConfig(parserConfig, caller, debugmode):
         if online is False:
             try: 
                 config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
+                if not debugmode:
+                    print("* Chunk_size/core: %s MB" %(str(int(config['Csize']/config['Cores']/1024/1024))))
             except:
                 paramWarnings+=1
-                config['Csize'] = 1024 * 1024 * config['Cores'];
+                config['Csize'] = 1024 * 1024 * 100 * config['Cores'];
                 if not debugmode:
                     print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
-                    print(" * Setting default chunk size: 1 MB" +'\033[m') # To understand why default chunk size is 1MB, check calling of frag function in fcparser.process_multifile()
+                    print(" * Setting default max_chunk size: 100 MB" +'\033[m')  # To understand why default chunk size is 100MB, check calling of frag function in fcparser.process_multifile()
+                    print("* Chunk_size/core: %s MB" %(str(int(config['Csize']/config['Cores']/1024/1024))))
     except:
         pass   
         
@@ -999,15 +995,30 @@ def loadConfig(parserConfig, caller, debugmode):
     # Keys parameter
     try: 
         config['Keys'] = parserConfig_low['keys']
-
+        
+        if not isinstance(config['Keys'], list):    # in case 'Keys' not defined as a list in config file
+            if not ',' in config['Keys']:
+                config['Keys'] = [config['Keys']]           # if only one key
+            else:
+                config['Keys'] = config['Keys'].split(', ')  # if more than one key separated by commas
+                
+        if not isinstance(config['Keys'], list):    # If error while formatting
+            config['Keys'] = []
+            print('\033[33m'+ "**CONFIG FILE WARNING** No keys have been specified" +'\033[m')
+            
+        if config['Keys']:
+            print("* Keys: "+str(config['Keys']))
+            
     except:
         config['Keys'] = []
+        
 
-    # 'All' parameter
+
+    # 'All' parameter. If true, all the matches for a variable will be considered in unstructured data. If false, only the first one.
     if 'All' in parserConfig:
         config['All'] = bool(parserConfig_low['all'])
     else:
-        config['All'] = False;
+        config['All'] = False
              
 
     
@@ -1130,6 +1141,7 @@ def loadConfig(parserConfig, caller, debugmode):
     # First, we check if all mandatory attributes are defined
     for source in config['SOURCES']:
         
+        print("* File: %s" %(config['SOURCES'][source]['CONFILE']))
         #config['SOURCES'][source]['CONFIG'] =  {k.lower(): v for k, v in config['SOURCES'][source]['CONFIG'].items()}
         try:
             config['STRUCTURED'][source] = config['SOURCES'][source]['CONFIG']['structured']
@@ -1164,11 +1176,14 @@ def loadConfig(parserConfig, caller, debugmode):
         if paramError is True:
             print('\n\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
             exit(1)
+        
+        # Check if all parameter defined for unstructured sources
+        #if not config['SOURCES'][source]['CONFIG']['structured'] and not config['All']: print('\033[33m'+ "* Warning:  Unstructured data source and parameter All=False. Check documentation."+'\033[m')
     
     
     # Now, variables and features are processed        
     for source in config['SOURCES']:  
-        print("* File: %s" %(config['SOURCES'][source]['CONFILE']))
+        #print("* File: %s" %(config['SOURCES'][source]['CONFILE']))
         
         config['FEATURES'][source] = config['SOURCES'][source]['CONFIG']['FEATURES']
         var_names = []
@@ -1318,7 +1333,7 @@ def debugProgram(caller, args):
     if 'fcparser' in caller:
         
         # Print data source
-        if 'process_file.source' in caller:
+        if 'process_multifile.source' in caller:
             source = args[0]
             Nlogs = args[1]
             print("\n** Source: %s - %d entry logs **" %(source, Nlogs))
@@ -1327,20 +1342,29 @@ def debugProgram(caller, args):
         # Read user input
         if caller=='fcparser.user_input':
             actual_line = args[0]
-            option = input("$ ")                     #option = ''    # go through the whole file                
+            option = input("$ ")    # option = ''    # go through the whole file   
+              
+            opmode = 0
             if option == 'q' or option == 'Q':
                 exit(1)
-            elif regex_goline.match(option):
-                goline = int(regex_goline.search(option)[0][3:])
-                return goline
-            elif regex_searchstring.match(option):
-                searchstring = regex_searchstring.search(option)[0][7:]
-                return searchstring
-            elif not option:
-                return actual_line
+            # operation mode: go line
+            elif regex_goline.match(option):        
+                opmode = 'goline'
+                user_input = int(regex_goline.search(option)[0][3:])
+            # operation mode: search string    
+            elif regex_searchstring.match(option):  
+                opmode = 'searchstr'
+                user_input = regex_searchstring.search(option)[0][7:]
+            # operation mode: process next line (enter)
+            elif not option:         
+                opmode = 'enter'
+                user_input = actual_line
+            # Invalid input
             else:
                 print('\033[31m'+ "Invalid option" +'\033[m')
-                return 0
+                exit(1)
+            
+            return opmode, user_input
                 
         # Print entry log
         if 'process_file.line' in caller:
@@ -1353,25 +1377,30 @@ def debugProgram(caller, args):
         if 'process_log.record' in caller:
             record = args[0]
             #stdin.read(1)
-            print("\nRecord with format 'variable_name': log_data\n%s" %(str(record)))
+            print("\nRecord with format 'variable_name': [log_data]\n%s" %(str(record)))
             
-            none_variables = []
-            none_value_variables = []
-            for variable in record.variables:                    
-                for i in range(len(record.variables[variable])):    # There might be more than one item in a variable (unstructured data)  
-                    if record.variables[variable][i] is None:
-                        none_variables.append(variable)                     # Invalid object (var=None)
-                    elif hasattr(record.variables[variable][i], 'value'):
-                        if record.variables[variable][i].value is None:     # Valid object but error while formatting value (var.value=None)
-                            none_value_variables.append(variable)
-            if none_variables:
-                print('\033[33m'+ "Detected some None variables: %s" %(none_variables) +'\033[m')
-            if none_value_variables:
-                print('\033[33m'+ "Detected some None values in variables: %s" %(none_value_variables) +'\033[m')
-            if not none_variables and not none_value_variables:
-                print('\033[32m'+ "No invalid values detected"  +'\033[m')
+            if not any(record.variables.values()):
+                print('\033[31m'+ "Empty log" +'\033[m') 
                 
-            #if none_variables or none_value_variables: stdin.read(1)
+            else:
+                none_variables = []
+                none_value_variables = []
+                for variable in record.variables:                    
+                    for i in range(len(record.variables[variable])):    # There might be more than one item in a variable (unstructured data)  
+                        if record.variables[variable][i] is None:
+                            none_variables.append(variable)                     # Invalid object (var=None)
+                        elif hasattr(record.variables[variable][i], 'value'):
+                            if record.variables[variable][i].value is None:     # Valid object but error while formatting value (var.value=None)
+                                none_value_variables.append(variable)
+                
+                if none_variables:
+                    print('\033[33m'+ "Detected some None variables: %s" %(none_variables) +'\033[m')
+                if none_value_variables:
+                    print('\033[33m'+ "Detected some None values in variables: %s" %(none_value_variables) +'\033[m')
+                if not none_variables and not none_value_variables:
+                    print('\033[32m'+ "No invalid values detected"  +'\033[m')
+                    
+                #if none_variables or none_value_variables: stdin.read(1)
             
                 
         if 'process_log.observation' in caller:
@@ -1383,10 +1412,9 @@ def debugProgram(caller, args):
                 if obs.value:
                     features_counter[obs.fName] = obs.value
                     
-            print("Features with counter>0: %s\n" %(features_counter))
+            print("\nFeatures with counter>0: %s\n" %(features_counter))
             
-            #if 'daddr_private' not in features_counter and 'daddr_public' not in features_counter: stdin.read(1)
-              
+            #if 'feature_name' not in features_counter: stdin.read(1)
             
         
         
