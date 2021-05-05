@@ -38,7 +38,7 @@ timearg: timestamp
 VARIABLES:
 
 - name: timestamp
-  matchtype: string
+  matchtype: time
   where: 0
 - name: duration
   matchtype: number
