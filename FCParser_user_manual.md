@@ -274,8 +274,8 @@ In order to run the example and parse the data, just run the following command i
 
 The parser output consists of:
 - The stats file, which includes number of variables, features, data size and logs and processed logs:
-<p align="center"> <img width="423" height="337" src="assets/example_stats.png"> </p><br />
-In this case all the lines have been processed but sometimes the number of logs and processed logs will differ (eg. if there are some logs with invalid timestamp or empty lines).
+<p align="center"> <img width="338" height="268" src="assets/example_stats.png"> </p>
+In this case all the lines have been processed but sometimes the number of logs and processed logs will differ (eg. if there are some logs with invalid timestamp or empty lines).<br />
 
 - The header file, with a list of the features from all data sources:
 <p align="center"> <img width="700" height="285" src="assets/example_headers.png"></p>
