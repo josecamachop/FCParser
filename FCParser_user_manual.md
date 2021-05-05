@@ -206,7 +206,7 @@ At the top of the picture we can see the raw entry log and how it is parsed into
 In this case, we can "jump" to a certain log by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which would correspond with the line 34 for structured sources). 
 <p align="center"> <img width="555" height="338" src="assets/debugger3.png"> </p>
 <div align="center"><i>Figure 7: Example - Debugger output. Unstructured source</i></div><br />
-In this example, all the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined.</div><br />
+In this example, all the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined. Also, online tools as [7] might help you to understand why a regular expression is not correct. </div><br />
 
 Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 10:15:45".
 <p align="center"> <img width="555" height="338" src="assets/debugger4.png"> </p>
@@ -258,7 +258,7 @@ In Figure 12, we can see an example of unstructured data, where each log entry c
 <div align="center"><i>Figure 12: Example - IDS log entries</i></div><br />
 
 
-In Figure 13, an unstructured source configuration file is depicted, where some variables and features are defined using regular expressions. When building the IDS config file, we can notice that it differs from netflow in that regular expressions are now needed to extract the data. These regular expressions are used to search variables in the log entries, including the timestamp variable.
+In Figure 13, an unstructured source configuration file is depicted, where some variables and features are defined using regular expressions. When building the IDS config file, we can notice that it differs from netflow in that regular expressions are now needed to extract the data. These regular expressions are used to search variables in the log entries, including the timestamp variable. You can check if the regular expressions are properly defined by running fcparser in debugging mode and checking if the data is being parsed correctly into the defined variables (none values will result if a regular expression does not match the data, as it was shown in chapter 4).
 <p align="center"> <img width="900" height="620" src="assets/example_ids_config.png"> </p>
 <div align="center"><i>Figure 13: Example - IDS configuration file</i></div><br />
 
@@ -359,5 +359,7 @@ https://pypi.python.org/pypi/PyYAML
 
 [6] _NFDUMP_ , tools to collect and process _netflow_ data on the command line. Available
 at: [http://nfdump.sourceforge.net/](http://nfdump.sourceforge.net/)
+
+[7] _regex101_: build, test, and debug regex. Available at: https://regex101.com/
 
 
