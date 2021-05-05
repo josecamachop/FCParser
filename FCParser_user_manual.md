@@ -233,10 +233,10 @@ Fig. 9 shows the general configuration file for this example.
 
 
 In the upper part, the different data sources are specified (netflow and IDS), including the data directory and the path where data source configuration file is located. Keys field is unused, aggregation is not performed and observations will then be grouped by timestamp.
-At the end of the file, there is the configuration for temporal sampling. In this case, the sampling rate is one minute.
+At the end of the file, we can find the configuration for temporal sampling. In this case, the sampling rate is one minute.
 
-Let's now see what the data looks like so that we can specify the configuration files for these data sources.
-So, for netflow data, we can find the data file (nf.csv) in Examples_data directory and netflow configuration file in the config directory (netflow.yaml). If we take a look at the data, it consists of comma separated values where every line is an entry.
+Let's see now what the data looks like so that we can specify the configuration files for these data sources.
+So, for netflow data, we can find the data file (nf.csv) in the Examples_data directory and netflow configuration file in the config directory (netflow.yaml). If we take a look at the data, it consists of comma separated values where every line is an entry.
 
 An example of the structure of some entries (lines) is depicted in Figure 10:  
 
@@ -248,7 +248,7 @@ Based on this structure, we can create our data source configuration file, where
 <p align="center"> <img width="500" height="613" src="assets/example_netflow_config.png"> </p>
 <div align="center"><i>Figure 11: Example - Netflow configuration file</i></div><br />
 In figure 11, we can see a fragment of the configuration file for a _netflow_ data source.
-It shows the mandatory attributes for structured sources. As we mentioned before, timearg attribute represents the instant at which a certain event occurred, and it is defined by means of the timestamp variable. The _where_ value of the timestamp variable (zero) matches the position in the entry line (the first column of every entry in data log corresponds with the time instant). Timestamp format is also specified according to the data file.<br />  
+It shows the mandatory attributes for structured sources. As we mentioned before, timearg attribute represents the instant at which a certain event occurred, and it is defined by means of the timestamp variable. The _where_ value of the timestamp variable matches the position in the entry line (i.e. zero because the first field of every entry log corresponds with the time instant). Timestamp format is also specified according to the data file.<br />  
 For more information about the timestamp format, check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
 
 <br />In the case of IDS data source, the data file in Examples_data directory is named _ids.log_ and IDS configuration file in the config directory is named _ids.yaml_.
@@ -258,11 +258,11 @@ In Figure 12, we can see an example of unstructured data, where each log entry c
 <div align="center"><i>Figure 12: Example - IDS log entries</i></div><br />
 
 
-In Figure 13, an unstructured source configuration file is depicted, where some variables and features are defined using regular expressions. When building the IDS configuration file, the mandatory attributes differ from those ones in netflow configuration file (structured source) as, for these kind of sources, regular expressions are needed to extract the data. These regular expressions are used to search variables in the log entries.
+In Figure 13, an unstructured source configuration file is depicted, where some variables and features are defined using regular expressions. When building the IDS config file, we can notice that it differs from netflow in that regular expressions are now needed to extract the data. These regular expressions are used to search variables in the log entries, including the timestamp variable.
 <p align="center"> <img width="900" height="620" src="assets/example_ids_config.png"> </p>
 <div align="center"><i>Figure 13: Example - IDS configuration file</i></div><br />
 
-For this case, it is necessary to define the separator between entries (two blank lines). We can also see how regular expressions are used to define the variables, including the timestamp variable. Some features are also depicted in the figure, for which differents weights are assigned. Using these weight values will be useful for the deparsing process.
+For this case, it is necessary to define the separator between entries (two blank lines). We can also see the definition of the variables and some features in the figure, for which differents weights are assigned. Using these weight values will be useful for the deparsing process.
 
 
 In order to run the example and parse the data, just run the following command in the FCParser directory:
@@ -273,8 +273,9 @@ In order to run the example and parse the data, just run the following command i
 <div align="center"><i>Figure 14: Example - Parsing data</i></div><br />
 
 The parser output consists of:
-- The stats file, which includes number of variables, log entries and size in bytes:
-<p align="center"> <img width="415" height="250" src="assets/example_stats.png"> </p>
+- The stats file, which includes number of variables, features, data size and logs and processed logs:
+<p align="center"> <img width="423" height="337" src="assets/example_stats.png"> </p>
+In this case all the lines have been processed but sometimes the number of logs and processed logs will differ (eg. if there are some logs with invalid timestamp or empty lines).
 
 - The header file, with a list of the features from all data sources:
 <p align="center"> <img width="700" height="285" src="assets/example_headers.png"></p>
