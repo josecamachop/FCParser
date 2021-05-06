@@ -67,14 +67,16 @@ be specified. Input data can be in _csv_ format, text based log files or _nfcapd
 
 **Keys:** In this field, none, one or more aggregation keys are defined. These keys are the
 variables chosen to aggregate observation. For each unique value of said keys,
-conservation are grouped (e.g source IP: for each unique value of source ip one observation of features is generated). Aggregation keys must be variables from the data sources. If the chosen aggregation key is not a variable for a data source, that data source won’t be parsed.
+conservation are grouped (e.g source IP: for each unique value of source ip, one observation of features is generated). Aggregation keys must be variables from the data sources. If the chosen aggregation key is not a variable for a data source, that data source won’t be parsed.
 If the field is empty, aggregation will not occur, so it is analyzed by timestamp by default.
 In case you define two data sources in the configuration file, please note that keys variables must be present in both data sources configuration files so that aggregation keys work. If it is not the case, you have to parse every data source independently.
+You can see how the data is parsed using keys by checking the Example chapter.
 
 **Online**: Boolean variable to determine if online or offline mode. Online mode is set for real time application
               (only one process) while offline mode is used for processing already stored data sets (multiprocess).
 
-**Processes**: Number of processes used by the program. Use a number between 1 and the number of cores of your system. If this parameter is not specified, 80% of maximum possible cores of the system will be set as the default value.
+**Processes**: Number of processes used by the program. Use a number between 1 and the number of cores of your system. You can know this number by executing lscpu command in linux and checking CPU(s) field, or by checking logical processors in TaskManager>performance tab in Windows.
+If this parameter is not specified, 80% of maximum possible cores of the system will be set as the default value.
 
 **Split:** In this field, the temporal sampling parameters are specified. Time window in
 minutes, as well as start time and end time for sampling interval. Time parameters format must be YYYY-MM-DD hh:mm:ss.
@@ -90,7 +92,7 @@ are defined. Headers.dat (containing a list of feature names) and weights.dat fi
 **All**: Boolean variable to consider either all possible matches for a variable or only the first one. It is set to False (consider only first match) by default. This parameter is important when dealing with certain kind of unstructured sources in which the regular expression for a variable might match more than one entity in our data. Therefore, All parameter should be set to True in the configuration file for these scenarios.
 
 **Max_chunck**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 100MB are considered by default.
-Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory.
+Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory. Therefore, if the data size is not too big according to your free memory, it is highly recommendable to set up the highest value for max_chunk parameter.
 
 <p align="center">-Deparsing parameters-</p>
 
@@ -271,26 +273,35 @@ In order to run the example and parse the data, just run the following command i
     $ python bin/fcparser.py example/config/configuration.yaml
 
 <p align="center"> <img width="400" height="288" src="assets/example_parser.png"> </p>
-<div align="center"><i>Figure 14: Example - Parsing data</i></div><br />
+<div align="center"><i>Figure 14: Example output - Parsing data</i></div><br />
 
 The parser output consists of:
 - The stats file, which includes number of variables, features, data size and logs and processed logs:
 <p align="center"> <img width="338" height="268" src="assets/example_stats.png"> </p>
+<div align="center"><i>Figure 15: Example output - Stats file</i></div><br />
 In this case all the lines have been processed but sometimes the number of logs and processed logs will differ (eg. if there are some logs with invalid timestamp or empty lines).<br />
 
 - The header file, with a list of the features from all data sources:
 <p align="center"> <img width="700" height="285" src="assets/example_headers.png"></p>
+<div align="center"><i>Figure 16: Example output - Headers file</i></div><br />
   Where the 143 ids feature names are concatenated after the 142 netflow feature names.</p>
 
 - The weights file, which includes the weight associated to each feature. If a feature has no weight defined in configuration file, weight is automatically set to one, as depicted in the next figure:
 <p align="center"> <img width="700" height="276" src="assets/example_weights.png"> </p>
+<div align="center"><i>Figure 17: Example output - Weights file</i></div><br />
+
 
 - The parsed data with the timestamp in the file name (output-yyyymmddhhmm.dat).
 As time window was set to one minute, the number of files generated will match the number of minutes for which we have records.
 
 The structure of these files look as depicted:
 <p align="center"> <img width="700" height="171" src="assets/example_output.png"> </p>
+<div align="center"><i>Figure 18: Example output - Parsed data (feature counters)</i></div><br />
 Where the number of times a given event (feature) occurs is recorded as comma-separated values, for each of the 285 features.
+
+In case we define some keys in general configuration file, eg. 'Keys: src_ip', then counters are broken down according to the variable src_ip for each defined time interval. In the next picture we can see an example fragment for timestamp 201212121030:
+<p align="center"> <img width="700" height="171" src="assets/example_output_keys.png"> </p>
+<div align="center"><i>Figure 19: Example output - Parsed data using keys</i></div><br />
 
 
 ### 5.2. DEPARSING
@@ -302,7 +313,7 @@ specified in the _deparsing_ input file.
 
 An example of deparsing input file is depicted in figure 11:
 <p align="center"> <img width="390" height="320" src="assets/example_deparsing_input.png"> </p>
-<div align="center"><i>Figure 15: Example - Deparsing input file</i></div><br />
+<div align="center"><i>Figure 20: Example - Deparsing input file</i></div><br />
 
 To run the program, use the following command:
 
@@ -312,7 +323,7 @@ The _deparsing_ program generates one file for each data source with the extract
 related to the anomalies detected, as well as stats file with the number of structured and unstructured logs deparsed.
 
 <p align="center"> <img width="800" height="323" src="assets/example_deparsing_output.png"> </p>
-<div align="center"><i>Figure 16: Example - Deparsing output</i></div><br />
+<div align="center"><i>Figure 21: Example - Deparsing output</i></div><br />
 
 
 ## 6. INSTALLATION REQUIREMENTS
