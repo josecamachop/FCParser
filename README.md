@@ -5,7 +5,7 @@ Parser for data streams composed of variate (structured and unstructured) source
 
 Contact persons: José Camacho Páez (josecamacho@ugr.es)
 
-Last modification of this document: 10/Jul/18
+Last modification of this document: 20/Ene/21
 
 
 ## Presentation
