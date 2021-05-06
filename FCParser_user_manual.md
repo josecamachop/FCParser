@@ -295,7 +295,7 @@ In this case all the lines have been processed but sometimes the number of logs 
 As time window was set to one minute, the number of files generated will match the number of minutes for which we have records.
 
 The structure of these files look as depicted:
-<p align="center"> <img width="640" height="400" src="assets/example_output.png"> </p>
+<p align="center"> <img width="700" height="171" src="assets/example_output.png"> </p>
 <div align="center"><i>Figure 18: Example output - Parsed data (feature counters)</i></div><br />
 Where the number of times a given event (feature) occurs is recorded as comma-separated values, for each of the 285 features.
 
