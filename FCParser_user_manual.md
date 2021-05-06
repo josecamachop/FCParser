@@ -300,7 +300,7 @@ The structure of these files look as depicted:
 Where the number of times a given event (feature) occurs is recorded as comma-separated values, for each of the 285 features.
 
 In case we define some keys in general configuration file, eg. 'Keys: src_ip', then counters are broken down according to the variable src_ip for each defined time interval. In the next picture we can see an example fragment for timestamp 201212121030:
-<p align="center"> <img width="700" height="171" src="assets/example_output_keys.png"> </p>
+<p align="center"> <img width="580" height="211" src="assets/example_output_keys.png"> </p>
 <div align="center"><i>Figure 19: Example output - Parsed data using keys</i></div><br />
 
 
