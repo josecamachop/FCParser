@@ -69,8 +69,7 @@ be specified. Input data can be in _csv_ format, text based log files or _nfcapd
 variables chosen to aggregate observation. For each unique value of said keys,
 conservation are grouped (e.g source IP: for each unique value of source ip, one observation of features is generated). Aggregation keys must be variables from the data sources. If the chosen aggregation key is not a variable for a data source, that data source won’t be parsed.
 If the field is empty, aggregation will not occur, so it is analyzed by timestamp by default.<br />
-
-In case you define two data sources in the configuration file, please note that keys variables must be present in both data sources configuration files so that aggregation keys work. If it is not the case, you have to parse every data source independently. Therefore, this is the recommended way to do it when using the keys parameter in order to avoid possible errors.
+In case you define two data sources in the configuration file, please note that keys variables must be present in both data sources configuration files so that aggregation keys work. If it is not the case, you have to parse every data source independently. Therefore, this is the recommended way to do it when using the keys parameter in order to avoid possible errors.<br />
 You can see how the data is parsed using keys by checking the Example chapter.
 
 **Online**: Boolean variable to determine if online or offline mode. Online mode is set for real time application
