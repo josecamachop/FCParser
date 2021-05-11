@@ -6,10 +6,10 @@ data and preparing it for further multivariate analysis.
 See README file to learn how to use FaaC parser library.
 
 Authors: Alejandro Perez Villegas (alextoni@gmail.com)
-     Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
-     Jose Camacho (josecamacho@ugr.es)    
+         Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
+         Jose Camacho (josecamacho@ugr.es) 
 
-Last Modification: 11/Aug/2018
+Last Modification: 05/May/2021
 
 """
 
@@ -122,12 +122,16 @@ class NumberVariable(Variable):
     """
 
     def load(self, raw_value):
-        """Converts an input raw value into an integer number.
-        Returns: Integer number, if the conversion succeeds;
+        """Converts an input raw value into an integer or float number.
+        Returns: Integer number or float number, if the conversion succeeds;
                  None, if the conversion fails.
-
         raw_value -- The input raw value.
+        
+        Old definition: value = int(raw_value); then value was None for float raw_values
+        Actual definition: Now conversion working for both int and float raw_values
+        These new lines add a 5% delay to the total time of the parsing process but it is acceptable
         """
+        
         try:
             value = float(raw_value)
             if value.is_integer():
@@ -802,12 +806,19 @@ def getConfiguration(config_file):
     '''
     Function to load config file. It is used for general and datasources config. files
     '''
-    stream = open(config_file, 'r')
-    conf = yaml.safe_load(stream) # conf = yaml.load(stream)
-    if 'FEATURES' not in conf:
-        conf['FEATURES'] = {}
+    try:
+        stream = open(config_file, 'r')
+        conf = yaml.safe_load(stream)    # old definition: conf = yaml.load(stream)
+        if 'FEATURES' not in conf:
+            conf['FEATURES'] = {}
+        stream.close()
+        
+    except Exception as error:
+        print('\033[31m'+ "Error while loading YAML file.")
+        print("Error message: %s" %(error))
+        print("Please, check the configuration file and execute the program again." +'\033[m')
+        exit(1)
 
-    stream.close()
     return conf
 
 
@@ -880,7 +891,7 @@ def loadConfig(parserConfig, caller, debugmode):
             
         try:
             config['threshold'] = parserConfig_low['deparsing_output']['threshold']
-            print("Threshold: "+str(config['threshold']))
+            print("* Threshold: "+str(config['threshold']))
         except:
             print('\033[31m'+ "**CONFIG FILE ERROR** field: threshold" +'\033[m')
             paramError = True
@@ -937,18 +948,18 @@ def loadConfig(parserConfig, caller, debugmode):
             
     # Chunk size parameter (only for offline mode)
     try:
-        if online is False:
+        if caller == 'fcparser' and online is False:
             try: 
                 config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
                 if not debugmode:
-                    print("* Chunk_size/core: %s MB" %(str(int(config['Csize']/config['Cores']/1024/1024))))
+                    print("* Max_chunk: %s MB" %(str(int(parserConfig_low['max_chunk']))))
             except:
                 paramWarnings+=1
-                config['Csize'] = 1024 * 1024 * 100 * config['Cores'];
+                config['Csize'] = 1024 * 1024 * 1000 * config['Cores'];
                 if not debugmode:
                     print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Max_chunk")
-                    print(" * Setting default max_chunk size: 100 MB" +'\033[m')  # To understand why default chunk size is 100MB, check calling of frag function in fcparser.process_multifile()
-                    print("* Chunk_size/core: %s MB" %(str(int(config['Csize']/config['Cores']/1024/1024))))
+                    print(" * Setting default max_chunk size: 1000 MB" +'\033[m')  # To understand why default chunk size is 1000MB, check calling of frag function in fcparser.process_multifile()
+            
     except:
         pass   
         
@@ -1057,7 +1068,8 @@ def loadConfig(parserConfig, caller, debugmode):
         config['OUTW'] = output['weights']
     except (KeyError, TypeError, UnboundLocalError):
         config['OUTW'] = 'weights.dat'
-        print(" ** Defining default weights file: '%s'" %(config['OUTW']))
+        if not debugmode:
+            print(" ** Defining default weights file: '%s'" %(config['OUTW']))
     except:
         pass
         
@@ -1074,17 +1086,19 @@ def loadConfig(parserConfig, caller, debugmode):
                 print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['config']) +'\033[m')
                 paramError = True
         except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'config' in %s field" %(source) +'\033[m')
+            print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'config' in '%s' data source" %(source) +'\033[m')
             paramError = True
-            
-        if caller == 'fcparser':
-            try:
-                config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
-                if not config['SOURCES'][source]['FILES']:
-                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['parsing']) +'\033[m')
-                    paramError = True
-            except:
-                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'parsing' in '%s' field" %(source) +'\033[m')
+        
+        
+        # Get data path from parsing field. It is also valid for fcdeparser and fclearner
+        try:
+            config['SOURCES'][source]['FILES'] = glob.glob(dataSources[source]['parsing'])
+            if not config['SOURCES'][source]['FILES']:
+                print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file to parse: %s" %(dataSources[source]['parsing']) +'\033[m')
+                paramError = True
+        except:
+            if caller == 'fcparser':
+                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'parsing' in '%s' data source" %(source) +'\033[m')
                 paramError = True
                 
         if caller == 'fcdeparser':
@@ -1094,9 +1108,12 @@ def loadConfig(parserConfig, caller, debugmode):
                     print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['deparsing']) +'\033[m')
                     paramError = True
             except:
-                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'deparsing' in '%s' field" %(source) +'\033[m')
-                paramError = True
-                
+                if 'FILES' in config['SOURCES'][source] and config['SOURCES'][source]['FILES']:
+                    config['SOURCES'][source]['FILESDEP'] = config['SOURCES'][source]['FILES']
+                else:
+                    print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'deparsing' in '%s' data source" %(source) +'\033[m')
+                    paramError = True
+                    
         if caller == 'fclearning': 
             try:
                 config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
@@ -1104,8 +1121,11 @@ def loadConfig(parserConfig, caller, debugmode):
                     print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['learning']) +'\033[m')
                     paramError = True
             except:
-                print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learning' in '%s' field" %(source) +'\033[m')
-                paramError = True
+                if 'FILES' in config['SOURCES'][source] and config['SOURCES'][source]['FILES']:
+                    config['SOURCES'][source]['FILESTRAIN'] = config['SOURCES'][source]['FILES']
+                else:
+                    print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learning' in '%s' data source" %(source) +'\033[m')
+                    paramError = True
                 
         
     # Check everything is ok in general configuration file before loading datasources config. files
@@ -1254,20 +1274,21 @@ def loadConfig(parserConfig, caller, debugmode):
     
         
         # Preprocessing nfcapd files to obtain csv files.
-        for source in dataSources:
-            out_files = []
-            for file in config['SOURCES'][source]['FILES']:
-                if 'nfcapd' in file:
-    
-                    out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
-                    os.system("nfdump -r " + file + " -o csv >>"+out_file)
-                    os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
-                    os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
-                    out_files.append(out_file.replace('temp',source) + '.csv')
-                    os.remove(out_file)
-                    os.remove(out_file.replace('temp',source))
-                    config['SOURCES'][source]['FILES'] = out_files
-                    #delete_nfcsv = out_files
+        if caller == 'fcparser':
+            for source in dataSources:
+                out_files = []
+                for file in config['SOURCES'][source]['FILES']:
+                    if 'nfcapd' in file:
+        
+                        out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
+                        os.system("nfdump -r " + file + " -o csv >>"+out_file)
+                        os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
+                        os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
+                        out_files.append(out_file.replace('temp',source) + '.csv')
+                        os.remove(out_file)
+                        os.remove(out_file.replace('temp',source))
+                        config['SOURCES'][source]['FILES'] = out_files
+                        #delete_nfcsv = out_files
     
     
         # Process weight and made a list of features
@@ -1298,7 +1319,6 @@ def loadConfig(parserConfig, caller, debugmode):
                     fw = 1
 
                 config['weights'].append(str(fw))
-
 
 
     return config
