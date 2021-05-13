@@ -1,30 +1,32 @@
 #-----------------------------------------------------------------------
-# IDS - Data source Configuration File
+# IDS Configuration File
 #-----------------------------------------------------------------------
+# For more information about the config. parameters, check user manual.
 #
-# tag: tag asociated with the files
-# structured: Boolean variable to indicate if datasource is structured or not. In this case, ids.log is not structured.
-# timestamp_format: format of the timestamp of the logs in the files of this dataSource in python datetime format.
-# timestamp_regexp: regular expresion that matches the date format of the source.
-# separator: char that delimitates the log entries of the source. For ids.log, log entries are separated by two blank lines.
+# tag: Identifier of the data source
+# structured: False, as the data source is not structured and regular expressions are needed to parse the data
+# timestamp_format: format of the timestamp in the logs in python datetime format. Check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior             
+# separator: Chars that delimitates the log entries of the source.
+#            In this case, every entry log consists of a paragraph, where two blank lines is the separator between records.
+#
+# timearg: It is the name of the variable which collects the timestamps. We defined the variable with name 'timestamp'
 #
 # VARIABLES:
-#   - name:         Variable name.
-#   - matchtype:    Variable matchtype {string, number, counter, ip, time, duration}.
-#   - where:        Regular expression that match the wanted field.
+#   - name:       Variable name.
+#   - matchtype:  Variable matchtype {string, number, time, ip, duration, counter}.
+#   - where:      Regular expression that matches the wanted field   
 #
 # FEATURES:
-#   - name:      Feature name.
-#   - variable:  Variable from which the feature is calculated.
-#   - matchtype: Feature matchtype {single, multiple, range, default, regexp}
-#   - value:     Value of the field that defines the feature.
-#                If the matchtype is 'single' use a single value.
-#                If the matchtype is 'multiple', use a list of values.
-#                If the matchtype is 'range', use a list of two values.
-#                If the matchtype is 'default', the value must be empty.
-#                If the matchtype is 'regexp', the value is a string.
-#   - weight:    Optional parameter to assign different weights to the features. If value is not specified, it is automatically set to one.
-#
+#   - name:       Feature name.
+#   - variable:   Variable from which the feature is calculated.
+#   - matchtype:  Feature matchtype {single, multiple, range, default, regexp}
+#   - value:      Value of the field that defines the feature.
+#                   If the matchtype is 'single' use a single value.
+#                   If the matchtype is 'multiple', use a list of values.
+#                   If the matchtype is 'range', use a list of two values.
+#                   If the matchtype is 'default', the value must be empty.
+#                   If the matchtype is 'regexp', the value is a string.
+#   - weight:     Optional parameter to assign different weights to the features, to be considered during the analysis.
 #-----------------------------------------------------------------------
 
 
