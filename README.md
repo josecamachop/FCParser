@@ -46,7 +46,8 @@ If split parameters are not determined, the data won't be sampled.
 
 In the example, data is sampled every minute. Example usage:
 
-	$ python bin/fcparser.py example/config/configuration.yaml 
+	$ python3 bin/fcparser.py example/config/configuration.yaml
+	$ python3 bin/fcparser.py --debug example/config/configuration.yaml
 
 ### Deparsing
 
@@ -56,7 +57,7 @@ process, see /config/configuration.yaml for more info.
 2.- Deparsing. Extract the logs related to anomalies. It takes as input features and timestamps.
 See the example to see format of the file.
 
-	$ python bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input 
+	$ python3 bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input 
 
 
 ## Installation
@@ -79,7 +80,7 @@ The *faac* library requires some extra python libraries to work properly. They a
 
 Both dependencies can be installed using pip:
 
-	$ pip install IPy PyYAML 
+	$ pip3 install IPy PyYAML 
 
 
 ## Summary
