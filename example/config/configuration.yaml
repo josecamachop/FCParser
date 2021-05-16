@@ -58,7 +58,7 @@ DataSources:
 Online: False
 Incremental_Output: False
 Processes: 4
-Max_chunk: 8
+Max_chunk: 100
 Lperc: 0.01
 Endlperc: 0.0001
 
