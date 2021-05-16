@@ -39,7 +39,7 @@
 # =================
 
 tag: source_name
-structured: False/True
+structured: True  # False
 timestamp_format: "%Y-%m-%d %H:%M:%S" # for example
 timearg: timestamp
 
