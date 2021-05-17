@@ -80,6 +80,7 @@ The *faac* library requires some extra python libraries to work properly. They a
 
 Both dependencies can be installed using pip:
 
+	$ sudo apt update && sudo apt install python3-pip
 	$ pip3 install IPy PyYAML 
 
 
