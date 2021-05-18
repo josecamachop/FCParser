@@ -34,7 +34,8 @@ Parsing_Output:
 
 Deparsing_output: 
   dir:           Output directory for deparsing process
-  treshold:      upper limit of log entries by data source  
+  treshold:      upper limit of log entries by data source 
+  stats:         log file to write number of logs found during deparsing process
 
 SPLIT:        split info for temporal sampling
   Time:        
