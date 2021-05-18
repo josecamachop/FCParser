@@ -99,7 +99,7 @@ Note that smaller chunks can slow down the parsing process while larger chunks w
 **Deparsing_output:** In this field the output directory for the _deparsed_ raw data and the
 stats file are defined. This configuration is only used for _deparsing_ process.
 
-**Threshold:** The upper limit of log entries by datasource can be specified in the threshold parameter.
+**Threshold:** The upper limit of log entries per datasource that will appear in the output file.
 
 <p align="center">-Learning parameters-</p>
 
@@ -167,11 +167,12 @@ anomaly are identified and presented to the analyst. This process is called _dep
 it is a straight forward process, that reduce the challenge of searching logs, surgically
 extracting data related to anomalies.
 
-The program uses the same configuration files that the parser and reverse the parsing
-criteria. It takes as input a list of timestamps and a list of features, and outputs a file of
-log entries that contains those features and occurred in those timestamps.
-To delimit the amount of log entries extracted, there is a threshold of log entries that are
-extracted. Log entries that contain more selected features are prioritized. However, this
+The program reverses the parsing criteria. It takes as input the same configuration files used by the parser,
+along with an input file where a list of timestamps and a list of features are specified.
+It outputs, for each data source, a file including the log entries that contains those features and occurred in those timestamps.  
+
+To delimit the maximum number of total log entries extracted for every data source, the threshold parameter is considered, which is defined in the general configuration file.
+Log entries that contain more selected features are prioritized. However, this
 threshold is not absolute and log entries with the same amount of features should not be
 dismissed. For this reason, the threshold is checked after processing an entire block of
 log entries with the same number of features appearances.
