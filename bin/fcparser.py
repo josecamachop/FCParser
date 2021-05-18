@@ -10,8 +10,7 @@ Authors:    Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
             Alejandro Perez Villegas (alextoni@gmail.com)
             Jose Camacho (josecamacho@ugr.es)
          
-         
-Last Modification: 16/Jul/2018
+Last Modification: 05/May/2021
 
 """
 import multiprocessing as mp
@@ -25,6 +24,7 @@ import faac
 import math
 from collections import OrderedDict
 from math import floor
+from sys import version_info
 #import datetime
 #import subprocess
 #import copy    
@@ -72,7 +72,7 @@ def main(call='external',configfile=''):
         
         data = offline_parsing(config, startTime, stats)
         output_data = fuseObs_offline(data)
-        with open(config['OUTDIR']+'fused_dict', 'w') as f: print(output_data, file=f)
+        #with open(config['OUTDIR']+'fused_dict', 'w') as f: print(output_data, file=f) # this output file does not seem too relevant for the user
         
     # write in stats file
     write_stats(config, stats)
@@ -150,7 +150,8 @@ def process_multifile(config, source, stats):
             pool = mp.Pool(config['Cores'])
             while cont:                          # cleans memory from processes
                 jobs = list()
-                for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
+                # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
+                for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
                     if not debugmode:
                         jobs.append( pool.apply_async(process_file,[input_path,fragStart,fragSize,config, source, stats]) )
                     else:
@@ -558,7 +559,7 @@ def getArguments():
     '''
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''Multivariate Analysis Parsing Tool.''')
     parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
-    parser.add_argument('--debug', '-debug', '-d', '-g', action='store_true', help="Optional debugging mode")
+    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fcparser in debug mode")
     args = parser.parse_args()
     return args
 
@@ -804,4 +805,9 @@ class obsDict_online(object):
 
 if __name__ == "__main__":
     
+    if version_info[0] != 3:
+        print('\033[31m'+ "** PYTHON VERSION ERROR **" +'\033[m')
+        print("Please, use python3 to run this program")
+        exit(1)
+        
     main()
