@@ -18,6 +18,7 @@ from sys import exit
 from IPy import IP
 import re
 import os
+import subprocess
 import yaml
 import glob
 import shutil
@@ -994,10 +995,10 @@ def loadConfig(parserConfig, caller, debugmode):
         try:
             if 'start' in config['Time']:
                 config['Time']['start'] = datetime.strptime(str(config['Time']['start']), "%Y-%m-%d %H:%M:%S")
-                print("* Start time: %s" %(config['Time']['start']))
+                if not debugmode: print("* Start time: %s" %(config['Time']['start']))
             if 'end' in config['Time']:
                 config['Time']['end'] = datetime.strptime(str(config['Time']['end']), "%Y-%m-%d %H:%M:%S")
-                print("* End time: %s" %(config['Time']['end']))
+                if not debugmode: print("* End time: %s" %(config['Time']['end']))
         except ValueError as val_error:
             print('\033[31m'+ val_error.args[0] +'\033[m')
             paramError = True
@@ -1234,6 +1235,11 @@ def loadConfig(parserConfig, caller, debugmode):
                 print('\033[31m' + "Feature with name '%s' is defined using '%s'variable but this variable has not been defined previously" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'], config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']) +'\033[m')
                 paramError = True
                 config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+            
+            # None value field for default features
+            if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'default':
+                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'] = None
+                
         
         if paramError:
             print("Some errors in features or variables have been detected. Program execution is interrupted.")
@@ -1278,7 +1284,8 @@ def loadConfig(parserConfig, caller, debugmode):
             for source in dataSources:
                 out_files = []
                 for file in config['SOURCES'][source]['FILES']:
-                    if 'nfcapd' in file:
+                    # Check if file is nfcapd type
+                    if 'nfcapd' in file and not 'text' in subprocess.getoutput("file "+file):
         
                         out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
                         os.system("nfdump -r " + file + " -o csv >>"+out_file)
