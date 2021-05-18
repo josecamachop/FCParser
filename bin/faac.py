@@ -1285,7 +1285,7 @@ def loadConfig(parserConfig, caller, debugmode):
                 out_files = []
                 for file in config['SOURCES'][source]['FILES']:
                     # Check if file is nfcapd type
-                    if 'nfcapd' in file and not 'text' in subprocess.getoutput("file "+file):
+                    if 'nfcapd' in file and not 'text' in subprocess.getoutput("file "+file).split(':')[-1].lower():
         
                         out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
                         os.system("nfdump -r " + file + " -o csv >>"+out_file)
