@@ -124,6 +124,7 @@ The structure of these configuration files is shown in Figure 3:
     in python datetime format [2].
 - _Separator_: Char that delimits the log entries of the source, i.e, the separator between records. It is mandatory for unstructured sources while for structured sources /n is considered if none is specified.
 - _Timearg_: Timearg is the name of the timestamp variable. If the timearg attribute is not defined, the timestamp will be considered to be defined in a variable named 'timestamp'.
+- _nfcapd_: Boolean parameter to indicate data source files with nfcapd format. In this case, data files will be preprocessed before parsing process, generating .csv files for this source. If this parameter is not defined, it is set to False by default (no nfcapd).
 
 **<ins>Variables:</ins>** Variables are fields that are extracted from a log entry (e.g source ip,
 destination port, etc). Variables attributes differ depending if the data source is
