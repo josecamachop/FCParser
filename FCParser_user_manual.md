@@ -171,6 +171,7 @@ extracting data related to anomalies.
 The program reverses the parsing criteria. It takes as input the same configuration files used by the parser,
 along with an input file where a list of timestamps and a list of features are specified.
 It outputs, for each data source, a file including the log entries that contains those features and occurred in those timestamps.  
+The logs can match a different number of features, so several output files might be generated for a datasource, classified according to their number of matched features.
 
 To delimit the maximum number of total log entries extracted for every data source, the threshold parameter is considered, which is defined in the general configuration file.
 Log entries that contain more selected features are prioritized. However, this
@@ -184,6 +185,8 @@ file look like this:
 
 <p align="center"> <img width="650" height="247" src="assets/deparsing.png"> </p>
 <div align="center"><i>Figure 4: Format of deparsing input file</i></div><br />
+
+The timestamps in the deparsing input file must be specified with format "%Y-%m-%d %H:%M:%S". Internally, the timestamps will be converted to the timestamp format of every data source.
 
 
 ## 4. DEBUGGER
