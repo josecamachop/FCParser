@@ -5,11 +5,12 @@ data and preparing it for further multivariate analysis.
 
 See README file to learn how to use FaaC parser library.
 
-Authors: Alejandro Perez Villegas (alextoni@gmail.com)
+Authors: Manuel Jurado Vázquez (manjurvaz@ugr.es)
+         Alejandro Perez Villegas (alextoni@gmail.com)
          Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
          Jose Camacho (josecamacho@ugr.es) 
 
-Last Modification: 05/May/2021
+Last Modification: 27/May/2021
 
 """
 
@@ -24,7 +25,7 @@ import glob
 import shutil
 import multiprocessing as mp
 from math import floor
-#from sys import stdin
+from sys import stdin
 #import time
 
 #-----------------------------------------------------------------------
@@ -549,8 +550,12 @@ class MultipleFeature(Feature):
 
     def add(self, var):
 
-        for v in self.fValue:
-            super(MultipleFeature, self).add(var)
+        if var.value in self.fValue:
+            self.value = 1
+        
+        # Old implementation... it does not seem to work
+        #for v in self.fValue: super(MultipleFeature, self).add(var)
+
 
 
 class RangeFeature(Feature):
@@ -887,15 +892,15 @@ def loadConfig(parserConfig, caller, debugmode):
         try:
             output = parserConfig_low['deparsing_output']
         except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** field: Deparsing_Output" +'\033[m')
+            print('\033[31m'+ "**CONFIG FILE ERROR** missing field: Deparsing_Output" +'\033[m')
             paramError = True
             
-        try:
+        if 'threshold' in parserConfig_low['deparsing_output'] and parserConfig_low['deparsing_output']['threshold']:
             config['threshold'] = parserConfig_low['deparsing_output']['threshold']
-            print("* Threshold: "+str(config['threshold']))
-        except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** field: threshold" +'\033[m')
-            paramError = True
+            print("* Threshold: "+str(config['threshold'])+ " log entries per data source")
+        else:
+            print('\033[33m'+ "*Undefined threshold*: All potential logs will be extracted" +'\033[m')
+            config['threshold'] = None
         
         
     if caller == 'fclearning':
@@ -1005,25 +1010,25 @@ def loadConfig(parserConfig, caller, debugmode):
             
             
     # Keys parameter
-    try: 
-        config['Keys'] = parserConfig_low['keys']
-        
-        if not isinstance(config['Keys'], list):    # in case 'Keys' not defined as a list in config file
-            if not ',' in config['Keys']:
-                config['Keys'] = [config['Keys']]           # if only one key
-            else:
-                config['Keys'] = config['Keys'].split(', ')  # if more than one key separated by commas
+    if caller == 'fcparser':
+        try: 
+            config['Keys'] = parserConfig_low['keys']
+            
+            if not isinstance(config['Keys'], list):    # in case 'Keys' not defined as a list in config file
+                if not ',' in config['Keys']:
+                    config['Keys'] = [config['Keys']]           # if only one key
+                else:
+                    config['Keys'] = config['Keys'].split(', ')  # if more than one key separated by commas
+                    
+            if not isinstance(config['Keys'], list):    # If error while formatting
+                config['Keys'] = []
+                print('\033[33m'+ "**CONFIG FILE WARNING** No keys have been specified" +'\033[m')
                 
-        if not isinstance(config['Keys'], list):    # If error while formatting
+            if config['Keys']:
+                print("* Keys: "+str(config['Keys']))
+                
+        except:
             config['Keys'] = []
-            print('\033[33m'+ "**CONFIG FILE WARNING** No keys have been specified" +'\033[m')
-            
-        if config['Keys']:
-            print("* Keys: "+str(config['Keys']))
-            
-    except:
-        config['Keys'] = []
-        
 
 
     # 'All' parameter. If true, all the matches for a variable will be considered in unstructured data. If false, only the first one.
@@ -1069,7 +1074,7 @@ def loadConfig(parserConfig, caller, debugmode):
         config['OUTW'] = output['weights']
     except (KeyError, TypeError, UnboundLocalError):
         config['OUTW'] = 'weights.dat'
-        if not debugmode:
+        if caller == 'fcparser' and not debugmode:
             print(" ** Defining default weights file: '%s'" %(config['OUTW']))
     except:
         pass
@@ -1158,6 +1163,7 @@ def loadConfig(parserConfig, caller, debugmode):
     config['RECORD_SEPARATOR'] = {}
     config['TIMEARG'] = {}
     config['TSFORMAT'] = {}
+    config['nfcapd_sources'] = []   # list of sources in nfcapd format
 
     # First, we check if all mandatory attributes are defined
     for source in config['SOURCES']:
@@ -1193,6 +1199,12 @@ def loadConfig(parserConfig, caller, debugmode):
         # structured source
         else:
             config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG'].get('separator') or "\n"
+        
+        
+        # Check if nfcapd data source
+        if 'nfcapd' in config['SOURCES'][source]['CONFIG'] and config['SOURCES'][source]['CONFIG']['nfcapd']==True:
+            config['nfcapd_sources'].append(source)
+
         
         if paramError is True:
             print('\n\033[31m'+ "PROGRAM EXECUTION ABORTED DUE TO CONFIG. FILE ERRORS" +'\033[m')
@@ -1279,23 +1291,20 @@ def loadConfig(parserConfig, caller, debugmode):
                 print('\033[33m'+ "No timestamp variable has been found for '%s' data source" %(source) +'\033[m')                    
     
         
-        # Preprocessing nfcapd files to obtain csv files.
+        # Preprocessing nfcapd files to obtain csv files
         if caller == 'fcparser':
-            for source in dataSources:
+            for source in config['nfcapd_sources']:
                 out_files = []
-                for file in config['SOURCES'][source]['FILES']:
-                    # Check if file is nfcapd type
-                    if 'nfcapd' in file and not 'text' in subprocess.getoutput("file "+file).split(':')[-1].lower():
-        
-                        out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
-                        os.system("nfdump -r " + file + " -o csv >>"+out_file)
-                        os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
-                        os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
-                        out_files.append(out_file.replace('temp',source) + '.csv')
-                        os.remove(out_file)
-                        os.remove(out_file.replace('temp',source))
-                        config['SOURCES'][source]['FILES'] = out_files
-                        #delete_nfcsv = out_files
+                for file in config['SOURCES'][source]['FILES']:  
+                    out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
+                    os.system("nfdump -r " + file + " -o csv >>"+out_file)
+                    os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
+                    os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
+                    out_files.append(out_file.replace('temp',source) + '.csv')
+                    os.remove(out_file)
+                    os.remove(out_file.replace('temp',source))
+                    config['SOURCES'][source]['FILES'] = out_files
+                    #delete_nfcsv = out_files
     
     
         # Process weight and made a list of features
@@ -1369,7 +1378,7 @@ def debugProgram(caller, args):
         # Read user input
         if caller=='fcparser.user_input':
             actual_line = args[0]
-            option = input("$ ")    # option = ''    # go through the whole file   
+            option = input("$ ")    # option = ''    # debug through the whole file   
               
             opmode = 0
             if option == 'q' or option == 'Q':
@@ -1442,9 +1451,113 @@ def debugProgram(caller, args):
             print("\nFeatures with counter>0: %s\n" %(features_counter))
             
             #if 'feature_name' not in features_counter: stdin.read(1)
+         
+    
+    
+    if caller == 'fcdeparser.load_message':
+        file = args[0]
+        print('\033[33m'+ "* Data file: %s" %(file))
+        print("---------------------------------------------------------------------------")
+        print("Getting logs with matched timestamps and features in deparsing input file..."+'\033[m')
+        return  
+    
+    
+    if caller == 'fcdeparser.stru_deparsing.feat_appear':
+        feat_appear = args[0]
+        depars_features = args[1]
+        nlines = args[2]
+        matched_lines = 0
             
+        for nfeatures in range(len(depars_features),0,-1):
+            ncount = feat_appear.count(nfeatures)
+            print("Number of logs with %d matched features: %d" %(nfeatures, ncount))
+            matched_lines+=ncount
+            
+        print("Total number of logs in file: %d" %(nlines))
         
+        return matched_lines
+    
+    
+    if caller == 'fcdeparser.stru_deparsing.user_input':
+        threshold = args[0]
+        features_needed = 1+int(args[1])
+        matched_lines = args[2]
         
+        if matched_lines:
+            if threshold:
+                print('\033[33m'+"Considering those counters and a threshold of "+'\033[m'+str(threshold)+'\033[33m'+ " log entries, we will extract logs with"+"\033[m >=%d\033[33m matched features" %(features_needed))
+                print("Note that logs containing more features will be prioritized for deparsing process")
+            else:
+                print('\033[33m'+"Considering those counters and no threshold, we will extract all logs with >=1 matched features")
+        else:
+            print('\033[33m'+"No logs with matched timestamp or features to deparse")
+            
+       
+        print("Press ENTER to select operation mode and start deparsing process")
+        stdin.read(1)
+        print("1) Print all entry logs")
+        if matched_lines:
+            print("2) Print only entry logs matching both timestamp and features criteria")
+        print("Or Enter q for exit"+'\033[m')
+        opmode = input("$ ") 
+        if not opmode:
+            opmode = 1   # If enter, all the entry logs will be shown
+        elif opmode=='q':
+            exit(1)
+        return int(opmode)
+    
+    
+    
+    if 'fcdeparser' in caller:
+        
+        # Opmode 1 y 2
+        if 'stru_deparsing.deparsed_log' in caller:
+            nline = args[0]
+            line = args[1]
+            nfeatures = args[2]
+            featname_pos = dict((key,d[key]) for d in args[3] for key in d) # convert list of dicts to dict
+            opmode = args[4]
+            
+            feature_names = sorted(featname_pos, key=featname_pos.get) # feature names ordered by its position (key) in log
+            fVariable_pos = list(featname_pos.values())    # field positions where matched_features
+            field_separator = ','   # structured source
+            
+            # Highlight the field of the entry log associated with the detected feature
+            line_colored = line.split(field_separator)
+            for pos in fVariable_pos:
+                line_colored[pos] = '\033[32m'+line_colored[pos]+'\033[m'
+            line_colored = field_separator.join(line_colored)
+            
+            print("\nEntry Log %d:\n%s" %(nline, line_colored))
+            print('\033[32m'+ "Matched criteria - Detected %d features: %s\n" %(nfeatures, feature_names) +'\033[m')
+            if opmode==1:
+                print("Press Enter to load the next entry log or 'q' for exit")
+            elif opmode==2:
+                print("Press Enter to search for the next log matching the criteria or 'q' for exit")
+
+
+        # Opmode 1  
+        if 'stru_deparsing.unmatched_criteria' in caller:
+            nline = args[0]
+            line = args[1]
+            nfeatures = args[2]
+            feature_names = [k for d in args[3] for k in d.keys()]
+            
+            print("\nEntry Log %d:\n%s" %(nline, line))
+            
+            if nfeatures > 0:
+                print('\033[33m'+ "Detected %d features: %s" %(nfeatures, feature_names))
+                print("Ignoring log due to the specified threshold\n" +'\033[m')
+            else:
+                print('\033[33m'+ "Ignoring log... No matched features or timestamp\n" +'\033[m')
+            
+            print("Press Enter to load the next entry log or 'q' for exit"+'\033[m')
+
+        
+        key = input("$ ")
+        if key == 'q' or key == 'Q':
+            exit(1)
+            
         
         
         
