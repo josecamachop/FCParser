@@ -162,7 +162,8 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
                     feat_appear[file].append(feature_count)
                     feat_appear_names[file].append(matched_features)
                 else:
-                    feat_appear[file].append(0)
+                    # it is necessary to fill with zeros so that indices match the lines later
+                    feat_appear[file].append(0) 
                     feat_appear_names[file].append([])
                     
             except Exception as error:
@@ -177,6 +178,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
         
         if debugmode:
             matched_lines = faac.debugProgram('fcdeparser.stru_deparsing.feat_appear', [feat_appear[file], depars_features, nline])
+    
     
     # Obtain number of features needed to extract the log with the given threshold
     features_threshold = len(depars_features)
@@ -247,16 +249,16 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
     depars_features = deparsInput['features']
     timearg = config['TIMEARG'][source] # name of the variable which contains timestamp 
 
-    selection = []
+    selection = []  # indices of features in config file matching depars_features
     for i in range(len(config['FEATURES'][source])):
         if config['FEATURES'][source][i]['name'] in depars_features:
             selection.append(i)
 
-    FEATURES_sel = []
+    FEATURES_sel = []   # all feature fields for features in depars_features
     for i in selection:
         FEATURES_sel.append(config['FEATURES'][source][i])
 
-    VARIABLES = {}
+    VARIABLES = {}  # all variables from config file
 
     for variable in config['SOURCES'][source]['CONFIG']['VARIABLES']:
         try:
@@ -265,114 +267,171 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
             print ("Configuration file error: missing variables")
             exit(1)
     
+    
     count_unstructured = 0
     count_tot = 0
-    print (OUTDIR + "output_" + source)
-    if not debugmode: output_file = open(OUTDIR + "output_" + source,'w')
+    #print (OUTDIR + "output_" + source)
+    #if not debugmode:
+        #output_file = open(OUTDIR + "output_" + source,'w')
 
     # while count_source < lines[source]*0.01 and (not features_needed <= 0) : 
     feat_appear = {}
+    indices = {}
     for file in sourcepath:
-        feat_appear[file] = []    
+        feat_appear[file] = []   
+        indices[file] = {}
+        for nfeatures in range(len(depars_features),0,-1):
+            indices[file][nfeatures] = []   # dict of dicts for each number of features
 
         if file.endswith('.gz'):
             input_file = gzip.open(file,'r')
         else:
             input_file = open(file,'r')
-
-        line = input_file.readline()
+            
+        if debugmode:
+            faac.debugProgram('fcdeparser.load_message', [file])
 
 
         # First read to generate list of number of appearances
+        line = input_file.readline()
+        nline=0
+        log_indices = []
+
         if line:
-            log = ""     
+            log = "" 
+            log_indices.append(nline+1)
             while line:
+                nline+=1
                 log += line 
     
                 if len(log.split(config['RECORD_SEPARATOR'][source])) > 1:
+                    count_tot+=1
+                    log_indices.append(nline)
                     logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
                     
-                    # For each log, extract timestamp with regular expresions and check if it is in the 
-                    # input timestamps
+                    # For each log, extract timestamp with regular expresions and check if in formated_timestamps
                     try:
-
                         t = getUnstructuredTime(logExtract, VARIABLES[timearg]['where'], config['TSFORMAT'][source])                    
-                        if str(t).strip() in formated_timestamps:    
-                            # Check if features appear in the log to write in the file.
+                        if str(t).strip() in formated_timestamps or not formated_timestamps:    
+                            # Check if features appear in the log in order to write in the file later
                             record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
                             obs = faac.Observation.fromRecord(record, FEATURES_sel)
-                            feat_appear[file].append(sum( [obs.data[i].value for i in range(len(obs.data))]))
+                            feature_count = sum( [obs.data[i].value for i in range(len(obs.data))] )
+                            feat_appear[file].append(feature_count)
+                            indices[file][feature_count].append(log_indices)
                     except:
                         pass
                         
                     log = ""
+                    log_indices = [nline+1] # reset log_indices adding first line of next log
                     for n in logExtract.split(config['RECORD_SEPARATOR'][source])[1::]:
-                        log += n
+                        log += n    # if next log in the same line, add remaining part
+                        log_indices = [nline]   # in this case, next log first index is actual line
+                
                 line = input_file.readline()
 
             # Deal with the last log, not processed during while loop.
             log += line
+            log_indices.append(nline)
             try:                                
                 t = getUnstructuredTime(log, VARIABLES[timearg]['where'], config['TSFORMAT'][source])
-                if str(t) in timestamps:
+                if str(t) in formated_timestamps or not formated_timestamps:
                     record = faac.Record(logExtract,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
                     obs = faac.Observation.fromRecord(record, FEATURES_sel)
-                    feat_appear[file].append(sum( [obs.data[i].value for i in range(len(obs.data))]))
+                    feature_count = sum( [obs.data[i].value for i in range(len(obs.data))] )
+                    feat_appear[file].append(feature_count)
+                    indices[file][feature_count].append(log_indices)
+                    
             except:
                 pass
 
         input_file.close()
+        if debugmode:
+            matched_logs = faac.debugProgram('fcdeparser.unstr_deparsing.feat_appear', [feat_appear[file], depars_features])
 
-    # Obtain number of features needed to extract the log
-    features_needed = len(depars_features)
+        
+    # Obtain number of features needed to extract the log with the given threshold
+    features_threshold = len(depars_features)
     count = 0
-    while count < int(threshold) and (not features_needed <= 1):
-        for file in feat_appear:
-            count += feat_appear[file].count(int(features_needed))
-
-        print("There are " + str(count) + " unstructured logs with more than " + str(features_needed) + " matching features...")
-        features_needed -= 1
-
-    # Re-read the file
+    while features_threshold>0:     # if no threshold, extract all logs with >0 matched features
+        if not threshold or (threshold and count < int(threshold)): 
+            nfeatures = features_threshold
+            for file in feat_appear:
+                count += feat_appear[file].count(int(nfeatures))
+            features_threshold -= 1
+        else:
+            break
+    
+        
+    if debugmode:
+        opmode = faac.debugProgram('fcdeparser.unstr_deparsing.user_input', [config['threshold'], features_threshold, matched_logs])
+    else:
+        if threshold:
+            print("Considering the feature counters and a threshold of %d log entries, we will extract logs with >=%d matched features" %(config['threshold'],features_threshold+1))
+        else:
+            print("As no threshold is defined, we will extract all logs with >=1 matched features")
+        print("Note that the output will be generated in different files according to their number of features")
+        
+        
+     #Re-read desired lines
     for file in sourcepath:
-        index = 0
-
+    
         if file.endswith('.gz'):
             input_file = gzip.open(file,'r')
         else:
-            input_file = open(file,'r')
-
-        input_file.seek(0)
-        line = input_file.readline()
+            input_file = open(file,'r')  
             
-        if line:
-            log = "" + line     
-            while line:
-                log += line 
-                if len(log.split(config['RECORD_SEPARATOR'][source])) > 1:
-                    count_tot += 1    
-                    logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
+        
+        if not debugmode:
+            for nfeatures in range(len(depars_features),features_threshold,-1):
+                output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
+                for line_indices in indices[file][nfeatures]:
+                    log=""
+                    for index in range(line_indices[0], 1+line_indices[1]):
+                        log+=linecache.getline(file, index)
                     
-                    # For each log, extract timestamp with regular expresions and check if it is in the 
-                    # input timestamps
-                    try:
-                        t = getUnstructuredTime(logExtract, VARIABLES[timearg]['where'], config['TSFORMAT'][source])                                                
-                        if str(t).strip() in formated_timestamps:    
-                            # Check if features appear in the log to write in the file.
-                            if not debugmode and feat_appear[file][index] > features_needed:
-                                output_file.write(logExtract + config['RECORD_SEPARATOR'][source])
-                                count_unstructured += 1    
+                    logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
+                    if log.split(config['RECORD_SEPARATOR'][source])[1]: 
+                        logExtract = log.split(config['RECORD_SEPARATOR'][source])[1] # if characters after the separator, take them instead
+                    output_file.write(logExtract + config['RECORD_SEPARATOR'][source])
+                    count_unstructured += 1
+                output_file.close()
+                
+        else:
+            index = 0
+            index_deparsed = 0
+            line = input_file.readline()
+                
+            if line:
+                log = ""     
+                while line:
+                    log += line 
+                    if len(log.split(config['RECORD_SEPARATOR'][source])) > 1:
+                        logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
+                        try:
+                            t = getUnstructuredTime(logExtract, VARIABLES[timearg]['where'], config['TSFORMAT'][source])     
+                            if str(t).strip() in formated_timestamps or not formated_timestamps:
+                                if feat_appear[file][index_deparsed] > features_threshold and opmode in {1,2}:    
+                                    faac.debugProgram('fcdeparser.unstr_deparsing.deparsed_log', [index+1, logExtract, feat_appear[file][index_deparsed], opmode])
+                                elif opmode in {1}:
+                                    faac.debugProgram('fcdeparser.unstr_deparsing.unmatched_criteria1', [index+1, logExtract, feat_appear[file][index_deparsed]])
+                                index_deparsed+=1
+                            elif opmode in {1}:
+                                faac.debugProgram('fcdeparser.unstr_deparsing.unmatched_criteria2', [index+1, logExtract])
                             index += 1
-                    except:
-                        pass
+                        except SystemExit:
+                            exit(1)
+                        except:
+                            pass
 
-                    log = ""
-                    for n in logExtract.split(config['RECORD_SEPARATOR'][source])[1::]:
-                        log += n
-                line = input_file.readline()
+                        log = ""
+                        for n in logExtract.split(config['RECORD_SEPARATOR'][source])[1::]:
+                            log += n
+                    line = input_file.readline()
 
+        
         input_file.close()
-    if not debugmode: output_file.close()
+    
     return (count_unstructured, count_tot)
 
 
@@ -492,34 +551,36 @@ def prettyTime(elapsed):
     return pretty
 
 
-def getUnstructuredTime (log, patern, dateFormat):
+def getUnstructuredTime (log, regexp, timestamp_format):
     '''
     # Fuction to extract timestamp from an unstructured source
     '''
-    p = re.search(patern,log)
+    p = re.search(regexp, log)
     try:
-        date_string = p.group(0)
-        d = datetime.strptime(date_string,dateFormat)
-        d = d.replace(second = 00)
+        rawTime = p.group(0)
+        time = datetime.strptime(rawTime, timestamp_format)
+        time = time.replace(second = 00)
+        if time.year == 1900:
+            time = time.replace(year = datetime.now().year)      
         
-        return d.strftime(dateFormat)
+        return time.strftime(timestamp_format)
 
     except:
         return None
 
 
-def getStructuredTime(line, pos, dateFormat):
+def getStructuredTime(line, pos, timestamp_format):
     '''
     # Fuction to extract timestamp from an structured source
     '''
 
     valueList = line.split(',')
     rawTime = valueList[pos]
-    time = datetime.strptime(rawTime, dateFormat)
+    time = datetime.strptime(rawTime, timestamp_format)
     time = time.replace(second = 00)                # ignore seconds
     time = time.replace(microsecond = 00)           # ignore microseconds
     
-    return time.strftime(dateFormat)
+    return time.strftime(timestamp_format)
 
 
 def getDeparsInput(deparsfile,config):
@@ -631,8 +692,9 @@ def initMessage(deparsInput, debugmode):
          
     print("* Loaded Deparsing input file."+'\033[m')
     print("- Features to search: %s" %(deparsInput['features']))
-    if deparsInput['timestamps'] and debugmode:
-        print("- In logs with timestamps: %s" %(deparsInput['timestamps']))
+    if deparsInput['timestamps']:
+        if debugmode:
+            print("- In logs with timestamps: %s" %(deparsInput['timestamps']))
     else:
         print("- In any log (not specified timestamps)")
     
