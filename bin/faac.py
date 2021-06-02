@@ -1462,53 +1462,53 @@ def debugProgram(caller, args):
         return  
     
     
-    if caller == 'fcdeparser.stru_deparsing.feat_appear':
-        feat_appear = args[0]
-        depars_features = args[1]
-        nlines = args[2]
-        matched_lines = 0
-            
-        for nfeatures in range(len(depars_features),0,-1):
-            ncount = feat_appear.count(nfeatures)
-            print("Number of logs with %d matched features: %d" %(nfeatures, ncount))
-            matched_lines+=ncount
-            
-        print("Total number of logs in file: %d" %(nlines))
-        
-        return matched_lines
-    
-    
-    if caller == 'fcdeparser.stru_deparsing.user_input':
-        threshold = args[0]
-        features_needed = 1+int(args[1])
-        matched_lines = args[2]
-        
-        if matched_lines:
-            if threshold:
-                print('\033[33m'+"Considering those counters and a threshold of "+'\033[m'+str(threshold)+'\033[33m'+ " log entries, we will extract logs with"+"\033[m >=%d\033[33m matched features" %(features_needed))
-                print("Note that logs containing more features will be prioritized for deparsing process")
-            else:
-                print('\033[33m'+"Considering those counters and no threshold, we will extract all logs with >=1 matched features")
-        else:
-            print('\033[33m'+"No logs with matched timestamp or features to deparse")
-            
-       
-        print("Press ENTER to select operation mode and start deparsing process")
-        stdin.read(1)
-        print("1) Print all entry logs")
-        if matched_lines:
-            print("2) Print only entry logs matching both timestamp and features criteria")
-        print("Or Enter q for exit"+'\033[m')
-        opmode = input("$ ") 
-        if not opmode:
-            opmode = 1   # If enter, all the entry logs will be shown
-        elif opmode=='q':
-            exit(1)
-        return int(opmode)
-    
-    
-    
     if 'fcdeparser' in caller:
+        
+        if 'feat_appear' in caller:
+            feat_appear = args[0]
+            depars_features = args[1]
+            matched_logs = 0
+                
+            for nfeatures in range(len(depars_features),0,-1):
+                ncount = feat_appear.count(nfeatures)
+                print("Number of logs with %d matched features: %d" %(nfeatures, ncount))
+                matched_logs+=ncount
+            
+            if 'stru_deparsing' in caller:
+                nlines = args[2]
+                print("Total number of logs in file: %d" %(nlines))
+            
+            return matched_logs
+    
+    
+        if 'user_input' in caller:
+            threshold = args[0]
+            features_needed = 1+int(args[1])
+            matched_logs = args[2]
+            
+            if matched_logs:
+                if threshold:
+                    print('\033[33m'+"Considering those counters and a threshold of "+'\033[m'+str(threshold)+'\033[33m'+ " log entries, we will extract logs with"+"\033[m >=%d\033[33m matched features" %(features_needed))
+                    print("Note that logs containing more features will be prioritized for deparsing process")
+                else:
+                    print('\033[33m'+"Considering those counters and no threshold, we will extract all logs with >=1 matched features")
+            else:
+                print('\033[33m'+"No logs with matched timestamp or features to deparse")
+                
+           
+            print("Press ENTER to select operation mode and start deparsing process")
+            stdin.read(1)
+            print("1) Print all entry logs")
+            if matched_logs:
+                print("2) Print only entry logs matching both timestamp and features criteria")
+            print("Or Enter q for exit"+'\033[m')
+            opmode = input("$ ") 
+            if not opmode:
+                opmode = 1   # If enter, all the entry logs will be shown
+            elif opmode=='q':
+                exit(1)
+            return int(opmode)
+    
         
         # Opmode 1 y 2
         if 'stru_deparsing.deparsed_log' in caller:
@@ -1552,6 +1552,43 @@ def debugProgram(caller, args):
                 print('\033[33m'+ "Ignoring log... No matched features or timestamp\n" +'\033[m')
             
             print("Press Enter to load the next entry log or 'q' for exit"+'\033[m')
+            
+            
+        # Opmode 1 y 2
+        if 'unstr_deparsing.deparsed_log' in caller:
+            nlog = args[0]
+            log = args[1]
+            nfeatures = args[2]
+            opmode=args[3]
+            
+            print("\nEntry Log %d:\n%s" %(nlog, log)) 
+            
+            print('\033[32m'+ "\nDetected %d features" %(nfeatures))
+            print("Matched both timestamp and threshold criteria - Log to be deparsed\n"+'\033[m')
+            if opmode==1:
+                print("Press Enter to load the next entry log or 'q' for exit")
+            elif opmode==2:
+                print("Press Enter to search for the next log matching the criteria or 'q' for exit")
+            
+        # Opmode 1
+        if 'unstr_deparsing.unmatched_criteria' in caller:
+            nlog = args[0]
+            log = args[1]
+            
+            print("\nEntry Log %d:\n%s" %(nlog, log)) 
+            
+            if 'criteria1' in caller:
+                nfeatures = args[2]
+                if nfeatures:
+                    print('\033[33m'+ "\nIgnoring log... The number of detected features do not fulfill the specified threshold\n" +'\033[m')
+                else:
+                    print('\033[33m'+ "\nIgnoring log... No detected features\n" +'\033[m') 
+                
+            if 'criteria2' in caller:
+                print('\033[33m'+ "\nIgnoring log... No matched timestamp\n" +'\033[m')
+                
+            print("Press Enter to load the next entry log or 'q' for exit"+'\033[m')
+
 
         
         key = input("$ ")
