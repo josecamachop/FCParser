@@ -6,11 +6,12 @@ data and preparing it for further multivariate analysis using
 FaaC parser library.
 
 
-Authors:    Jose Manuel Garcia Gimenez (jgarciag@ugr.es) 
+Authors:    Manuel Jurado Vazquez (manjurvaz@ugr.es) 
+            Jose Manuel Garcia Gimenez (jgarciag@ugr.es) 
             Alejandro Perez Villegas (alextoni@gmail.com)
             Jose Camacho (josecamacho@ugr.es)
          
-Last Modification: 05/May/2021
+Last Modification: 27/May/2021
 
 """
 import multiprocessing as mp
@@ -72,7 +73,7 @@ def main(call='external',configfile=''):
         
         data = offline_parsing(config, startTime, stats)
         output_data = fuseObs_offline(data)
-        #with open(config['OUTDIR']+'fused_dict', 'w') as f: print(output_data, file=f) # this output file does not seem too relevant for the user
+        #with open(config['OUTDIR']+'fused_dict', 'w') as f: print(output_data, file=f) # this output file does not seem to be relevant for the user
         
     # write in stats file
     write_stats(config, stats)
@@ -374,6 +375,7 @@ def fuseObs_offline(resultado):
 
     for source in v[1:]:
 
+        # Get len of data vector in observation object from that source
         arbitrary_len2 = len(next(iter(list(resultado[source].values()))).data)
         try:
             arbitrary_len = len(next(iter(list(fused_res.values()))).data)
@@ -384,16 +386,18 @@ def fuseObs_offline(resultado):
 
             if date not in fused_res:
                 fused_res[date] = resultado[source][date]
+                # add zero observation vector before
                 fused_res[date].zeroPadding(arbitrary_len, position=-1)
             else:
                 fused_res[date].fuse(resultado[source][date].data) 
-
-
+                
+                
         for date2 in fused_res:
 
             if date2 not in resultado[source]:
-                fused_res[date].zeroPadding(arbitrary_len2, position=0)
-                #fused_res[date2].fuse([0]*arbitrary_len2)
+                # add zero observation vector after
+                fused_res[date2].zeroPadding(arbitrary_len2, position=0)
+                #fused_res[date2].fuse([0]*arbitrary_len2) # old implementation (master branch)
 
     return fused_res
 
