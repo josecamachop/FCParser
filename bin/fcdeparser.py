@@ -167,8 +167,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
                     feat_appear_names[file].append([])
                     
             except Exception as error:
-                if debugmode:
-                    print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
+                print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
                 feat_appear[file].append(0)
                 feat_appear_names[file].append([])
                     
@@ -346,8 +345,9 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
                 pass
 
         input_file.close()
-        if debugmode:
-            matched_logs = faac.debugProgram('fcdeparser.unstr_deparsing.feat_appear', [feat_appear[file], depars_features])
+        
+        # Print number of matched logs for each features number (feature selection criteria)
+        matched_logs = faac.debugProgram('fcdeparser.unstr_deparsing.feat_appear', [feat_appear[file], depars_features])
 
         
     # Obtain number of features needed to extract the log with the given threshold
@@ -687,7 +687,7 @@ def initMessage(deparsInput, debugmode):
         print("\t\t\tFCDEPARSER DEBUGGING MODE")
         print("\n---------------------------------------------------------------------------")
     else:
-        print('\033[33m'+"Loading FCdeparser... Run program in debug mode with -d option in order to check the feature selection criteria"+'\033[m')
+        print('\033[33m'+"Loading FCdeparser... Run program in debug mode with -d option in order to check the selection criteria in more detail"+'\033[m')
         print ("\n-------------------------------- FCDEPARSER -------------------------------")
          
     print("* Loaded Deparsing input file."+'\033[m')
