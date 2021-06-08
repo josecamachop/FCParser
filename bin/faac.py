@@ -19,13 +19,13 @@ from sys import exit
 from IPy import IP
 import re
 import os
-import subprocess
 import yaml
 import glob
 import shutil
 import multiprocessing as mp
 from math import floor
 from sys import stdin
+#import subprocess
 #import time
 
 #-----------------------------------------------------------------------
@@ -753,14 +753,14 @@ class Observation(object):
 
 
     def zeroPadding(self, N, position=-1):
-
+    
         try:
-            if(position == 0):
-                self.data[:0] = [NullFeature()] * N
-            elif(position == -1):
-                self.data[-1:] = [NullFeature()] * N
+            if (position == 0):
+                self.data = self.data + [NullFeature()] * N
+            elif (position == -1):
+                self.data = [NullFeature()] * N + self.data
             else:
-                self.data[position:position] = [NullFeature()] * N
+                raise Exception
         except:
             raise PaddingError(message="Unsupported position")
 
