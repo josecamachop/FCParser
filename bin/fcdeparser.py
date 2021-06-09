@@ -68,9 +68,7 @@ def main(call='external', configfile=''):
                 count_unstructured += cu
                 count_totu += ct
 
-            #print ("\n---------------------------------------------------------------------------\n")
             print ("Elapsed: %s" %(prettyTime(time.time() - startTime)))
-            #print ("\n---------------------------------------------------------------------------\n")
 
     if not debugmode:
         stats(count_structured, count_tots, count_unstructured, count_totu, config['OUTDIR'], config['OUTSTATS'], startTime)
@@ -107,7 +105,6 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
     '''
     Deparsing process for structured data sources like csv.
     '''
-    #sources_config = config['SOURCES']  - WHAT IS THIS FOR
     threshold = config['threshold']
     OUTDIR = config['OUTDIR']
     depars_features = deparsInput['features']  # features in deparsing_input file
@@ -175,8 +172,8 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
         input_file.close()
         count_tot+=nline    # add nlines of this source to total lines counter
         
-        if debugmode:
-            matched_lines = faac.debugProgram('fcdeparser.stru_deparsing.feat_appear', [feat_appear[file], depars_features, nline])
+        # Print number of matched logs for each features number (feature selection criteria)
+        matched_lines = faac.debugProgram('fcdeparser.stru_deparsing.feat_appear', [feat_appear[file], depars_features, nline])
     
     
     # Obtain number of features needed to extract the log with the given threshold
@@ -266,12 +263,8 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
             print ("Configuration file error: missing variables")
             exit(1)
     
-    
     count_unstructured = 0
     count_tot = 0
-    #print (OUTDIR + "output_" + source)
-    #if not debugmode:
-        #output_file = open(OUTDIR + "output_" + source,'w')
 
     # while count_source < lines[source]*0.01 and (not features_needed <= 0) : 
     feat_appear = {}
@@ -373,7 +366,7 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
         print("Note that the output will be generated in different files according to their number of features")
         
         
-     #Re-read desired lines
+    #Re-read desired lines
     for file in sourcepath:
     
         if file.endswith('.gz'):
