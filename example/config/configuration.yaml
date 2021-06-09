@@ -1,35 +1,43 @@
 #-----------------------------------------------------------------------
-#
-# Parser - Configuration File
-#
+# Parser - General Configuration File
 #-----------------------------------------------------------------------
+# For more information about the config. parameters, check user manual.
+#
 # DataSources:
-#   Source1:     DataSource name
-#     config:      Configuration file for this datasource.
-#     data:        Input files.
+#   Source1:        DataSource name
+#     config:         Configuration file for this datasource.
+#     parsing:        Data input files for parsing process
+#     deparsing:      Data input files for deparsing process
+#     learning:       Data input files for learning process
 #   Source2:
 #     ...
-#   SourceN:
-#     ...
 #
-# Key:          Key variable to aggregate dataSources
+# Online:               Boolean variable to determine if online mode (True) or offline mode (False)
+# All:                  Optional variable for unstructured sources. To consider either all possible matches for a variable (True) or only the first one (False)
+# Incremental_output:   Boolean variable for incremental features. It is set to False by default.
+#                       If true and output files exist, new counters are added to the old ones. 
 #
-# Output:
-#   dir:        Output directory to write the output parsed data.
-#   stats:      Log file to write the stats (lines, records, matches).
+# Processes:            Number of processes used by the program: [1, Ncores]. If not set, program uses 80% of your cpu
+# Max_chunck:           Size (in MB) of the chunk of files that are being processed at the same time. If not defined, it is set to 1GB.
+#                       Note that larger chunks would increase the processing speed but might overload your memory if data is too large.
+# 
+# Keys:           Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
+#
+# Lperc, Endlperc:       Percentage of data used for learning process
+#
+# Parsing_Output:
+#   dir:          Output directory to write the output parsed data.
+#   stats:        Log file to write the stats (lines, records, matches)
 #
 # Deparsing_output: 
-#  dir:         Output directory for deparsing process
-# treshold:     upper limit of log entries by datasource.  
+#  dir:           Output directory for deparsing process
+#  treshold:      upper limit of log entries by data source  
 #
-# SPLIT:        split info for temporal samplig
+# SPLIT:        split info for temporal sampling
 #   Time:        
-#     window    time windows for sampling in seconds
-#     start:    start and end time for sampling interval
-#     end:  
-#   
-#    Output:    Output directory for split data      
-#
+#     window      time window used for sampling (in minutes). If not set, 5 minutes time window will be considered
+#     start:      start and end time for sampling interval
+#     end:        If they are not set, the whole data file is processed
 #-----------------------------------------------------------------------
 
 DataSources:
@@ -46,30 +54,31 @@ DataSources:
     parsing: ./example/Examples_data/ids*
     deparsing: ./example/Examples_data/ids*
 
+
 Online: False
+Incremental_Output: False
+Processes: 4
+Max_chunk: 100
+Lperc: 0.01
+Endlperc: 0.0001
 
-Incremental_Output: True
-
-Processes: 8
-
-Max_chunck: 8
-
-Learning_perc: 0.001
- 
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
 
 Parsing_Output:
-  dir: ./example/OUTPUT/
+  dir: ./parsing_output
   stats: stats.log
- 
+
 Deparsing_output:
-  dir: ./example/Deparsing_output/
+  dir: ./deparsing_output 
   threshold: 10
+
+Learning_Output:
+  dir: ./learning_output
+  stats: stats.log
 
 SPLIT: 
   Time:
-
     window: 1
-    start: 1000-1-1 00:00:00
-    end: 2020-12-31 00:00:00
+    #start: 1000-1-1 00:00:00
+    #end: 2020-12-31 00:00:00
     
