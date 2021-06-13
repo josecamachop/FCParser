@@ -214,12 +214,13 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
         
         if not debugmode:
             for nfeatures in indices[file]:
-                output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
-                for line_index in indices[file][nfeatures]:
-                    line = linecache.getline(file, line_index)
-                    output_file.write(line + "\n")
-                    count_structured += 1
-                output_file.close()
+                if indices[file][nfeatures]:
+                    output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
+                    for line_index in indices[file][nfeatures]:
+                        line = linecache.getline(file, line_index)
+                        output_file.write(line + "\n")
+                        count_structured += 1
+                    output_file.close()
                 
         else:
             for position, line in enumerate(input_file):
@@ -377,18 +378,19 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
         
         if not debugmode:
             for nfeatures in range(len(depars_features),features_threshold,-1):
-                output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
-                for line_indices in indices[file][nfeatures]:
-                    log=""
-                    for index in range(line_indices[0], 1+line_indices[1]):
-                        log+=linecache.getline(file, index)
-                    
-                    logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
-                    if log.split(config['RECORD_SEPARATOR'][source])[1]: 
-                        logExtract = log.split(config['RECORD_SEPARATOR'][source])[1] # if characters after the separator, take them instead
-                    output_file.write(logExtract + config['RECORD_SEPARATOR'][source])
-                    count_unstructured += 1
-                output_file.close()
+                if indices[file][nfeatures]:
+                    output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
+                    for line_indices in indices[file][nfeatures]:
+                        log=""
+                        for index in range(line_indices[0], 1+line_indices[1]):
+                            log+=linecache.getline(file, index)
+                        
+                        logExtract = log.split(config['RECORD_SEPARATOR'][source])[0]
+                        if log.split(config['RECORD_SEPARATOR'][source])[1]: 
+                            logExtract = log.split(config['RECORD_SEPARATOR'][source])[1] # if characters after the separator, take them instead
+                        output_file.write(logExtract + config['RECORD_SEPARATOR'][source])
+                        count_unstructured += 1
+                    output_file.close()
                 
         else:
             index = 0
