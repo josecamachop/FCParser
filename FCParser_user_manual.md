@@ -289,18 +289,19 @@ To run the program, use the following command:
 
 	$ python3 bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input
 
-Then, the timestamps and features defined in the deparsing input file are searched for each data source and a list is generated with the number of logs matching that criteria along with the number of features found for each case. According to the specified threshold, logs with more matched features will be selected. If no threshold is defined, all logs with at least one matched feature will be deparsed.
+Then, the timestamps and features defined in the deparsing input file are searched for each data source, and a list is generated with the number of logs matching that criteria along with the number of features found for each case. According to the specified threshold, logs with more matched features will be selected. If no threshold is defined, all logs with at least one matched feature will be deparsed.
 There is also the possibility to not define timestamps in deparsing input file. In that case, the logs will only be selected by the number of matched features. 
 
-<p align="center"> <img width="1030" height="773" src="assets/example_deparser_terminal.png"> </p>
+<p align="center"> <img width="750" height="565" src="assets/example_deparser_terminal.png"> </p>
 <div align="center"><i>Figure 18: Example - Deparser terminal</i></div><br />
 
-The _deparsing_ program generates one file for each number of found features for each data source with the extracted logs
+The _deparsing_ program generates one file for each number of found features (for each data source) with the extracted logs
 related to the anomalies detected, as well as the stats file with the number of structured and unstructured logs deparsed.
 Thus, the output files are named as: _output_sourcename_Xfeat_, where X is the number of matched features.
+Within each file, the logs are ordered according to their order of appearance in the data file.
 
-<p align="center"> <img width="832" height="500" src="assets/example_deparsing_output.png"> </p>
-<div align="center"><i>Figure 22: Example - Deparsing output</i></div><br />
+<p align="center"> <img width="750" height="450" src="assets/example_deparsing_output.png"> </p>
+<div align="center"><i>Figure 19: Example - Deparsing output</i></div><br />
 
 
 ## 5. DEBUGGER
@@ -316,25 +317,25 @@ When running the debugger, the data source is loaded and the number of logs in i
     $ python3 bin/fcparser.py -d example/config/configuration.yaml
 
 <p align="center"> <img width="555" height="170" src="assets/debugger1.png"> </p>
-<div align="center"><i>Figure 23: Example - FCParser Debugging mode. Initialization message</i></div><br />
+<div align="center"><i>Figure 20: Example - FCParser Debugging mode. Initialization message</i></div><br />
 
 
 Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER.
 Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown. In the next picture we can see a parsing example of an unstructured entry log.
 <p align="center"> <img width="555" height="338" src="assets/debugger2.png"> </p>
-<div align="center"><i>Figure 24: Example - FCParser Debugger output</i></div><br />
+<div align="center"><i>Figure 21: Example - FCParser Debugger output</i></div><br />
 At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.</div><br />
 
 - To process an specific log entry.
 In this case, we can "jump" to a certain log by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which would correspond with the line 34 for structured sources). 
 <p align="center"> <img width="555" height="338" src="assets/debugger3.png"> </p>
-<div align="center"><i>Figure 25: Example - FCParser Debugger output. Unstructured source</i></div><br />
+<div align="center"><i>Figure 22: Example - FCParser Debugger output. Unstructured source</i></div><br />
 In this example, all the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined. Also, online tools as [7] might help you to understand why a regular expression is not correct. </div><br />
 
 Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 10:15:45".
 <p align="center"> <img width="555" height="338" src="assets/debugger4.png"> </p>
-<div align="center"><i>Figure 26: Example - FCParser Debugger output. Structured source</i></div><br />
+<div align="center"><i>Figure 23: Example - FCParser Debugger output. Structured source</i></div><br />
 In this picture, we can see an example of a structured source (comma-separated value data), in which we use the search command to load directly the log entry with a certain timestamp. For structured sources, the variables are defined in order according to the different data fields. Eg: timestamp is the first field, then duration, source ip, etc.<br />
 Sometimes, we can find malformed logs in which some of the fields are empty, as it happens in this example for src_ip variable. Then, this variable is set to None.  
 
@@ -345,25 +346,26 @@ We can end the execution at any time by pressing the 'q' key.
 
 ### 5.2 DEBUGGING DEPARSING PROCESS
 
-Analogously, a debugger execution mode was implemented in fcdeparser by executing it with -d (--debug) option. This mode allows us to follow the deparsing process in detail by loading every log sequentially and showing which features are detected and what decision will the deparser take for that log.
+Analogously, a debugger execution mode was implemented in fcdeparser by executing it with -d (--debug) option. This mode allows us to follow the deparsing process in detail, by loading every log sequentially and showing which features are detected and what decision will the deparser take for that log.
 
     $ python3 bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input -d
 
 <p align="center"> <img width="650" height="260" src="assets/debugger_deparser1.png"> </p>
-<div align="center"><i>Figure 27: Example - FCDeparser Debugging mode. Initialization message</i></div><br />
+<div align="center"><i>Figure 24: Example - FCDeparser Debugging mode. Initialization message</i></div><br />
 
 First, the features and timestamps from deparsing input file are loaded, and the program is searching for the number of logs matching this criteria. According to this search and the specified threshold (if any), the selection criteria is determined.
 
 Then, the user will decide between two possible execution modes:
 
 - To process every log sequentially from the beginning. In this case, the debugger will indicate if the log fulfill the criteria to be deparsed or not.
-<p align="center"> <img width="1010" height="260" src="assets/debugger_deparser2.png"> </p>
-<div align="center"><i>Figure 28: Example - FCDeparser Debugger output. Mode 1</i></div><br />
-The next log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key.
+<p align="center"> <img width="700" height="185" src="assets/debugger_deparser2.png"> </p>
+<div align="center"><i>Figure 25: Example - FCDeparser Debugger output. Mode 1</i></div><br />
+The next log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key. 
 
-- To show only the logs that fulfill the deparsing criteria. Then, the execution "jump" to the selected logs that match the timestamp, the number of features and the threshold criteria.
-<p align="center"> <img width="1010" height="190" src="assets/debugger_deparser3.png"> </p>
-<div align="center"><i>Figure 29: Example - FCDeparser Debugging mode. Mode 2</i></div><br />
+
+- To show only the logs that fulfill the deparsing criteria. Then, the program "jumps" to the selected logs that match the timestamp, the number of features and the threshold criteria.
+<p align="center"> <img width="700" height="128" src="assets/debugger_deparser3.png"> </p>
+<div align="center"><i>Figure 26: Example - FCDeparser Debugging mode. Mode 2</i></div><br />
 For these logs, the variable fields related to the matched features are highlighted in green color and the names of these matched features are printed in order (from left to right) according to their position in the log entry.
 The next selected log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key.
 
