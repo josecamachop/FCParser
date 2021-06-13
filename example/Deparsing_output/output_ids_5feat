@@ -1,0 +1,68 @@
+[**] [1:2103003:7] GPL NETBIOS SMB-DS Session Setup NTMLSSP unicode asn1 overflow attempt [**]
+[Classification: Generic Protocol Command Decode] [Priority: 3] 
+04/06-00:24:00.454280 172.23.0.228:3269 -> 172.23.0.10:445
+TCP TTL:128 TOS:0x0 ID:51202 IpLen:20 DgmLen:1500 DF
+***A**** Seq: 0x3613F033  Ack: 0xC711AB6E  Win: 0xFF3A  TcpLen: 20
+[Xref => http://www.microsoft.com/technet/security/bulletin/MS04-007.mspx][Xref => http://cgi.nessus.org/plugins/dump.php3?id=12065][Xref => http://cgi.nessus.org/plugins/dump.php3?id=12052][Xref => http://cve.mitre.org/cgi-bin/cvename.cgi?name=2003-0818][Xref => http://www.securityfocus.com/bid/9635][Xref => http://www.securityfocus.com/bid/9633]
+
+[**] [1:2102466:9] GPL NETBIOS SMB-DS IPC$ unicode share access [**]
+[Classification: Generic Protocol Command Decode] [Priority: 3] 
+04/06-00:24:00.461025 172.23.0.228:3269 -> 172.23.0.10:445
+TCP TTL:128 TOS:0x0 ID:51204 IpLen:20 DgmLen:138 DF
+***AP*** Seq: 0x3613FAA3  Ack: 0xC711ACF3  Win: 0xFDB5  TcpLen: 20
+
+[**] [1:2000355:5] ET POLICY IRC authorization message [**]
+[Classification: Misc activity] [Priority: 3] 
+04/06-00:24:03.848926 10.32.5.59:6667 -> 172.23.232.157:16090
+TCP TTL:128 TOS:0x0 ID:25726 IpLen:20 DgmLen:149 DF
+***AP*** Seq: 0x17C72514  Ack: 0x3307DBBC  Win: 0xFFFF  TcpLen: 20
+[Xref => http://doc.emergingthreats.net/2000355]
+
+[**] [1:2000355:5] ET POLICY IRC authorization message [**]
+[Classification: Misc activity] [Priority: 3] 
+04/06-00:24:03.862766 10.32.5.54:6667 -> 172.23.232.156:16091
+TCP TTL:128 TOS:0x0 ID:35631 IpLen:20 DgmLen:147 DF
+***AP*** Seq: 0x50B70CBB  Ack: 0xB138A539  Win: 0xFFFF  TcpLen: 20
+[Xref => http://doc.emergingthreats.net/2000355]
+
+[**] [1:2000355:5] ET POLICY IRC authorization message [**]
+[Classification: Misc activity] [Priority: 3] 
+04/06-00:24:03.904690 10.32.5.56:6667 -> 172.23.238.76:10304
+TCP TTL:128 TOS:0x0 ID:4097 IpLen:20 DgmLen:147 DF
+***AP*** Seq: 0x8F9A12CF  Ack: 0x8B5DCB6E  Win: 0xFFFF  TcpLen: 20
+[Xref => http://doc.emergingthreats.net/2000355]
+
+[**] [1:2103003:7] GPL NETBIOS SMB-DS Session Setup NTMLSSP unicode asn1 overflow attempt [**]
+[Classification: Generic Protocol Command Decode] [Priority: 3] 
+04/06-00:24:39.864777 172.23.1.115:1202 -> 172.23.0.10:445
+TCP TTL:128 TOS:0x0 ID:7929 IpLen:20 DgmLen:1500 DF
+***A**** Seq: 0xF9C368C1  Ack: 0x64F9A536  Win: 0xFF3A  TcpLen: 20
+[Xref => http://www.microsoft.com/technet/security/bulletin/MS04-007.mspx][Xref => http://cgi.nessus.org/plugins/dump.php3?id=12065][Xref => http://cgi.nessus.org/plugins/dump.php3?id=12052][Xref => http://cve.mitre.org/cgi-bin/cvename.cgi?name=2003-0818][Xref => http://www.securityfocus.com/bid/9635][Xref => http://www.securityfocus.com/bid/9633]
+
+[**] [1:2102466:9] GPL NETBIOS SMB-DS IPC$ unicode share access [**]
+[Classification: Generic Protocol Command Decode] [Priority: 3] 
+04/06-00:24:39.873245 172.23.1.115:1202 -> 172.23.0.10:445
+TCP TTL:128 TOS:0x0 ID:7931 IpLen:20 DgmLen:138 DF
+***AP*** Seq: 0xF9C3735B  Ack: 0x64F9A6BB  Win: 0xFDB5  TcpLen: 20
+
+[**] [1:2000355:5] ET POLICY IRC authorization message [**]
+[Classification: Misc activity] [Priority: 3] 
+04/06-00:24:43.860749 10.32.5.59:6667 -> 172.23.233.57:16180
+TCP TTL:128 TOS:0x0 ID:26487 IpLen:20 DgmLen:149 DF
+***AP*** Seq: 0xABC04860  Ack: 0x37F4AE13  Win: 0xFFFF  TcpLen: 20
+[Xref => http://doc.emergingthreats.net/2000355]
+
+[**] [1:2000355:5] ET POLICY IRC authorization message [**]
+[Classification: Misc activity] [Priority: 3] 
+04/06-00:24:43.866027 10.32.5.56:6667 -> 172.23.233.51:16183
+TCP TTL:128 TOS:0x0 ID:4276 IpLen:20 DgmLen:147 DF
+***AP*** Seq: 0xD619DD0  Ack: 0xD9DFFCC3  Win: 0xFFFF  TcpLen: 20
+[Xref => http://doc.emergingthreats.net/2000355]
+
+[**] [1:2000355:5] ET POLICY IRC authorization message [**]
+[Classification: Misc activity] [Priority: 3] 
+04/06-00:24:43.891262 10.32.5.54:6667 -> 172.23.233.52:16185
+TCP TTL:128 TOS:0x0 ID:35773 IpLen:20 DgmLen:147 DF
+***AP*** Seq: 0x9CF070B5  Ack: 0x7BE3C5FF  Win: 0xFFFF  TcpLen: 20
+[Xref => http://doc.emergingthreats.net/2000355]
+
