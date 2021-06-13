@@ -91,15 +91,19 @@ are defined. Headers.dat (containing a list of feature names) and weights.dat fi
 
 **All**: Boolean variable to consider either all possible matches for a variable or only the first one. It is set to False (consider only first match) by default. This parameter is important when dealing with certain kind of unstructured sources in which the regular expression for a variable might match more than one entity in our data. Therefore, All parameter should be set to True in the configuration file for these scenarios.
 
-**Max_chunck**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 100MB are considered by default.
-Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory. Therefore, if the data size is not too big according to your free memory, it is highly recommendable to set up the highest value for max_chunk parameter.
+**Max_chunk**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 500MB are considered by default.
+Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory. Therefore, if the data size is not too big according to your free memory, it is highly recommendable to set up the highest possible value for max_chunk parameter, as it is depicted in the next figure for an example dataset of 1GB (netflow data).
+
+<p align="center"> <img width="850" height="335" src="assets/parsing_performance_test.png"> </p>
+<div align="center"><i>Figure X: Parsing performance test according to the Ncores and Max_chunk configuration parameters</i></div><br />
+
 
 <p align="center">-Deparsing parameters-</p>
 
 **Deparsing_output:** In this field the output directory for the _deparsed_ raw data and the
 stats file are defined. This configuration is only used for _deparsing_ process.
 
-**Threshold:** The upper limit of log entries per datasource that will appear in the output file.
+**Threshold:** The upper limit of log entries per datasource that will appear in the output files. This threshold is not absolute so that all the logs with the same number of matched features will be considered. Check the examples in Debugger section or Example section for more detail.
 
 <p align="center">-Learning parameters-</p>
 
@@ -178,6 +182,7 @@ Log entries that contain more selected features are prioritized. However, this
 threshold is not absolute and log entries with the same amount of features should not be
 dismissed. For this reason, the threshold is checked after processing an entire block of
 log entries with the same number of features appearances.
+Thus, when running fcdeparser, a ordered list with the number of logs matching the defined features is printed. According to this list and the specified threshold, the minimum number of matched features in the logs that will be extracted is decided. Check the example section to see the decision criteria clearly.
 
 The input file format is adapted to the output of the MEDA-Toolbox [3]. This toolbox is
 a tool that can be used to analyze the parsed data. The format of the _deparsing_ input
@@ -191,41 +196,67 @@ The timestamps in the deparsing input file must be specified with format "%Y-%m-
 
 ## 4. DEBUGGER
 
+### 4.1 DEBUGGING PARSING PROCESS
+
 Debugger execution mode has been implemented by running fcparser with -d (--debug) option. This mode allows us to process the data source line by line, showing how every log is being parsed into records (according to our defined variables), as well as generating the observation vector according to our defined features.
 This way, if there is some mismatch between the log and the configuration file (eg. if the regular expression for a variable is not correct), we can detect and correct this mistakes by running this mode. For incorrectly parsed variables, their content is set to None and then highlighted by the debugger.\
 Therefore, it is recommendable to run fcparser in debugging mode to check if the configuration files are correct before running the parsing process for the first time. 
 
 When running the debugger, the data source is loaded and the number of logs in it is depicted.
 
-    $ python bin/fcparser.py -d example/config/configuration.yaml
+    $ python3 bin/fcparser.py -d example/config/configuration.yaml
 
 <p align="center"> <img width="555" height="170" src="assets/debugger1.png"> </p>
-<div align="center"><i>Figure 5: Example - Debugging mode. Initialization message</i></div><br />
+<div align="center"><i>Figure 5: Example - FCParser Debugging mode. Initialization message</i></div><br />
 
 
 Then, a simple terminal is given to the user with two possibilites:
 - To process the next log entry by pressing ENTER.
 Then, the entry log, the parsed variables (records) and observation vector are printed. Also, the feature names for those features with non-zero counters are shown. In the next picture we can see a parsing example of an unstructured entry log.
 <p align="center"> <img width="555" height="338" src="assets/debugger2.png"> </p>
-<div align="center"><i>Figure 6: Example - Debugger output</i></div><br />
+<div align="center"><i>Figure 6: Example - FCParser Debugger output</i></div><br />
 At the top of the picture we can see the raw entry log and how it is parsed into variables. In the lower part of the figure, the observation counters for that entry log are depicted, ordered according to our defined features, along with the feature names of those non-zero counters. In this example, all non-zero counters are set to 1, but it is possible to have counters with higher values if the event (represented with that counter) occurs more than once in a entry log.</div><br />
 
 - To process an specific log entry.
 In this case, we can "jump" to a certain log by specifying the log entry number with go command, eg. "go 34" will show the entry log number 34 (which would correspond with the line 34 for structured sources). 
 <p align="center"> <img width="555" height="338" src="assets/debugger3.png"> </p>
-<div align="center"><i>Figure 7: Example - Debugger output. Unstructured source</i></div><br />
+<div align="center"><i>Figure 7: Example - FCParser Debugger output. Unstructured source</i></div><br />
 In this example, all the data is correctly parsed but dst_port variable, which is set to None. This happened because the regular expression used to define this variable was not properly defined. Also, online tools as [7] might help you to understand why a regular expression is not correct. </div><br />
 
 Also, we can type some string with search command, and the debugger will then return the next entry log containing that string, eg. "search 10:15:45".
 <p align="center"> <img width="555" height="338" src="assets/debugger4.png"> </p>
-<div align="center"><i>Figure 8: Example - Debugger output. Structured source</i></div><br />
+<div align="center"><i>Figure 8: Example - FCParser Debugger output. Structured source</i></div><br />
 In this picture, we can see an example of a structured source (comma-separated value data), in which we use the search command to load directly the log entry with a certain timestamp. For structured sources, the variables are defined in order according to the different data fields. Eg: timestamp is the first field, then duration, source ip, etc.<br />
 Sometimes, we can find malformed logs in which some of the fields are empty, as it happens in this example for src_ip variable. Then, this variable is set to None.  
 
 This command is really useful if some errors are detected during the parsing process and we want to know why they did happen.
 
 The program allows us to surf between all the entry logs by combining the presented functionalities. When reaching the end of the file, it is loaded again. In case you define two data sources in the configuration file, please note you can only process one data source when running in debug mode.
-We can end the execution at any time by pressing the letter 'q'.
+We can end the execution at any time by pressing the 'q' key.
+
+### DEBUGGING DEPARSING PROCESS
+
+Analogously, a debugger execution mode was implemented in fcdeparser by executing it with -d (--debug) option. This mode allows us to follow the deparsing process in detail by loading every log sequentially and showing which features are detected and what decision will the deparser take for that log.
+
+    $ python3 bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input -d
+
+<p align="center"> <img width="555" height="170" src="assets/debugger_deparser1.png"> </p>
+<div align="center"><i>Figure X: Example - FCDeparser Debugging mode. Initialization message</i></div><br />
+
+First, the features and timestamps from deparsing input file are loaded, and the program is searching for the number of logs matching this criteria. According to this search and the specified threshold (if any), the selection criteria is determined.
+
+Then, the user will decide between two possible execution modes:
+
+- To process every log sequentially from the beginning. In this case, the debugger will indicate if the log fulfill the criteria to be deparsed or not.
+<p align="center"> <img width="555" height="170" src="assets/debugger_deparser2.png"> </p>
+<div align="center"><i>Figure X: Example - FCParser Debugger output. Mode 1</i></div><br />
+The next log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key.
+
+- To show only the logs that fulfill the deparsing criteria. Then, the execution "jump" to the selected logs that match the timestamp, the number of features and the threshold criteria.
+<p align="center"> <img width="555" height="170" src="assets/debugger_deparser3.png"> </p>
+<div align="center"><i>Figure X: Example - FCDeparser Debugging mode. Mode 2</i></div><br />
+For these logs, the variable fields related to the matched features are highlighted in green color and the names of these matched features are printed in order (from left to right) according to their position in the log entry.
+The next selected log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key.
 
 
 ## 5. EXAMPLE
@@ -275,7 +306,7 @@ For this case, it is necessary to define the separator between entries (two blan
 
 In order to run the example and parse the data, just run the following command in the FCParser directory:
 
-    $ python bin/fcparser.py example/config/configuration.yaml
+    $ python3 bin/fcparser.py example/config/configuration.yaml
 
 <p align="center"> <img width="400" height="288" src="assets/example_parser.png"> </p>
 <div align="center"><i>Figure 14: Example output - Parsing data</i></div><br />
@@ -322,13 +353,20 @@ An example of deparsing input file is depicted in figure 11:
 
 To run the program, use the following command:
 
-	$ python bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input
+	$ python3 bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input
 
-The _deparsing_ program generates one file for each data source with the extracted logs
-related to the anomalies detected, as well as stats file with the number of structured and unstructured logs deparsed.
+Then, the timestamps and features defined in the deparsing input file are searched for each data source and a list is generated with the number of logs matching that criteria along with the number of features found for each case. According to the specified threshold, logs with more matched features will be selected. If no threshold is defined, all logs with at least one matched feature will be deparsed.
+There is also the possibility to not define timestamps in deparsing input file. In that case, the logs will only be selected by the number of matched features. 
+
+<p align="center"> <img width="385" height="515" src="assets/example_deparser_terminal.png"> </p>
+<div align="center"><i>Figure 21: Example - Deparsing terminal</i></div><br />
+
+The _deparsing_ program generates one file for each number of found features for each data source with the extracted logs
+related to the anomalies detected, as well as the stats file with the number of structured and unstructured logs deparsed.
+Thus, the output files are named as: _output_sourcename_Xfeat_, where X is the number of matched features.
 
 <p align="center"> <img width="800" height="323" src="assets/example_deparsing_output.png"> </p>
-<div align="center"><i>Figure 21: Example - Deparsing output</i></div><br />
+<div align="center"><i>Figure 22: Example - Deparsing output</i></div><br />
 
 
 ## 6. INSTALLATION REQUIREMENTS
