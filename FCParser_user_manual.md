@@ -91,7 +91,7 @@ are defined. Headers.dat (containing a list of feature names) and weights.dat fi
 
 **All**: Boolean variable to consider either all possible matches for a variable or only the first one. It is set to False (consider only first match) by default. This parameter is important when dealing with certain kind of unstructured sources in which the regular expression for a variable might match more than one entity in our data. Therefore, All parameter should be set to True in the configuration file for these scenarios.
 
-**Max_chunk**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 500MB are considered by default.
+**Max_chunk**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 1GB are considered by default.
 Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory. Therefore, if the data size is not too big according to your free memory, it is highly recommendable to set up the highest possible value for max_chunk parameter, as it is depicted in the next figure for an example dataset of 1GB (netflow data).
 
 <p align="center"> <img width="850" height="335" src="assets/parsing_performance_test.png"> </p>
