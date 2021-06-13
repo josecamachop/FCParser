@@ -12,6 +12,7 @@
 #            For structured sources, \n is considered by default.
 #
 # timearg: It is the name of the variable which collects the timestamps. If not defined, variable with name 'timestamp' will be considered.
+# nfcapd: Boolean parameter to indicate if data source files with nfcapd format.
 #
 # VARIABLES:
 #   - name:       Variable name.
@@ -39,9 +40,10 @@
 # =================
 
 tag: source_name
-structured: True  # False
+structured: True  # structured: False
 timestamp_format: "%Y-%m-%d %H:%M:%S" # for example
 timearg: timestamp
+#nfcapd: True
 
 # Unstructured sources
 #separator:
