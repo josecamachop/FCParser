@@ -18,7 +18,7 @@
 #                       If true and output files exist, new counters are added to the old ones. 
 #
 # Processes:            Number of processes used by the program: [1, Ncores]. If not set, program uses 80% of your cpu
-# Max_chunck:           Size (in MB) of the chunk of files that are being processed at the same time. If not defined, it is set to 1GB.
+# Max_chunk:           Size (in MB) of the chunk of files that are being processed at the same time. If not defined, it is set to 1GB.
 #                       Note that larger chunks would increase the processing speed but might overload your memory if data is too large.
 # 
 # Keys:           Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
