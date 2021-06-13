@@ -217,7 +217,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
                 if indices[file][nfeatures]:
                     output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
                     for line_index in indices[file][nfeatures]:
-                        line = linecache.getline(file, line_index)
+                        line = linecache.getline(file, line_index+1) # index starting by 1 with linecache function
                         output_file.write(line + "\n")
                         count_structured += 1
                     output_file.close()
