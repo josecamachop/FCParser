@@ -65,15 +65,15 @@ Endlperc: 0.0001
 Keys:  #Empty, so no aggregation is made. So, analyzed by timestamp 
 
 Parsing_Output:
-  dir: ./parsing_output
+  dir: ./example/parsing_output
   stats: stats.log
 
 Deparsing_output:
-  dir: ./deparsing_output 
+  dir: ./example/deparsing_output 
   threshold: 10
 
 Learning_Output:
-  dir: ./learning_output
+  dir: ./example/learning_output
   stats: stats.log
 
 SPLIT: 
