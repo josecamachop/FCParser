@@ -292,7 +292,7 @@ To run the program, use the following command:
 Then, the timestamps and features defined in the deparsing input file are searched for each data source and a list is generated with the number of logs matching that criteria along with the number of features found for each case. According to the specified threshold, logs with more matched features will be selected. If no threshold is defined, all logs with at least one matched feature will be deparsed.
 There is also the possibility to not define timestamps in deparsing input file. In that case, the logs will only be selected by the number of matched features. 
 
-<p align="center"> <img width="515" height="385" src="assets/example_deparser_terminal.png"> </p>
+<p align="center"> <img width="1030" height="773" src="assets/example_deparser_terminal.png"> </p>
 <div align="center"><i>Figure 18: Example - Deparser terminal</i></div><br />
 
 The _deparsing_ program generates one file for each number of found features for each data source with the extracted logs
@@ -349,7 +349,7 @@ Analogously, a debugger execution mode was implemented in fcdeparser by executin
 
     $ python3 bin/fcdeparser.py example/config/configuration.yaml example/deparsing_input -d
 
-<p align="center"> <img width="425" height="170" src="assets/debugger_deparser1.png"> </p>
+<p align="center"> <img width="650" height="260" src="assets/debugger_deparser1.png"> </p>
 <div align="center"><i>Figure 27: Example - FCDeparser Debugging mode. Initialization message</i></div><br />
 
 First, the features and timestamps from deparsing input file are loaded, and the program is searching for the number of logs matching this criteria. According to this search and the specified threshold (if any), the selection criteria is determined.
@@ -357,12 +357,12 @@ First, the features and timestamps from deparsing input file are loaded, and the
 Then, the user will decide between two possible execution modes:
 
 - To process every log sequentially from the beginning. In this case, the debugger will indicate if the log fulfill the criteria to be deparsed or not.
-<p align="center"> <img width="400" height="70" src="assets/debugger_deparser2.png"> </p>
+<p align="center"> <img width="1010" height="260" src="assets/debugger_deparser2.png"> </p>
 <div align="center"><i>Figure 28: Example - FCDeparser Debugger output. Mode 1</i></div><br />
 The next log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key.
 
 - To show only the logs that fulfill the deparsing criteria. Then, the execution "jump" to the selected logs that match the timestamp, the number of features and the threshold criteria.
-<p align="center"> <img width="400" height="70" src="assets/debugger_deparser3.png"> </p>
+<p align="center"> <img width="1010" height="190" src="assets/debugger_deparser3.png"> </p>
 <div align="center"><i>Figure 29: Example - FCDeparser Debugging mode. Mode 2</i></div><br />
 For these logs, the variable fields related to the matched features are highlighted in green color and the names of these matched features are printed in order (from left to right) according to their position in the log entry.
 The next selected log can be loaded by pressing ENTER or we can end the execution at any time by pressing the 'q' key.
