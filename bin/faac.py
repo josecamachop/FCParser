@@ -700,7 +700,7 @@ class Observation(object):
 
 
             except KeyError as e:
-                raise ConfigError(cls, "FEATURES: missing config key (%s)" %(e.message))
+                raise ConfigError(cls, "FEATURES: missing config key (%s)" %(e))
 
 
             # Calculate feature 
@@ -1057,8 +1057,14 @@ def loadConfig(parserConfig, caller, debugmode):
             pass
     
         if not os.path.exists(config['OUTDIR']): # Output directory named OUTPUT is created if none is defined in config. file
-            os.mkdir(config['OUTDIR'])
-            print("** Creating output directory %s" %(config['OUTDIR']))
+            try:
+                os.mkdir(config['OUTDIR'])
+                print("** Creating output directory %s" %(config['OUTDIR']))
+            except PermissionError as creating_directory_error:
+                print('\033[31m'+str(creating_directory_error)+" - When trying to execute os.mkdir(config['OUTDIR'])" +'\033[m')
+                print("Make sure that the output directory specified in the configuration file follows the format './dir/'")
+                exit(1)
+                
 
     # Stats file
     try:
