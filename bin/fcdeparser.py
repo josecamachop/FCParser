@@ -126,7 +126,17 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
             print ("Configuration file error: missing variables")
             exit(1)
             
+    selection = []  # indices of features in config file matching depars_features
+    for i in range(len(config['FEATURES'][source])):
+        if config['FEATURES'][source][i]['name'] in depars_features:
+            selection.append(i)
+
+    FEATURES_sel = []   # all feature fields for features in depars_features
+    for i in selection:
+        FEATURES_sel.append(config['FEATURES'][source][i])
+            
     timestamp_pos = VARIABLES[config['TIMEARG'][source]]['where']   # position (column) of timestamp field
+
 
     count_structured = 0    # structured logs found during deparsing process
     count_tot = 0           # total logs
@@ -155,9 +165,12 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
                 # extract amount of features that appear in the line if its timestamp is included in formated_timestamps
                 if t.strip() in formated_timestamps or not formated_timestamps:
-                    feature_count, matched_features = search_features_str(line, depars_features, FEATURES, VARIABLES)
+                    record = faac.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
+                    obs = faac.Observation.fromRecord(record, FEATURES_sel)         # to make default features counter work properly, use config['FEATURES'][source] instead of FEATURES_sel (but execution will be significantly slower)
+                    feature_count, matched_features = search_features_str(obs, VARIABLES)
                     feat_appear[file].append(feature_count)
                     feat_appear_names[file].append(matched_features)
+                    
                 else:
                     # it is necessary to fill with zeros so that indices match the lines later
                     feat_appear[file].append(0) 
@@ -430,66 +443,6 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
     return (count_unstructured, count_tot)
 
 
-def search_features_str(line, depars_features, FEATURES, VARIABLES):
-    '''
-    Function that take as an input one data record and obtain the number of features that appear in the log 
-    from the input features for structured sources    
-    '''
-
-    feature_count = 0
-    matched_features = []     # List of matched feature names
-    
-    for feature in depars_features:
-        
-        try:
-            old_feature_count = feature_count
-            
-            fName = FEATURES[feature]['name']
-            fVariable = FEATURES[feature]['variable']
-            fType = FEATURES[feature]['matchtype']
-            fValue = FEATURES[feature]['value']
-            variable = VARIABLES[fVariable]
-
-            pos = variable['where']
-
-            line_split = line.split(',')
-
-            if fType == 'regexp':        
-                try:
-                    re.search(fValue, line_split[pos])
-                    feature_count += 1
-                except:
-                    pass
-
-            elif fType == 'single':        
-                if line_split[pos].strip() == str(fValue):
-                    feature_count += 1
-
-            elif fType == 'range':        
-
-                start = fValue[0]
-                end   = fValue[1]
-                
-                if (end is None or str(end).lower() == 'inf') and int(line_split[pos]) >= start:
-                    feature_count += 1
-                elif (int(line_split[pos]) <= end) and (int(line_split[pos]) >= start):
-                    feature_count += 1 
-
-            elif fType == 'multiple':
-                if int(line_split[pos]) in fValue:
-                    feature_count += 1
-                
-                
-            if (feature_count>old_feature_count):
-                matched_features.append({fName:pos})
-                
-        except:
-             pass
-
-
-    return (feature_count, matched_features)
-
-
 def format_timestamps(timestamps, source_format):
     '''
     Format a list of timestamps (with t_format) to the data source timestamp format (source_format)
@@ -694,6 +647,90 @@ def initMessage(deparsInput, debugmode):
         print("- In any log (not specified timestamps)")
     
     return  
+
+
+def search_features_str(obs, VARIABLES):
+    """
+    Function that take record and observation from line and return the count of
+    matched features and the associated feature name and variable position (which
+    will be used for debugger)
+    """
+    
+    matched_features = []
+    feature_count = sum([obs.data[i].value for i in range(len(obs.data))])
+    
+    if debugmode:
+        obs_value_list = [obs.data[i].value for i in range(len(obs.data))]
+        feature_index = [i for i, j in enumerate(obs_value_list) if j != 0] # matched features index (non zero counters)
+        for index in feature_index:
+            fName = obs.data[index].fName
+            fVariable = obs.data[index].fVariable
+            pos = VARIABLES[fVariable]['where']
+            matched_features.append({fName:pos})
+    
+    return feature_count, matched_features
+
+
+"""
+# OLD implementation for search_features_str (3x faster but does not make use of faac and it might not be consistent with fcparser)
+def search_features_str(line, depars_features, FEATURES, VARIABLES):
+    '''
+    Function that take as an input one data record and obtain the number of features that appear in the log 
+    from the input features for structured sources    
+    '''
+
+    feature_count = 0
+    matched_features = []     # List of matched feature names
+    
+    for feature in depars_features:
+        
+        try:
+            old_feature_count = feature_count
+            
+            fName = FEATURES[feature]['name']
+            fVariable = FEATURES[feature]['variable']
+            fType = FEATURES[feature]['matchtype']
+            fValue = FEATURES[feature]['value']
+            variable = VARIABLES[fVariable]
+
+            pos = variable['where']
+
+            line_split = line.split(',')
+
+            if fType == 'regexp':        
+                try:
+                    re.search(fValue, line_split[pos])
+                    feature_count += 1
+                except:
+                    pass
+
+            elif fType == 'single':        
+                if line_split[pos].strip() == str(fValue):
+                    feature_count += 1
+
+            elif fType == 'range':        
+
+                start = fValue[0]
+                end   = fValue[1]
+                
+                if (end is None or str(end).lower() == 'inf') and int(line_split[pos]) >= start:
+                    feature_count += 1
+                elif (int(line_split[pos]) <= end) and (int(line_split[pos]) >= start):
+                    feature_count += 1 
+
+            elif fType == 'multiple':
+                if int(line_split[pos]) in fValue:
+                    feature_count += 1
+                
+                
+            if (feature_count>old_feature_count):
+                matched_features.append({fName:pos})
+                
+        except:
+             pass
+
+    return (feature_count, matched_features)
+"""
 
     
 if __name__ == "__main__":
