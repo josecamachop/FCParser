@@ -1301,14 +1301,17 @@ def loadConfig(parserConfig, caller, debugmode):
         if caller == 'fcparser':
             for source in config['nfcapd_sources']:
                 out_files = []
-                for file in config['SOURCES'][source]['FILES']:  
-                    out_file = '/'.join(file.split('/')[:-1]) + '/temp_' + file.split('.')[-1] + ""
-                    os.system("nfdump -r " + file + " -o csv >>"+out_file)
-                    os.system('tail -n +2 '+out_file + '>>' + out_file.replace('temp',source))
-                    os.system('head -n -3 ' + out_file.replace('temp',source) + ' >> ' + out_file.replace('temp',source) + '.csv')
-                    out_files.append(out_file.replace('temp',source) + '.csv')
-                    os.remove(out_file)
-                    os.remove(out_file.replace('temp',source))
+                for file in config['SOURCES'][source]['FILES']:
+                    file_path = '/'.join(file.split('/')[:-1])
+                    temp_file = file_path + '/temp_file'
+                    converted_file = file_path + '/' + 'nfcapd_converted.csv'
+                    print("Converting nfcapd binary file '%s' into .csv file format '%s'" %(file.split('/')[-1],converted_file.split('/')[-1]))
+                    os.system("nfdump -r " + file + " -o csv >>"+temp_file)
+                    os.system('tail -n +2 '+ temp_file + '>>' + temp_file.replace('temp','temp2')) # remove header
+                    os.system('head -n -3 ' + temp_file.replace('temp','temp2') + ' > ' + converted_file) # remove summary at the botton
+                    out_files.append(converted_file)
+                    os.remove(temp_file)    # remove temp files
+                    os.remove(temp_file.replace('temp','temp2'))
                     config['SOURCES'][source]['FILES'] = out_files
                     #delete_nfcsv = out_files
     
