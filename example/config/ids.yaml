@@ -1,58 +1,50 @@
 #-----------------------------------------------------------------------
-#
-# Snort- Configuration File
-#
+# IDS Configuration File
 #-----------------------------------------------------------------------
+# For more information about the config. parameters, check user manual.
 #
-# tag: tag asociated with the files
+# tag: Identifier of the data source
+# structured: False, as the data source is not structured and regular expressions are needed to parse the data
+# timestamp_format: format of the timestamp in the logs in python datetime format. Check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior             
+# separator: Chars that delimitates the log entries of the source.
+#            In this case, every entry log consists of a paragraph, where two blank lines is the separator between records.
 #
-# structured: Boolean ver to indicate if datasource is structured or not.
-#
-# timestamp_format: format of the timestamp of the logs in the files of 
-#                   this dataSource in python datetime format, see https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-#
-# timestamp_regexp: regular expresion that matches the date format of the source (only needed for unstructured sources)
-#
-# separator: chars that delimitates the log entries of the source (only needed in unstructured sources)
-#
-# timearg: position of the timestamp in the log entry (only needed in structured sources)
+# timearg: It is the name of the variable which collects the timestamps. We defined the variable with name 'timestamp'
 #
 # VARIABLES:
-#   - name:      Variable name.
-#     matchtype:      Variable matchtype {string, number, counter, ip, time, duration}.
-#     where:       Position of the field in the line (starts with 0).
-#
-#   - ...
+#   - name:       Variable name.
+#   - matchtype:  Variable matchtype {string, number, time, ip, duration, counter}.
+#   - where:      Regular expression that matches the wanted field   
 #
 # FEATURES:
-#   - name:      Feature name.
-#     variable:  Variable from which the feature is calculated.
-#     matchtype:      Feature matchtype {single, multiple, range, default}
-#     value:     Value of the field that defines the feature.
-#                If the matchtype is 'single' use a single value.
-#                If the matchtype is 'multiple', use a list of values.
-#                If the matchtype is 'range', use a list of two values.
-#                If the matchtype is 'default', the value must be empty.
-#   - ...
+#   - name:       Feature name.
+#   - variable:   Variable from which the feature is calculated.
+#   - matchtype:  Feature matchtype {single, multiple, range, default, regexp}
+#   - value:      Value of the field that defines the feature.
+#                   If the matchtype is 'single' use a single value.
+#                   If the matchtype is 'multiple', use a list of values.
+#                   If the matchtype is 'range', use a list of two values.
+#                   If the matchtype is 'default', the value must be empty.
+#                   If the matchtype is 'regexp', the value is a string.
+#   - weight:     Optional parameter to assign different weights to the features, to be considered during the analysis.
 #-----------------------------------------------------------------------
 
+
+# Attributes
+# =================
 tag: ids
-
 structured: False
-
 timestamp_format: '%m/%d-%H:%M:%S'
-
-separator: "\n\n"
-
-# timearg: 
+separator: "\n\n" 
+timearg: timestamp
 
 
-## variables Section
+# Variables Section
+# =================
 VARIABLES:
 
-
 - name: timestamp
-  matchtype: string 
+  matchtype: time 
   where: '(?P<match>[0-9]{1,2}/[0-9]{1,2}-([0-9]{2}:[0-9]{2}:[0-9]{2}))'
 
 - name: priority
@@ -81,7 +73,7 @@ VARIABLES:
 
 - name: dst_port
   matchtype: number
-  where: '(?P<match>(?<=[0-9]:)[0-9]+)(?=\r)'
+  where: '(?P<match>(?<=[0-9]:)[0-9]+)(?=\n)'
 
 - name: proto
   matchtype: string 
@@ -115,7 +107,9 @@ VARIABLES:
   matchtype: string
   where: '(?P<match>DF|CE|MF)'
 
-## Variables Section
+
+# FEATURES Section
+# =================
 FEATURES:
 
 - name: ids_ttl_low
@@ -1130,15 +1124,3 @@ FEATURES:
   matchtype: default
   value: 
   weight: 2
-
-
-
-
-
-
-
-
-
-
-
-

@@ -7,10 +7,10 @@ FaaC parser library.
 
 
 Authors:    Jose Camacho (josecamacho@ugr.es)
-	    Jose Manuel Garcia Gimenez (jgarciag@ugr.es) 
-	    Alejandro Perez Villegas (alextoni@gmail.com)
-		 
-		 
+        Jose Manuel Garcia Gimenez (jgarciag@ugr.es) 
+        Alejandro Perez Villegas (alextoni@gmail.com)
+         
+         
 Last Modification: 16/Jul/2018
 
 """
@@ -30,499 +30,498 @@ import subprocess
 from operator import add
 import faac
 import math
-	
+    
 def main(call='external',configfile=''):
 
-	startTime = time.time()
+    startTime = time.time()
 
-	# if called from terminal
-	# if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
-	if call is 'external':
-		args = getArguments()
-		configfile = args.config
+    # if called from terminal
+    # if not, the parser must be called in this way: parser.main(call='internal',configfile='<route_to_config_file>')
+    if call is 'external':
+        args = getArguments()
+        configfile = args.config
 
-	# Get configuration
-	parserConfig = faac.getConfiguration(configfile)
-	dataSources = parserConfig['DataSources']
-	output = parserConfig['Learning_Output']
-	config = faac.loadConfig(output, dataSources, parserConfig)
+    # Get configuration
+    parserConfig = faac.getConfiguration(configfile)
+    config = faac.loadConfig(parserConfig, 'fclearning')
 
-	# Print configuration summary
-	configSummary(config)
+    # Print configuration summary
+    configSummary(config)
 
-	# Count data entries
-	stats = create_stats(config)
-	stats = count_entries(config,stats) 
+    # Count data entries
+    stats = create_stats(config)
+    stats = count_entries(config,stats) 
 
-	# Parse
-	output_data = parsing(config, startTime, stats)
+    # Parse
+    output_data = parsing(config, startTime, stats)
 
-	# Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
-	output_data = filter_output(output_data, config['EndLperc'])
+    # Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
+    output_data = filter_output(output_data, config['EndLperc'])
 
-	# Output results
-	write_output(config, output_data, stats['total_lines'])
-			
+    # Output results
+    write_output(config, output_data, stats['total_lines'])
+            
 
-	print "Elapsed: %s \n" %(prettyTime(time.time() - startTime))	
+    print ("Elapsed: %s \n" %(prettyTime(time.time() - startTime))    )
 
 
 def parsing(config,startTime,stats):
-	'''
-	Main process for parsing. The program is in charge of temporal sampling.
-	'''
-	results = {}
-	final_res = {}
+    '''
+    Main process for parsing. The program is in charge of temporal sampling.
+    '''
+    results = {}
+    final_res = {}
 
-	for source in config['SOURCES']:
-
-
-		results[source] = []
-		currentTime = time.time()
-		print "\n-----------------------------------------------------------------------\n"
-		print "Elapsed: %s \n" %(prettyTime(currentTime - startTime))	
+    for source in config['SOURCES']:
 
 
-		results[source] = process_multifile(config, source, stats['sizes'][source])
+        results[source] = []
+        currentTime = time.time()
+        print ("\n-----------------------------------------------------------------------\n")
+        print ("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))
 
 
-	return results
+        results[source] = process_multifile(config, source, stats['sizes'][source])
+
+
+    return results
 
 def process_multifile(config, source, lengths):
-	'''
-	processing files procedure for unstructured sources in offline parsing. In this function the pool 
-	of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
-	Each process is assigned a chunk of file to be processed.
-	The results of each process are gathered to be postprocessed. 
-	'''
-	instances = {}
-	for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
-		instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
+    '''
+    processing files procedure for unstructured sources in offline parsing. In this function the pool 
+    of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
+    Each process is assigned a chunk of file to be processed.
+    The results of each process are gathered to be postprocessed. 
+    '''
+    instances = {}
+    for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+        instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
 
-	count = 0
-	instances['count'] = 0
-	for i in range(len(config['SOURCES'][source]['FILESTRAIN'])):
-		input_path = config['SOURCES'][source]['FILESTRAIN'][i]
-		if input_path:
-			count += 1
-			tag = getTag(input_path)
+    count = 0
+    instances['count'] = 0
+    for i in range(len(config['SOURCES'][source]['FILESTRAIN'])):
+        input_path = config['SOURCES'][source]['FILESTRAIN'][i]
+        if input_path:
+            count += 1
+            tag = getTag(input_path)
 
-			#Print some progress stats
-			print "%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag)
-		
-			pool = mp.Pool(config['Cores'])
-			cont = True
-			init = 0
-			remain = lengths[i]
-			while cont: # cleans memory from processes
-				jobs = list()
-				for fragStart,fragSize in frag(input_path,init,config['SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
-					jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['SEPARATOR'][source])) )
-				else:
-					if fragStart+fragSize < lengths[i]:
-						remain = lengths[i] - fragStart+fragSize
-						init = fragStart+fragSize 
-					else:
-						cont = False
+            #Print some progress stats
+            print ("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag))
+        
+            pool = mp.Pool(config['Cores'])
+            cont = True
+            init = 0
+            remain = lengths[i]
+            while cont: # cleans memory from processes
+                jobs = list()
+                for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
+                    jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source])) )
+                else:
+                    if fragStart+fragSize < lengths[i]:
+                        remain = lengths[i] - fragStart+fragSize
+                        init = fragStart+fragSize 
+                    else:
+                        cont = False
 
-				for job in jobs:
-					instances = combine(instances,job.get(),config['Lperc'])
-
-
+                for job in jobs:
+                    instances = combine(instances,job.get(),config['Lperc'])
 
 
-			pool.close()
-	
 
-	return instances
+
+            pool.close()
+    
+
+    return instances
 
 def frag(fname, init, separator, size, max_chunk):
-	'''
-	Function to fragment files in chunks to be parallel processed for structured files by lines
-	'''
+    '''
+    Function to fragment files in chunks to be parallel processed for structured files by lines
+    '''
 
-	#print "File pos: %d, size: %d, max_chunk: %d" %(init,size, max_chunk)
+    #print "File pos: %d, size: %d, max_chunk: %d" %(init,size, max_chunk)
 
-	try:
-		if fname.endswith('.gz'):					
-			f = gzip.open(fname, 'r')
-		else:
-			f = open(fname, 'r')
-
-
-		f.seek(init)
-		end = f.tell()
-		init = end
-		cont = True
-		while end-init < max_chunk:
-			start = end
-			asdf = f.read(size)
-			i = asdf.rfind(separator)
-			if i == -1:
-				break
-
-			f.seek(start+i+1)
-			end = f.tell()
-
-			yield start, end-start
+    try:
+        if fname.endswith('.gz'):                    
+            f = gzip.open(fname, 'r')
+        else:
+            f = open(fname, 'r')
 
 
+        f.seek(init)
+        end = f.tell()
+        init = end
+        cont = True
+        while end-init < max_chunk:
+            start = end
+            asdf = f.read(size)
+            i = asdf.rfind(separator)
+            if i == -1:
+                break
 
-	finally:
-		f.close()
+            f.seek(start+i+1)
+            end = f.tell()
+
+            yield start, end-start
+
+
+
+    finally:
+        f.close()
 
 def combine(instances, instances_new, perc):
-	'''
-	Combine counters
-	'''	 
+    '''
+    Combine counters
+    '''     
 
-	instances_new = filter_instances(instances_new, perc)
+    instances_new = filter_instances(instances_new, perc)
 
-	instances['count'] += instances_new['count']
-	for variable,features in instances_new.items():
-		if variable != 'count':
-			if variable in instances.keys():
-				for feature in features:
-					if feature in instances[variable].keys():
-						instances[variable][feature] += instances_new[variable][feature]
-					else:
-						instances[variable][feature] = instances_new[variable][feature]
-			else:
-				instances[variable] = dict() 
-				for feature in features:
-					instances[variable][feature] = instances_new[variable][feature]
+    instances['count'] += instances_new['count']
+    for variable,features in instances_new.items():
+        if variable != 'count':
+            if variable in instances.keys():
+                for feature in features:
+                    if feature in instances[variable].keys():
+                        instances[variable][feature] += instances_new[variable][feature]
+                    else:
+                        instances[variable][feature] = instances_new[variable][feature]
+            else:
+                instances[variable] = dict() 
+                for feature in features:
+                    instances[variable][feature] = instances_new[variable][feature]
 
 
-	return instances
+    return instances
 
 
 
 
 def process_file(file, fragStart, fragSize, config, source,separator):
-	'''
-	Function that uses each process to get data entries from unstructured data using the separator defined
-	in configuration files that will be transformed into observations. This is used only in offline parsing. 
-	'''
+    '''
+    Function that uses each process to get data entries from unstructured data using the separator defined
+    in configuration files that will be transformed into observations. This is used only in offline parsing. 
+    '''
 
-	instances = {}
-	try:	
-		if file.endswith('.gz'):					
-			f = gzip.open(file, 'r')
-		else:
-			f = open(file, 'r')
+    instances = {}
+    try:    
+        if file.endswith('.gz'):                    
+            f = gzip.open(file, 'r')
+        else:
+            f = open(file, 'r')
 
-		f.seek(fragStart)
-		lines = f.read(fragSize)
-	
-	finally:
-		f.close()
+        f.seek(fragStart)
+        lines = f.read(fragSize)
+    
+    finally:
+        f.close()
 
-	instances['count'] = 0
-	log = ''
-	for line in lines:
-		log += line 
+    instances['count'] = 0
+    log = ''
+    for line in lines:
+        log += line 
 
-		if separator in log:
-			instances = process_log(log,config, source, instances)
-			log = log.split(separator)[1]
-	if log:	
-		instances = process_log(log,config, source, instances)
+        if separator in log:
+            instances = process_log(log,config, source, instances)
+            log = log.split(separator)[1]
+    if log:    
+        instances = process_log(log,config, source, instances)
 
 
-	return instances
+    return instances
 
 
 def process_log(log, config, source, instances):
-	'''
-	Function take on data entry as input an transform it into a preliminary observation
-	'''	 
+    '''
+    Function take on data entry as input an transform it into a preliminary observation
+    '''     
+    timearg = config['TIMEARG'][source] # name of variable which contains timestamp
+    record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['SOURCES'][source]['CONFIG']['timestamp_format'], config['All'])
 
-	record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['All'])
+    instances['count'] += 1
 
-	instances['count'] += 1
+    for variable,features in record.variables.items():
+        if variable != timearg:
+            if variable in instances.keys():
+                for feature in features:
+                    if str(feature) in instances[variable].keys():
+                        instances[variable][str(feature)] += 1
+                    else:
+                        instances[variable][str(feature)] = 1
+            else:
+                instances[variable] = dict() 
+                for feature in features:
+                    instances[variable][str(feature)] = 1
 
-	for variable,features in record.variables.items():
-		if variable != 'timestamp':
-			if variable in instances.keys():
-				for feature in features:
-					if str(feature) in instances[variable].keys():
-						instances[variable][str(feature)] += 1
-					else:
-						instances[variable][str(feature)] = 1
-			else:
-				instances[variable] = dict() 
-				for feature in features:
-					instances[variable][str(feature)] = 1
+                    
 
-					
-
-	return instances
-	
+    return instances
+    
 
 def create_stats(config):
-	'''
-	Legacy function - To be updated
-	'''
-	stats = {}
-	statsPath = config['OUTDIR'] + config['OUTSTATS']
-	statsStream = open(statsPath, 'w')
-	statsStream.write("STATS\n")
-	statsStream.write("=================================================\n\n")
+    '''
+    Legacy function - To be updated
+    '''
+    stats = {}
+    statsPath = config['OUTDIR'] + config['OUTSTATS']
+    statsStream = open(statsPath, 'w')
+    statsStream.write("STATS\n")
+    statsStream.write("=================================================\n\n")
 
-	statsStream.close()
-	stats['statsPath'] = statsPath
+    statsStream.close()
+    stats['statsPath'] = statsPath
 
-	return stats
+    return stats
 
 def count_entries(config,stats):
-	'''
-	Function to get the amount of data entries and bytes for each data source
-	'''
+    '''
+    Function to get the amount of data entries and bytes for each data source
+    '''
 
-	lines = {}
-	stats['sizes'] = {}
-	for source in config['SOURCES']:
-		lines[source] = 0
-		stats['sizes'][source] = list()
-		for file in config['SOURCES'][source]['FILESTRAIN']:
-			if config['STRUCTURED'][source]:
-				(l,s) = file_len(file)
-				lines[source] += l
-				stats['sizes'][source].append(s)
+    lines = {}
+    stats['sizes'] = {}
+    for source in config['SOURCES']:
+        lines[source] = 0
+        stats['sizes'][source] = list()
+        for file in config['SOURCES'][source]['FILESTRAIN']:
+            if config['STRUCTURED'][source]:
+                (l,s) = file_len(file)
+                lines[source] += l
+                stats['sizes'][source].append(s)
 
-			else:
-				(l,s) = file_uns_len(file,config['SEPARATOR'][source])
-				lines[source] += l
-				stats['sizes'][source].append(s)
-	
+            else:
+                (l,s) = file_uns_len(file,config['RECORD_SEPARATOR'][source])
+                lines[source] += l
+                stats['sizes'][source].append(s)
+    
 
-	# Sum lines from all datasources to obtain tota lines.
-	total_lines = 0
+    # Sum lines from all datasources to obtain tota lines.
+    total_lines = 0
 
-	stats['lines'] = {}
-	for source in lines:
-		total_lines += lines[source]
-		stats['lines'][source] = lines[source]
+    stats['lines'] = {}
+    for source in lines:
+        total_lines += lines[source]
+        stats['lines'][source] = lines[source]
 
-	stats['total_lines'] = total_lines
+    stats['total_lines'] = total_lines
 
-	statsStream = open(stats['statsPath'], 'a')
+    statsStream = open(stats['statsPath'], 'a')
 
-	for source in config['SOURCES']:
-		statsStream.write( " * %s \n" %((source).ljust(18)))
-		statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
-		statsStream.write( "\t\t %d logs \n" %(stats['lines'][source]))
-		statsStream.write( "\t\t %d bytes \n" %(sum(stats['sizes'][source])))
+    for source in config['SOURCES']:
+        statsStream.write( " * %s \n" %((source).ljust(18)))
+        statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
+        statsStream.write( "\t\t %d logs \n" %(stats['lines'][source]))
+        statsStream.write( "\t\t %d bytes \n" %(sum(stats['sizes'][source])))
 
-	statsStream.write("\n\n=================================================\n\n")
+    statsStream.write("\n\n=================================================\n\n")
 
-	statsStream.close()
+    statsStream.close()
 
-	return stats
+    return stats
 
 def configSummary(config):
-	'''
-	Print a summary of loaded parameters
-	'''
+    '''
+    Print a summary of loaded parameters
+    '''
 
-	print "-----------------------------------------------------------------------"
-	print "Data Sources:"
-	for source in config['SOURCES']:
-		print " * %s %s variables " %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2))
-	print
-	print "Output:"
-	print "  Stats file: %s" %(config['OUTSTATS'])
-	print "-----------------------------------------------------------------------\n"
-	
+    print ("-----------------------------------------------------------------------")
+    print ("Data Sources:")
+    for source in config['SOURCES']:
+        print (" * %s %s variables " %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2)))
+    print ()
+    print ("Output:")
+    print ("  Stats file: %s" %(config['OUTSTATS']))
+    print ("-----------------------------------------------------------------------\n")
+    
 
 
 def getTag(filename):
-	'''
-	function to identify data source by the input file
-	'''
-	tagSearch = re.search("(\w*)\.\w*$", filename)
-	if tagSearch:
-		return tagSearch.group(1)
-	else:
-		return None
+    '''
+    function to identify data source by the input file
+    '''
+    tagSearch = re.search("(\w*)\.\w*$", filename)
+    if tagSearch:
+        return tagSearch.group(1)
+    else:
+        return None
 
 def file_len(fname):
-	'''
-	Function to get lines from a file
-	'''
-	count_log = 0
-	try:
-		if fname.endswith('.gz'):
-			input_file = gzip.open(fname,'r')
-		else:
-			input_file = open(fname,'r')
+    '''
+    Function to get lines from a file
+    '''
+    count_log = 0
+    try:
+        if fname.endswith('.gz'):
+            input_file = gzip.open(fname,'r')
+        else:
+            input_file = open(fname,'r')
 
-		for count_log, l in enumerate(input_file):
-			pass
+        for count_log, l in enumerate(input_file):
+            pass
 
-	finally:
-		size = input_file.tell()
-		input_file.close()
+    finally:
+        size = input_file.tell()
+        input_file.close()
 
-	return count_log,size
+    return count_log,size
 
 
 def file_uns_len(fname, separator):
-	'''
-	Function determine de number of logs for a unstructured file 
-	'''
-	count_log = 0
-	try:
-		if fname.endswith('.gz'):
-			input_file = gzip.open(fname,'r')
-		else:
-			input_file = open(fname,'r')
+    '''
+    Function determine de number of logs for a unstructured file 
+    '''
+    count_log = 0
+    try:
+        if fname.endswith('.gz'):
+            input_file = gzip.open(fname,'r')
+        else:
+            input_file = open(fname,'r')
 
-		log ="" 
-		for line in input_file:		
-			log += line 
+        log ="" 
+        for line in input_file:        
+            log += line 
 
-			splitt = log.split(separator);
-			if len(splitt) > 1:
-				count_log += 1	
-				log = log[len(splitt[0])+1:]
+            splitt = log.split(separator);
+            if len(splitt) > 1:
+                count_log += 1    
+                log = log[len(splitt[0])+1:]
 
-	
-	finally:
-		size = input_file.tell()
-		input_file.close()
+    
+    finally:
+        size = input_file.tell()
+        input_file.close()
 
-	return count_log,size		
-	
+    return count_log,size        
+    
 def prettyTime(elapsed):
-	'''
-	Function to format time for print.
-	'''
-	hours = int(elapsed // 3600)
-	minutes = int(elapsed // 60 % 60)
-	seconds = int(elapsed % 60)
-	pretty = str(seconds) + " secs"
-	if minutes or hours:
-		pretty = str(minutes) + " mins, " + pretty
-	if hours:
-		pretty = str(hours) + " hours, " + pretty
-	return pretty
+    '''
+    Function to format time for print.
+    '''
+    hours = int(elapsed // 3600)
+    minutes = int(elapsed // 60 % 60)
+    seconds = int(elapsed % 60)
+    pretty = str(seconds) + " secs"
+    if minutes or hours:
+        pretty = str(minutes) + " mins, " + pretty
+    if hours:
+        pretty = str(hours) + " hours, " + pretty
+    return pretty
 
 
 
 def getArguments():
-	'''
-	Function to get input arguments from configuration file
-	'''
-	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-	description='''Multivariate Analysis Parsing Tool.''')
-	parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
-	args = parser.parse_args()
-	return args
+    '''
+    Function to get input arguments from configuration file
+    '''
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+    description='''Multivariate Analysis Parsing Tool.''')
+    parser.add_argument('config', metavar='CONFIG', help='Parser Configuration File.')
+    args = parser.parse_args()
+    return args
 
 
 def filter_output(output_data,perc):
-	'''Filter de data to only common fatures
-	'''
-	for source in output_data.keys():
-		output_data[source] = filter_instances(output_data[source],perc)
+    '''Filter de data to only common fatures
+    '''
+    for source in output_data.keys():
+        output_data[source] = filter_instances(output_data[source],perc)
 
 
-	return output_data
+    return output_data
 
 
 def filter_instances(instances, perc):
-	'''Filter de data to only common fatures
-	'''
-	threshold = perc*instances['count']
-	for varkey in instances.keys():
-		if varkey != 'count':
-			for feakey in instances[varkey].keys():
-				if instances[varkey][feakey] < threshold:
-					del instances[varkey][feakey]
-			if len(instances[varkey].keys()) == 0:
-				del instances[varkey]
+    '''Filter de data to only common fatures
+    '''
+    threshold = perc*instances['count']
+    for varkey in instances.keys():
+        if varkey != 'count':
+            for feakey in instances[varkey].keys():
+                if instances[varkey][feakey] < threshold:
+                    del instances[varkey][feakey]
+            if len(instances[varkey].keys()) == 0:
+                del instances[varkey]
 
 
-	return instances
-					
+    return instances
+                    
 
 
 def write_output(config, output_data, total):
-	'''Write configuration file
-	'''
+    '''Write configuration file
+    '''
 
-	contentf = dict()
-	contentf['FEATURES'] = list()
+    contentf = dict()
+    contentf['FEATURES'] = list()
 
-	yaml.add_representer(UnsortableOrderedDict, yaml.representer.SafeRepresenter.represent_dict)
+    yaml.add_representer(UnsortableOrderedDict, yaml.representer.SafeRepresenter.represent_dict)
 
-	for source in output_data.keys():
-		print "\nWriting configuration file " + config['SOURCES'][source]['CONFILE'] + "\n" 
-		for varkey in output_data[source].keys():
-			if varkey != 'count':
+    for source in output_data.keys():
+        print ("\nWriting configuration file " + config['SOURCES'][source]['CONFILE'] + "\n") 
+        for varkey in output_data[source].keys():
+            if varkey != 'count':
 
-				l = OrderedDict(sorted(output_data[source][varkey].items(), key=lambda t: t[1], reverse=True))
-				for feakey in l.keys():
+                l = OrderedDict(sorted(output_data[source][varkey].items(), key=lambda t: t[1], reverse=True))
+                for feakey in l.keys():
 
-					interm = UnsortableOrderedDict()
-					interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\'\'").replace("\"", "\"\"")
-					interm['variable'] = varkey
-					interm['matchtype'] = 'single'
-					interm['value'] =  feakey.replace("\'", "\'\'").replace("\"", "\"\"") 
-					interm['weight'] = output_data[source][varkey][feakey]/float(total)
-					contentf['FEATURES'].append(interm)
+                    interm = UnsortableOrderedDict()
+                    interm['name'] = source + '_' + varkey + '_' + feakey.replace(" ", "").replace("\'", "\'\'").replace("\"", "\"\"")
+                    interm['variable'] = varkey
+                    interm['matchtype'] = 'single'
+                    interm['value'] =  feakey.replace("\'", "\'\'").replace("\"", "\"\"") 
+                    interm['weight'] = output_data[source][varkey][feakey]/float(total)
+                    contentf['FEATURES'].append(interm)
 
-		for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
-			vType = config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['matchtype']
-			vName = config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']
+        for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+            vType = config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['matchtype']
+            vName = config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['name']
+            timearg = config['TIMEARG'][source] # name of variable which contains timestamp
 
-			if vName != 'timestamp':
-				if vType == 'string':
-					interm = UnsortableOrderedDict()
-					interm['name'] = source + '_' + vName + '_default'
-					interm['variable'] = vName
-					interm['matchtype'] = 'default'
-					interm['value'] = ''
-					interm['weight'] = 1
-					contentf['FEATURES'].append(interm)
-				elif vType == 'number':
-					interm = UnsortableOrderedDict()
-					interm['name'] = source + '_' + vName + '_default'
-					interm['variable'] = vName
-					interm['matchtype'] = 'default'
-					interm['value'] = ''
-					interm['weight'] = 1
-					contentf['FEATURES'].append(interm)
-				elif vType == 'ip':
-					interm = UnsortableOrderedDict()
-					interm['name'] = source + '_' + vName + '_private'
-					interm['variable'] = vName
-					interm['matchtype'] = 'single'
-					interm['value'] = 'private'
-					interm['weight'] = 1
-					contentf['FEATURES'].append(interm)
+            if vName != timearg:
+                if vType == 'string':
+                    interm = UnsortableOrderedDict()
+                    interm['name'] = source + '_' + vName + '_default'
+                    interm['variable'] = vName
+                    interm['matchtype'] = 'default'
+                    interm['value'] = ''
+                    interm['weight'] = 1
+                    contentf['FEATURES'].append(interm)
+                elif vType == 'number':
+                    interm = UnsortableOrderedDict()
+                    interm['name'] = source + '_' + vName + '_default'
+                    interm['variable'] = vName
+                    interm['matchtype'] = 'default'
+                    interm['value'] = ''
+                    interm['weight'] = 1
+                    contentf['FEATURES'].append(interm)
+                elif vType == 'ip':
+                    interm = UnsortableOrderedDict()
+                    interm['name'] = source + '_' + vName + '_private'
+                    interm['variable'] = vName
+                    interm['matchtype'] = 'single'
+                    interm['value'] = 'private'
+                    interm['weight'] = 1
+                    contentf['FEATURES'].append(interm)
 
-					interm = UnsortableOrderedDict()
-					interm['name'] = source + '_' + vName + '_public'
-					interm['variable'] = vName
-					interm['matchtype'] = 'single'
-					interm['value'] = 'public'
-					interm['weight'] = 1
-					contentf['FEATURES'].append(interm)
+                    interm = UnsortableOrderedDict()
+                    interm['name'] = source + '_' + vName + '_public'
+                    interm['variable'] = vName
+                    interm['matchtype'] = 'single'
+                    interm['value'] = 'public'
+                    interm['weight'] = 1
+                    contentf['FEATURES'].append(interm)
 
-		# write resuls in yaml
-		try:
-			f = file(config['SOURCES'][source]['CONFILE'], 'a')
-			f.write('\n\n')
-			yaml.dump(contentf, f, default_flow_style=False)
-		except:
-	    		print "Problem writing " + yamlfile
-	    		quit()
-		finally:
-			f.close()
+        # write resuls in yaml
+        try:
+            f = open(config['SOURCES'][source]['CONFILE'], 'a')
+            f.write('\n\n')
+            yaml.dump(contentf, f, default_flow_style=False)
+        except:
+                print ("Problem writing " + yamlfile)
+                quit()
+        finally:
+            f.close()
 
-	
+    
 
 class UnsortableList(list):
     def sort(self, *args, **kwargs):
@@ -534,5 +533,5 @@ class UnsortableOrderedDict(OrderedDict):
 
 
 if __name__ == "__main__":
-	
-	main()
+    
+    main()
