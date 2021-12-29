@@ -62,7 +62,12 @@ An empty general configuration file looks like this:
 
 **DataSources**: In this field, different data sources must be specified. For each data
 source, the name, the specific configuration file for that data source and the data path have to
-be specified. Input data can be in _csv_ format, text based log files or _nfcapd_ binary data.
+be specified. Input data can be in _csv_ format, text based log files or _nfcapd_ binary data. 
+<ins>Please, take into account that the FCParser in offline mode will store all the parsed data in RAM memory 
+during computation, so that they are only written to disk at the end. In several tests, attempts 
+to parse groups of files with several GBs made the parser crash down. Therefore, for 
+large data sets it is highly recommended to split data and apply the FCParser independently for each 
+of the splits. Legacy computers may require smaller splits, while multiprocessing may allow handling larger ones. </ins>
 
 **Keys:** In this field, none, one or more aggregation keys are defined. These keys are the
 variables chosen to aggregate observation. For each unique value of said keys,
@@ -102,6 +107,10 @@ scenarios.
 
 **Max_chunck**: Maximum chunk size in megabytes. When processing every data file, it is splitted into chunks for parallel processing. Each chunk size is usually calculated as the max_chunk size parameter divided by the number of cores used. If the max_chunk parameter is not defined, chunks of 100MB are considered by default.
 Note that smaller chunks can slow down the parsing process while larger chunks would increase the processing speed but might overload your memory. Therefore, if the data size is not too big according to your free memory, it is highly recommendable to set up the highest value for max_chunk parameter.
+
+
+<p align="center"> <img width="650" height="247" src="assets/max_chunk.png"> </p>
+<div align="center"><i>Figure 3: Time performance for an example of parsing one 1GB file</i></div><br />
 
 <p align="center">-Deparsing parameters-</p>
 
