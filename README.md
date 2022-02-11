@@ -5,7 +5,7 @@ Parser for data streams composed of variate (structured and unstructured) source
 
 Contact persons: José Camacho Páez (josecamacho@ugr.es)
 
-Last modification of this document: 20/Ene/21
+Last modification of this document: 11/Feb/22
 
 
 ## Presentation
@@ -38,13 +38,13 @@ folder. The format of the config files is explained in the beggining of each fil
 split setting. See /config/configuration.yaml for more info. There are some example configuration 
 files in the example directory.
 
-2.- Split data (optional). Usually, sampling the input data is required.
+2.- Split data (optional). Usually, splitting the input data is required.
 The sampling configuration and datasources are defined in configuration.yaml. 
-If split parameters are not determined, the data won't be sampled.
+If split parameters are not determined, the data won't be split.
 
 3.- Parse data. Extract observations from data.
 
-In the example, data is sampled every minute. Example usage:
+In the example, the data is sampled every minute. Example usage (running from the FCParser root directory and from the linux shell):
 
 	$ python3 bin/fcparser.py example/config/configuration.yaml
 	$ python3 bin/fcparser.py --debug example/config/configuration.yaml
