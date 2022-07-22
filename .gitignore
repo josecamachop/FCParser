@@ -1,1 +1,7 @@
+# Python
 *.pyc
+__init__.py
+__pycache__
+
+# macOS
+.DS_Store

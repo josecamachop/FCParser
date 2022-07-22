@@ -1,84 +1,80 @@
 General consideration for configuration files.
+For more information about the configuration parameters, check the user manual.
 
-General configuration -- configuration.yaml
+General configuration file -- configuration.yaml
+=============================================================
+Note: This is a common template for parsing, deparsing and learning process.
+      Not all the parameters are mandatory depending on the program you are going to run.
+
+DataSources:
+  Source1:        DataSource name
+    config:         Configuration file for this datasource.
+    parsing:        Data input files for parsing process
+    deparsing:      Data input files for deparsing process
+    learning:       Data input files for learning process
+  Source2:
+     ...
+
+Online:               Boolean variable to determine if online mode (True) or offline mode (False)
+All:                  Optional variable for unstructured sources. To consider either all possible matches for a variable (True) or only the first one (False)
+Incremental_output:   Boolean variable for incremental features. It is set to False by default.
+                      If true and output files exist, new counters are added to the old ones. 
+
+Processes:            Number of processes used by the program: [1, Ncores]. If not set, program uses 80% of your cpu
+Max_chunck:           Size (in MB) of the chunk of files that are being processed at the same time. If not defined, it is set to 1GB.
+                      Note that larger chunks would increase the processing speed but might overload your memory if data is too large.
+ 
+Keys:           Key variable to aggregate dataSources. If empty, no aggregation is made. So, analyzed by timestamp
+
+Lperc, Endlperc:       Percentage of data used for learning process
+
+Parsing_Output:
+  dir:          Output directory to write the output parsed data.
+  stats:        Log file to write the stats (lines, records, matches)
+
+Deparsing_output: 
+  dir:           Output directory for deparsing process
+  treshold:      upper limit of log entries by data source 
+  stats:         log file to write number of logs found during deparsing process
+
+SPLIT:        split info for temporal sampling
+  Time:        
+    window      time window used for sampling (in minutes). If not set, 5 minutes time window will be considered
+    start:      start and end time for sampling interval
+    end:        If they are not set, the whole data file is processed
+
+
+
+Data Source configuration file -- datasource.yaml
 =============================================================
 
+tag: Identifier of the data source
+structured: Boolean variable to indicate if datasource is structured (eg. csv) or not
+timestamp_format: format of the timestamp of the logs in the files of this dataSource in python datetime format
+                  Check: https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
 
- DataSources:
-   Source1:   DataSource name
-     config:    Configuration file for this datasource.
-     data:      Input files.
-   Source2:
-     ...
-   SourceN:
-     ...
+separator: Chars that delimitates the log entries of the source. It is mandatory for unstructured sources.
+           For structured sources, \n is considered by default.
 
- Processes:    Number of processes used by the program. Use a number between 1 and the number of cores of 				your system.
-
- Online: 	Boolean variable to determine if online or offline mode. Online mode for real time application (only one process). Offline mode for processing already stored data sets (multiprocess).
-
- Chunk_size:   Size of the chunk of files that are being processed at 
- 	        the same time (Kilobytes)
- Output:
-   dir:       Output directory to write the output files.
-   stats:     Log file to write the stats (lines, records, matches).
-
- Deparsing_output: 
-  dir:          Output directory for deparsing process
- treshold:     upper limit of log entries by datasource. 
-
- SPLIT:        split params for temporal samplig
-   Time:
-     window:   time windows for sampling in seconds
-     start:    start and end time for sampling interval
-     end:  
-   
-
-
-
-
-Source configuration -- datsource.yaml
-=============================================================
-
-General attributes 
-
-tag:   Identifier of the data source
-
-structured:   boolean variable to determine if the source is structured or not
-
-timestamp_format: format of the timestamp of the logs in the files of this dataSource in python
-                  datetime format, see https://docs.python.org/2/library/datetime.html#strftime-and-strptime-behavior
-
-
-
-
-timestamp_regexp: regular expresion that matches the date format of the source (only needed for unstructured sources)
-
-
-separator:  **Only for unsstructured sources** chars that delimitates the log entries of the source (only needed in unstructured sources)
-
-timearg: **Only for structured sources** position of the time stamp 
-
+timearg: It is the name of the variable which collects the timestamps. If not defined, variable with name 'timestamp' will be considered.
 
 VARIABLES:
+  - name:       Variable name.
+  - matchtype:  Variable matchtype {string, number, time, ip, duration, counter}.
+  - where:      Position of the field in the line (column number, starts with 0) - if structured datasource
+                Regular expression that matches the wanted field - if unstructured datasource.
 
-- name:      Variable name.
-  matchtype: Variable matchtype {string, number, counter, ip, time, duration}.
-  where:     Position of the field in the line (number for structured sources and regexp for unstructured sources.)
-
-*** IMPORTANT NOTE *** 
-There must be a variable called timestamp that collects the timestamps as strings.
-*** IMPORTANT NOTE *** 
-
+  Note: There must be a variable that collects the timestamps whose name matches the timearg field
 
 FEATURES:
-   - name:      Feature name.
-     variable:  Variable from which the feature is calculated.
-     matchtype: Feature matchtype {single, multiple, range, default}
-     value:     Value of the field that defines the feature.
-                If the matchtype is 'single' use a single value.
-                If the matchtype is 'multiple', use a list of values.
-                If the matchtype is 'range', use a list of two values.
-                If the matchtype is 'default', the value must be empty.
- 
-
+  - name:       Feature name.
+  - variable:   Variable from which the feature is calculated.
+  - matchtype:  Feature matchtype {single, multiple, range, default, regexp}
+  - value:      Value of the field that defines the feature.
+                  If the matchtype is 'single' use a single value.
+                  If the matchtype is 'multiple', use a list of values.
+                  If the matchtype is 'range', use a list of two values.
+                  If the matchtype is 'default', the value must be empty.
+                  If the matchtype is 'regexp', the value is a string.
+  - weight:     Optional parameter to assign different weights to the features, to be considered during the analysis.
+                If no weight is specified, the weight of all the features will be automatically set to one.

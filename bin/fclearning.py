@@ -415,8 +415,8 @@ def getArguments():
     Function to get input arguments from configuration file
     '''
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''Multivariate Analysis Parsing Tool.''')
-    parser.add_argument('config', metavar='CONFIG', help='Learner Configuration File.')
-    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fcparser in debug mode")
+    parser.add_argument('config', metavar='CONFIG', help='Learning Configuration File.')
+    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fclearning in debug mode")
     args = parser.parse_args()
     return args
 
