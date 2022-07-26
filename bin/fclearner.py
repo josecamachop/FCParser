@@ -5,7 +5,8 @@ learner -- Program for automatically learning features from the set of variables
 of raw network data using the FaaC parser library.
 
 
-Authors:    Jose Camacho (josecamacho@ugr.es)
+Authors:    Manuel Jurado Vazquez (manjurvaz@ugr.es) 
+            Jose Camacho (josecamacho@ugr.es)
          
 Last Modification: 26/Jul/2022
 
@@ -140,32 +141,36 @@ def process_file(file, fragStart, fragSize, config, source):
 
     instances = {}
     separator = config['RECORD_SEPARATOR'][source]
-    
+
     try:    
         if file.endswith('.gz'):                    
-            f = gzip.open(file, 'r')
+            f = gzip.open(file, 'r', newline="")
         else:
-            f = open(file, 'r')
+            f = open(file, 'r', newline="")
 
         f.seek(fragStart)
         lines = f.read(fragSize)
-    
+        #if debugmode: print("[Loaded set of %d logs]\n" %(len(lines.split(separator))))
+            
     finally:
         f.close()
 
     instances['count'] = 0
-    log = ''
-    for line in lines:
-        log += line 
-
-        if separator in log:
-            instances = process_log(log,config, source, instances)
-            log = log.split(separator)[1]
-    if log:    
-        instances = process_log(log,config, source, instances)
-
+    for line in iter_split(lines, separator):  
+        instances = process_log(line, config, source, instances)
+        
 
     return instances
+
+def iter_split(line, delimiter):
+    start = 0
+    line_size = len(line)
+    delimiter_size = len(delimiter)
+    while start<line_size:
+        end = line.find(delimiter, start)
+        yield line[start:end]
+        if end == -1: break
+        start = end + delimiter_size
 
 def frag(fname, init, separator, size, max_chunk):
     '''
