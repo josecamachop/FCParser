@@ -162,15 +162,52 @@ def process_file(file, fragStart, fragSize, config, source):
 
     return instances
 
-def iter_split(line, delimiter):
-    start = 0
-    line_size = len(line)
-    delimiter_size = len(delimiter)
-    while start<line_size:
-        end = line.find(delimiter, start)
-        yield line[start:end]
-        if end == -1: break
-        start = end + delimiter_size
+
+def process_log(log, config, source, instances):
+    '''
+    Function take on data entry as input an transform it into a preliminary observation
+    '''     
+    
+    ignore_log = 0      # flag to skip processing this log
+    if not log or not log.strip():  
+        ignore_log=1    # do not process empty logs or containing only spaces
+        print('\033[31m'+ "The entry log is empty and will not be processed\n" +'\033[m')
+
+    if not ignore_log:
+        
+        record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
+
+        instances['count'] += 1
+        
+        timearg = config['TIMEARG'][source] # name of variable which contains timestamp
+        log_timestamp = record.variables[timearg][0].value
+    
+        # Check if log_timestamp will be considered according to time sampling parameters
+        if 'start' in config['Time']:
+            if log_timestamp < config['Time']['start']:
+                ignore_log = 1
+        if 'end' in config['Time']:
+            if log_timestamp > config['Time']['end']:
+                ignore_log = 1 
+    
+    if not ignore_log:
+        
+        for variable,features in record.variables.items():
+            if variable != timearg:
+                if variable in instances.keys():
+                    for feature in features:
+                        if str(feature) in instances[variable].keys():
+                            instances[variable][str(feature)] += 1
+                        else:
+                            instances[variable][str(feature)] = 1
+                else:
+                    instances[variable] = dict() 
+                    for feature in features:
+                        instances[variable][str(feature)] = 1
+
+                    
+    return instances
+
 
 def frag(fname, init, separator, size, max_chunk):
     '''
@@ -232,36 +269,20 @@ def combine(instances, instances_new, perc):
     return instances
 
 
+def iter_split(line, delimiter):
+    start = 0
+    line_size = len(line)
+    delimiter_size = len(delimiter)
+    while start<line_size:
+        end = line.find(delimiter, start)
+        yield line[start:end]
+        if end == -1: break
+        start = end + delimiter_size
 
 
 
 
 
-def process_log(log, config, source, instances):
-    '''
-    Function take on data entry as input an transform it into a preliminary observation
-    '''     
-    timearg = config['TIMEARG'][source] # name of variable which contains timestamp
-    record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['SOURCES'][source]['CONFIG']['timestamp_format'], config['All'])
-
-    instances['count'] += 1
-
-    for variable,features in record.variables.items():
-        if variable != timearg:
-            if variable in instances.keys():
-                for feature in features:
-                    if str(feature) in instances[variable].keys():
-                        instances[variable][str(feature)] += 1
-                    else:
-                        instances[variable][str(feature)] = 1
-            else:
-                instances[variable] = dict() 
-                for feature in features:
-                    instances[variable][str(feature)] = 1
-
-                    
-
-    return instances
     
 
 def create_stats(config):
