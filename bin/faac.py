@@ -956,7 +956,7 @@ def loadConfig(parserConfig, caller, debugmode):
             
     # Chunk size parameter (only for offline mode)
     try:
-        if caller == 'fcparser' and online is False:
+        if caller == 'fcparser' and online is False or caller == 'fclearning':
             try: 
                 config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
                 if not debugmode:

@@ -18,16 +18,10 @@ Last Modification: 16/Jul/2018
 import multiprocessing as mp
 from collections import OrderedDict
 import argparse
-import glob
-import datetime
-import os
 import gzip
 import re
 import time
-import shutil
 import yaml
-import subprocess
-from operator import add
 import faac
 import math
     
@@ -72,7 +66,6 @@ def parsing(config,startTime,stats):
     Main process for parsing. The program is in charge of temporal sampling.
     '''
     results = {}
-    final_res = {}
 
     for source in config['SOURCES']:
 
@@ -90,7 +83,7 @@ def parsing(config,startTime,stats):
 
 def process_multifile(config, source, lengths):
     '''
-    processing files procedure for unstructured sources in offline parsing. In this function the pool 
+    processing files procedure in offline parsing. In this function the pool 
     of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
     Each process is assigned a chunk of file to be processed.
     The results of each process are gathered to be postprocessed. 
@@ -106,14 +99,14 @@ def process_multifile(config, source, lengths):
         if input_path:
             count += 1
             tag = getTag(input_path)
-
-            #Print some progress stats
-            print ("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag))
-        
-            pool = mp.Pool(config['Cores'])
             cont = True
             init = 0
             remain = lengths[i]
+
+            #Print some progress stats
+            print ("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag))
+                
+            pool = mp.Pool(config['Cores'])
             while cont: # cleans memory from processes
                 jobs = list()
                 for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
