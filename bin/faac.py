@@ -1274,7 +1274,8 @@ def loadConfig(parserConfig, caller, debugmode):
             for i in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
                 config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['VARIABLES'][i]['where'])
 
-            for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
+            if caller == 'fcparser' or caller == 'fcdeparser':  
+                for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
                     if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
                         config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value']+'$')
 
@@ -1282,7 +1283,8 @@ def loadConfig(parserConfig, caller, debugmode):
             # TODO: Retrieve from yaml
             #config['RECORD_SEPARATOR'][source] = config['SOURCES'][source]['CONFIG'].get('record_separator') or "\n"
             #print(config['RECORD_SEPARATOR'])
-            for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
+            if caller == 'fcparser' or caller == 'fcdeparser':  
+                for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
                     if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'regexp':
                         config['SOURCES'][source]['CONFIG']['FEATURES'][i]['r_Comp'] = re.compile(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'])
     
