@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 
 """
-learner -- Program for parsing and processing raw network
-data and preparing it for further multivariate analysis using
-FaaC parser library.
+learner -- Program for automatically learning features from the set of variables
+of raw network data using the FaaC parser library.
 
 
 Authors:    Jose Camacho (josecamacho@ugr.es)
-        Jose Manuel Garcia Gimenez (jgarciag@ugr.es) 
-        Alejandro Perez Villegas (alextoni@gmail.com)
          
-         
-Last Modification: 16/Jul/2018
+Last Modification: 26/Jul/2022
 
 """
 
@@ -24,6 +20,7 @@ import time
 import yaml
 import faac
 import math
+from math import floor
     
 def main(call='external',configfile=''):
 
@@ -68,20 +65,18 @@ def parsing(config,startTime,stats):
     results = {}
 
     for source in config['SOURCES']:
-
-
         results[source] = []
         currentTime = time.time()
         print ("\n-----------------------------------------------------------------------\n")
         print ("Elapsed: %s \n" %(prettyTime(currentTime - startTime)))
 
 
-        results[source] = process_multifile(config, source, stats['sizes'][source])
+        results[source] = process_multifile(config, source, stats)
 
 
     return results
 
-def process_multifile(config, source, lengths):
+def process_multifile(config, source, stats):
     '''
     processing files procedure in offline parsing. In this function the pool 
     of proccesses is created. Each file is fragmented in chunk sizes that can be load to memory. 
@@ -94,6 +89,8 @@ def process_multifile(config, source, lengths):
 
     count = 0
     instances['count'] = 0
+    lengths = stats['sizes'][source] #filesize
+    
     for i in range(len(config['SOURCES'][source]['FILESTRAIN'])):
         input_path = config['SOURCES'][source]['FILESTRAIN'][i]
         if input_path:
@@ -105,12 +102,20 @@ def process_multifile(config, source, lengths):
 
             #Print some progress stats
             print ("%s  #%s / %s  %s" %(source, str(count), str(len(config['SOURCES'][source]['FILESTRAIN'])), tag))
-                
+         
+            # Recalculate Ncores if nlogs < ncores for this datasource
+            ncores_bkp = config['Cores']
+            nlogs = stats['lines'][source]
+            if config['Cores']>1 and 10*config['Cores'] > nlogs:     
+                config['Cores'] = max(1, floor(nlogs/10))
+             
+            # Multiprocessing   
             pool = mp.Pool(config['Cores'])
-            while cont: # cleans memory from processes
+            while cont:         # cleans memory from processes
                 jobs = list()
+                # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
                 for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
-                    jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source,config['RECORD_SEPARATOR'][source])) )
+                    jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source)) )
                 else:
                     if fragStart+fragSize < lengths[i]:
                         remain = lengths[i] - fragStart+fragSize
@@ -122,10 +127,43 @@ def process_multifile(config, source, lengths):
                     instances = combine(instances,job.get(),config['Lperc'])
 
 
-
-
             pool.close()
+            config['Cores'] = ncores_bkp
     
+    return instances
+
+def process_file(file, fragStart, fragSize, config, source):
+    '''
+    Function that uses each process to get data entries from unstructured data using the separator defined
+    in configuration files that will be transformed into observations. This is used only in offline parsing. 
+    '''
+
+    instances = {}
+    separator = config['RECORD_SEPARATOR'][source]
+    
+    try:    
+        if file.endswith('.gz'):                    
+            f = gzip.open(file, 'r')
+        else:
+            f = open(file, 'r')
+
+        f.seek(fragStart)
+        lines = f.read(fragSize)
+    
+    finally:
+        f.close()
+
+    instances['count'] = 0
+    log = ''
+    for line in lines:
+        log += line 
+
+        if separator in log:
+            instances = process_log(log,config, source, instances)
+            log = log.split(separator)[1]
+    if log:    
+        instances = process_log(log,config, source, instances)
+
 
     return instances
 
@@ -191,38 +229,7 @@ def combine(instances, instances_new, perc):
 
 
 
-def process_file(file, fragStart, fragSize, config, source,separator):
-    '''
-    Function that uses each process to get data entries from unstructured data using the separator defined
-    in configuration files that will be transformed into observations. This is used only in offline parsing. 
-    '''
 
-    instances = {}
-    try:    
-        if file.endswith('.gz'):                    
-            f = gzip.open(file, 'r')
-        else:
-            f = open(file, 'r')
-
-        f.seek(fragStart)
-        lines = f.read(fragSize)
-    
-    finally:
-        f.close()
-
-    instances['count'] = 0
-    log = ''
-    for line in lines:
-        log += line 
-
-        if separator in log:
-            instances = process_log(log,config, source, instances)
-            log = log.split(separator)[1]
-    if log:    
-        instances = process_log(log,config, source, instances)
-
-
-    return instances
 
 
 def process_log(log, config, source, instances):
