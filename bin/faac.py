@@ -1326,30 +1326,31 @@ def loadConfig(parserConfig, caller, debugmode):
         config['features'] = []
         config['weights'] = []
     
-        for source in config['FEATURES']:
-            # Create weight file
+        if caller == 'fcparser' or caller == 'fcdeparser':  
+            for source in config['FEATURES']:
+                # Create weight file
     
-            for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
-                try:    
-                    config['features'].append(feat['name'])
-                except Exception as e:
-                    print("FEATURES: missing config key (%s)" %(e.message))
-                    exit(1)    
+                for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
+                    try:    
+                        config['features'].append(feat['name'])
+                        except Exception as e:
+                            print("FEATURES: missing config key (%s)" %(e.message))
+                            exit(1)    
 
-                try:    
-                    fw = feat['weight']
-                    for var in config['SOURCES'][source]['CONFIG']['VARIABLES']:
-                        if var['name'] == feat['variable']:
-                            try:
-                                fw2 = var['weight']
-                            except:
-                                fw2 = 1
+                    try:    
+                        fw = feat['weight']
+                        for var in config['SOURCES'][source]['CONFIG']['VARIABLES']:
+                            if var['name'] == feat['variable']:
+                                try:
+                                    fw2 = var['weight']
+                                    except:
+                                        fw2 = 1
 
-                            fw = fw*fw2
-                except:
-                    fw = 1
+                                fw = fw*fw2
+                                except:
+                                    fw = 1
 
-                config['weights'].append(str(fw))
+                    config['weights'].append(str(fw))
 
 
     return config
