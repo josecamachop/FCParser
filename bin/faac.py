@@ -1333,9 +1333,9 @@ def loadConfig(parserConfig, caller, debugmode):
                 for feat in config['SOURCES'][source]['CONFIG']['FEATURES']:
                     try:    
                         config['features'].append(feat['name'])
-                        except Exception as e:
-                            print("FEATURES: missing config key (%s)" %(e.message))
-                            exit(1)    
+                    except Exception as e:
+                        print("FEATURES: missing config key (%s)" %(e.message))
+                        exit(1)    
 
                     try:    
                         fw = feat['weight']
@@ -1343,12 +1343,12 @@ def loadConfig(parserConfig, caller, debugmode):
                             if var['name'] == feat['variable']:
                                 try:
                                     fw2 = var['weight']
-                                    except:
-                                        fw2 = 1
+                                except:
+                                    fw2 = 1
 
                                 fw = fw*fw2
-                                except:
-                                    fw = 1
+                    except:
+                        fw = 1
 
                     config['weights'].append(str(fw))
 
