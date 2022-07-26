@@ -485,7 +485,6 @@ def write_stats(config,stats):
     for source in config['SOURCES']:
         statsStream.write( " * %s \n" %((source).ljust(18)))
         statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
-        statsStream.write( "\t\t %s features \n" %(len(config['SOURCES'][source]['CONFIG']['FEATURES'])))
         statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source], stats['processed_lines'][source]))
         statsStream.write( "\t\t %d total bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
                                                            (sum(stats['sizes'][source]))*1e-6))
