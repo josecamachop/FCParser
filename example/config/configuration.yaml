@@ -31,7 +31,11 @@
 #
 # Deparsing_output: 
 #  dir:           Output directory for deparsing process
-#  treshold:      upper limit of log entries by data source  
+#  treshold:      upper limit of log entries by data source 
+#
+# Learning_Output:
+#   dir:          Output directory to write the output learned data.
+#   stats:        Log file to write the stats (lines, records, matches) 
 #
 # SPLIT:        split info for temporal sampling
 #   Time:        

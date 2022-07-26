@@ -34,6 +34,10 @@
 #  treshold:      upper limit of log entries by data source  
 #  stats:         log file to write number of logs found during deparsing process
 #
+# Learning_Output:
+#   dir:          Output directory to write the output learned data.
+#   stats:        Log file to write the stats (lines, records, matches)
+#
 # SPLIT:        split info for temporal sampling
 #   Time:        
 #     window      time window used for sampling (in minutes). If not set, 5 minutes time window will be considered

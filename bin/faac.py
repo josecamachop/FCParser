@@ -913,7 +913,7 @@ def loadConfig(parserConfig, caller, debugmode):
             online = False
             
         try:
-            output = parserConfig_low['learner_output']
+            output = parserConfig_low['learning_output']
         except:
             print('\033[31m'+ "**CONFIG FILE ERROR** field: learner_Output" +'\033[m')
             paramError = True
