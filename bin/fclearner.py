@@ -213,36 +213,35 @@ def frag(fname, init, separator, size, max_chunk):
     '''
     Function to fragment files in chunks to be parallel processed for structured files by lines
     '''
-
-    #print "File pos: %d, size: %d, max_chunk: %d" %(init,size, max_chunk)
-
+    #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
+    
     try:
         if fname.endswith('.gz'):                    
-            f = gzip.open(fname, 'r')
+            f = gzip.open(fname, 'r', newline="")
         else:
-            f = open(fname, 'r')
+            f = open(fname, 'r', newline="")
 
 
         f.seek(init)
         end = f.tell()
         init = end
-        cont = True
+        separator_size = len(separator)
         while end-init < max_chunk:
             start = end
-            asdf = f.read(size)
-            i = asdf.rfind(separator)
+            tmp = f.read(size)
+            i = tmp.rfind(separator)
             if i == -1:
+                yield start, len(tmp)
                 break
-
-            f.seek(start+i+1)
+            f.seek(start+i+separator_size)
             end = f.tell()
+            #print("Frag: "+str([start, i, end]))
 
             yield start, end-start
 
-
-
     finally:
         f.close()
+        
 
 def combine(instances, instances_new, perc):
     '''
