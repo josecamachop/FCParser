@@ -13,7 +13,6 @@ Last Modification: 26/Jul/2022
 """
 
 import multiprocessing as mp
-from collections import OrderedDict
 import argparse
 import gzip
 import re
@@ -21,7 +20,9 @@ import time
 import yaml
 import faac
 import math
+from collections import OrderedDict
 from math import floor
+from sys import version_info
     
 def main(call='external',configfile=''):
 
@@ -62,6 +63,7 @@ def main(call='external',configfile=''):
     print ("Elapsed: %s \n" %(prettyTime(time.time() - startTime))    )
 
 
+
 def parsing(config,startTime,stats):
     '''
     Main process for parsing. The program is in charge of temporal sampling.
@@ -79,6 +81,7 @@ def parsing(config,startTime,stats):
 
 
     return results
+
 
 def process_multifile(config, source, stats):
     '''
@@ -135,6 +138,7 @@ def process_multifile(config, source, stats):
             config['Cores'] = ncores_bkp
     
     return instances
+
 
 def process_file(file, fragStart, fragSize, config, source):
     '''
@@ -282,6 +286,65 @@ def iter_split(line, delimiter):
         if end == -1: break
         start = end + delimiter_size
 
+ 
+def getTag(filename):
+    '''
+    function to identify data source by the input file
+    '''
+    tagSearch = re.search("(\w*)\.\w*$", filename)
+    if tagSearch:
+        return tagSearch.group(1)
+    else:
+        return None
+    
+
+def file_len(fname):
+    '''
+    Function to get lines from a file
+    '''
+    count_log = 0
+    try:
+        if fname.endswith('.gz'):
+            input_file = gzip.open(fname,'r')
+        else:
+            input_file = open(fname,'r')
+
+        for count_log, l in enumerate(input_file):
+            pass
+
+    finally:
+        size = input_file.tell()
+        input_file.close()
+
+    return count_log+1,size
+
+
+def file_uns_len(fname, separator):
+    '''
+    Function determine de number of logs for a unstructured file 
+    '''
+    count_log = 0
+    try:
+        if fname.endswith('.gz'):
+            input_file = gzip.open(fname,'r')
+        else:
+            input_file = open(fname,'r')
+
+        log ="" 
+        for line in input_file:        
+            log += line 
+
+            splitt = log.split(separator);
+            if len(splitt) > 1:
+                count_log += 1    
+                log = log[len(splitt[0])+1:]
+
+    
+    finally:
+        size = input_file.tell()
+        input_file.close()
+
+    return count_log,size 
 
 
 def create_stats(config):
@@ -338,6 +401,34 @@ def count_entries(config,stats):
 
     return stats
 
+
+           
+def prettyTime(elapsed):
+    '''
+    Function to format time for print.
+    '''
+    hours = int(elapsed // 3600)
+    minutes = int(elapsed // 60 % 60)
+    seconds = int(elapsed % 60)
+    pretty = str(seconds) + " secs"
+    if minutes or hours:
+        pretty = str(minutes) + " mins, " + pretty
+    if hours:
+        pretty = str(hours) + " hours, " + pretty
+    return pretty
+
+
+def getArguments():
+    '''
+    Function to get input arguments from configuration file
+    '''
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''Multivariate Analysis Parsing Tool.''')
+    parser.add_argument('config', metavar='CONFIG', help='learner Configuration File.')
+    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fclearner in debug mode")
+    args = parser.parse_args()
+    return args
+
+
 def configSummary(config):
     '''
     Print a summary of loaded parameters
@@ -354,90 +445,6 @@ def configSummary(config):
     print ("-----------------------------------------------------------------------\n")
     
 
-   
-def getTag(filename):
-    '''
-    function to identify data source by the input file
-    '''
-    tagSearch = re.search("(\w*)\.\w*$", filename)
-    if tagSearch:
-        return tagSearch.group(1)
-    else:
-        return None
-
-def file_len(fname):
-    '''
-    Function to get lines from a file
-    '''
-    count_log = 0
-    try:
-        if fname.endswith('.gz'):
-            input_file = gzip.open(fname,'r')
-        else:
-            input_file = open(fname,'r')
-
-        for count_log, l in enumerate(input_file):
-            pass
-
-    finally:
-        size = input_file.tell()
-        input_file.close()
-
-    return count_log,size
-
-
-def file_uns_len(fname, separator):
-    '''
-    Function determine de number of logs for a unstructured file 
-    '''
-    count_log = 0
-    try:
-        if fname.endswith('.gz'):
-            input_file = gzip.open(fname,'r')
-        else:
-            input_file = open(fname,'r')
-
-        log ="" 
-        for line in input_file:        
-            log += line 
-
-            splitt = log.split(separator);
-            if len(splitt) > 1:
-                count_log += 1    
-                log = log[len(splitt[0])+1:]
-
-    
-    finally:
-        size = input_file.tell()
-        input_file.close()
-
-    return count_log,size        
-    
-def prettyTime(elapsed):
-    '''
-    Function to format time for print.
-    '''
-    hours = int(elapsed // 3600)
-    minutes = int(elapsed // 60 % 60)
-    seconds = int(elapsed % 60)
-    pretty = str(seconds) + " secs"
-    if minutes or hours:
-        pretty = str(minutes) + " mins, " + pretty
-    if hours:
-        pretty = str(hours) + " hours, " + pretty
-    return pretty
-
-
-
-def getArguments():
-    '''
-    Function to get input arguments from configuration file
-    '''
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''Multivariate Analysis Parsing Tool.''')
-    parser.add_argument('config', metavar='CONFIG', help='learner Configuration File.')
-    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fclearner in debug mode")
-    args = parser.parse_args()
-    return args
 
 
 def filter_output(output_data,perc):
@@ -552,7 +559,7 @@ def write_output(config, output_data, total):
             f.write('\n\n')
             yaml.dump(contentf, f, default_flow_style=False)
         except:
-                print ("Problem writing " + yamlfile)
+                print ("Problem writing YAML file")
                 quit()
         finally:
             f.close()
@@ -570,4 +577,9 @@ class UnsortableOrderedDict(OrderedDict):
 
 if __name__ == "__main__":
     
+    if version_info[0] != 3:
+        print('\033[31m'+ "** PYTHON VERSION ERROR **" +'\033[m')
+        print("Please, use python3 to run this program")
+        exit(1)
+        
     main()
