@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-parser -- Program for parsing and processing raw network
+learner -- Program for parsing and processing raw network
 data and preparing it for further multivariate analysis using
 FaaC parser library.
 
@@ -39,7 +39,7 @@ def main(call='external',configfile=''):
     # Get configuration
     print("LOADING GENERAL CONFIGURATION FILE...")
     parserConfig = faac.getConfiguration(configfile)
-    config = faac.loadConfig(parserConfig, 'fclearning', debugmode)
+    config = faac.loadConfig(parserConfig, 'fclearner', debugmode)
 
     # Print configuration summary
     configSummary(config)
@@ -408,8 +408,8 @@ def getArguments():
     Function to get input arguments from configuration file
     '''
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''Multivariate Analysis Parsing Tool.''')
-    parser.add_argument('config', metavar='CONFIG', help='Learning Configuration File.')
-    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fclearning in debug mode")
+    parser.add_argument('config', metavar='CONFIG', help='learner Configuration File.')
+    parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fclearner in debug mode")
     args = parser.parse_args()
     return args
 

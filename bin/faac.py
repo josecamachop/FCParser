@@ -833,7 +833,7 @@ def getConfiguration(config_file):
 def loadConfig(parserConfig, caller, debugmode):
     '''
     Function to load configuration from the config files.
-    Caller function is fcparser, fcdeparser or fclearning
+    Caller function is fcparser, fcdeparser or fclearner
     '''
     
     # Config dictionary which stores all the entries necessary for processing (the parameters
@@ -905,7 +905,7 @@ def loadConfig(parserConfig, caller, debugmode):
             config['threshold'] = None
         
         
-    if caller == 'fclearning':
+    if caller == 'fclearner':
         # Online parameter
         try:
             online = parserConfig_low['online']
@@ -913,9 +913,9 @@ def loadConfig(parserConfig, caller, debugmode):
             online = False
             
         try:
-            output = parserConfig_low['learning_output']
+            output = parserConfig_low['learner_output']
         except:
-            print('\033[31m'+ "**CONFIG FILE ERROR** field: Learning_Output" +'\033[m')
+            print('\033[31m'+ "**CONFIG FILE ERROR** field: learner_Output" +'\033[m')
             paramError = True
             
         if 'lperc' in parserConfig_low:
@@ -938,7 +938,7 @@ def loadConfig(parserConfig, caller, debugmode):
             
             
     # Number of cores used by the program
-    if caller == 'fcparser' or caller == 'fclearning': 
+    if caller == 'fcparser' or caller == 'fclearner': 
         if debugmode:
             config['Cores'] = 1
         else:
@@ -956,7 +956,7 @@ def loadConfig(parserConfig, caller, debugmode):
             
     # Chunk size parameter (only for offline mode)
     try:
-        if caller == 'fcparser' and online is False or caller == 'fclearning':
+        if caller == 'fcparser' and online is False or caller == 'fclearner':
             try: 
                 config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
                 if not debugmode:
@@ -1128,17 +1128,17 @@ def loadConfig(parserConfig, caller, debugmode):
                     print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'deparsing' in '%s' data source" %(source) +'\033[m')
                     paramError = True
                     
-        if caller == 'fclearning': 
+        if caller == 'fclearner': 
             try:
-                config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
+                config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learner'])
                 if not config['SOURCES'][source]['FILESTRAIN']:
-                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['learning']) +'\033[m')
+                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['learner']) +'\033[m')
                     paramError = True
             except:
                 if 'FILES' in config['SOURCES'][source] and config['SOURCES'][source]['FILES']:
                     config['SOURCES'][source]['FILESTRAIN'] = config['SOURCES'][source]['FILES']
                 else:
-                    print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learning' in '%s' data source" %(source) +'\033[m')
+                    print('\033[31m'+ "**CONFIG FILE ERROR** missing field: 'learner' in '%s' data source" %(source) +'\033[m')
                     paramError = True
                 
         
@@ -1360,7 +1360,7 @@ def loadConfig(parserConfig, caller, debugmode):
 def debugProgram(caller, args):
     '''
     Function to debug program in order to obtain more information about execution process.
-    Caller function is fcparser, fcdeparser or fclearning.
+    Caller function is fcparser, fcdeparser or fclearner.
     Exec_point is related to the moment when we want to debug
     Args is the required data to print according to the exec point.
     '''
