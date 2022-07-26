@@ -1238,27 +1238,29 @@ def loadConfig(parserConfig, caller, debugmode):
                 paramError = True
                 print('\033[31m'+ "** ConfigError - VARIABLES: empty name/id in variable %d" %(i) +'\033[m')
 
-        for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
-            # Validate feature name
-            if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']:
-                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'])
-            else:
-                paramError = True
-                print('\033[31m'+ "** ConfigError - FEATURES: missing name in feature %d" %(i) +'\033[m')
+        
+        if caller == 'fcparser' or caller == 'fcdeparser':  
+            for i in range(len(config['SOURCES'][source]['CONFIG']['FEATURES'])):
+                # Validate feature name
+                if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']:
+                    config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'] = str(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'])
+                else:
+                    paramError = True
+                    print('\033[31m'+ "** ConfigError - FEATURES: missing name in feature %d" %(i) +'\033[m')
 
-            # Validate variable field in feature
-            if not 'variable' in config['SOURCES'][source]['CONFIG']['FEATURES'][i]:
-                print('\033[31m'+ "** ConfigError - FEATURES: missing variable field in feature '%s'" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']) +'\033[m')
-                paramError = True
-                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
-            elif not config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] in var_names:
-                print('\033[31m' + "Feature with name '%s' is defined using '%s'variable but this variable has not been defined previously" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'], config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']) +'\033[m')
-                paramError = True
-                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+                # Validate variable field in feature
+                if not 'variable' in config['SOURCES'][source]['CONFIG']['FEATURES'][i]:
+                    print('\033[31m'+ "** ConfigError - FEATURES: missing variable field in feature '%s'" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name']) +'\033[m')
+                    paramError = True
+                    config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
+                elif not config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] in var_names:
+                    print('\033[31m' + "Feature with name '%s' is defined using '%s'variable but this variable has not been defined previously" %(config['SOURCES'][source]['CONFIG']['FEATURES'][i]['name'], config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable']) +'\033[m')
+                    paramError = True
+                    config['SOURCES'][source]['CONFIG']['FEATURES'][i]['variable'] = None
             
-            # None value field for default features
-            if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'default':
-                config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'] = None
+                # None value field for default features
+                if config['SOURCES'][source]['CONFIG']['FEATURES'][i]['matchtype'] == 'default':
+                    config['SOURCES'][source]['CONFIG']['FEATURES'][i]['value'] = None
                 
         
         if paramError:
