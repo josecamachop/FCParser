@@ -52,6 +52,9 @@ def main(call='external',configfile=''):
     # Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
     output_data = filter_output(output_data, config['EndLperc'])
 
+    # write in stats file
+    write_stats(config, stats)
+
     # Output results
     write_output(config, output_data, stats['total_lines'])
             
@@ -251,6 +254,7 @@ def combine(instances, instances_new, perc):
     instances_new = filter_instances(instances_new, perc)
 
     instances['count'] += instances_new['count']
+    
     for variable,features in instances_new.items():
         if variable != 'count':
             if variable in instances.keys():
@@ -280,10 +284,6 @@ def iter_split(line, delimiter):
 
 
 
-
-
-    
-
 def create_stats(config):
     '''
     Legacy function - To be updated
@@ -299,22 +299,27 @@ def create_stats(config):
 
     return stats
 
+
 def count_entries(config,stats):
     '''
     Function to get the amount of data entries and bytes for each data source
     '''
 
     lines = {}
+    stats['processed_lines'] = {}
     stats['sizes'] = {}
     for source in config['SOURCES']:
         lines[source] = 0
+        stats['processed_lines'][source] = 0
         stats['sizes'][source] = list()
         for file in config['SOURCES'][source]['FILESTRAIN']:
+            
             if config['STRUCTURED'][source]:
                 (l,s) = file_len(file)
                 lines[source] += l
                 stats['sizes'][source].append(s)
-
+                
+            # unstructured source
             else:
                 (l,s) = file_uns_len(file,config['RECORD_SEPARATOR'][source])
                 lines[source] += l
@@ -331,18 +336,6 @@ def count_entries(config,stats):
 
     stats['total_lines'] = total_lines
 
-    statsStream = open(stats['statsPath'], 'a')
-
-    for source in config['SOURCES']:
-        statsStream.write( " * %s \n" %((source).ljust(18)))
-        statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
-        statsStream.write( "\t\t %d logs \n" %(stats['lines'][source]))
-        statsStream.write( "\t\t %d bytes \n" %(sum(stats['sizes'][source])))
-
-    statsStream.write("\n\n=================================================\n\n")
-
-    statsStream.close()
-
     return stats
 
 def configSummary(config):
@@ -356,11 +349,12 @@ def configSummary(config):
         print (" * %s %s variables " %((source).ljust(18), str(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])).ljust(2)))
     print ()
     print ("Output:")
+    print ("  Directory: %s" %(config['OUTDIR']))
     print ("  Stats file: %s" %(config['OUTSTATS']))
     print ("-----------------------------------------------------------------------\n")
     
 
-
+   
 def getTag(filename):
     '''
     function to identify data source by the input file
@@ -472,6 +466,21 @@ def filter_instances(instances, perc):
     return instances
                     
 
+def write_stats(config,stats):
+    
+    statsStream = open(stats['statsPath'], 'a')
+
+    for source in config['SOURCES']:
+        statsStream.write( " * %s \n" %((source).ljust(18)))
+        statsStream.write( "\t\t %s variables \n" %(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])))
+        statsStream.write( "\t\t %s features \n" %(len(config['SOURCES'][source]['CONFIG']['FEATURES'])))
+        statsStream.write( "\t\t %d logs - %d processed logs \n" %(stats['lines'][source], stats['processed_lines'][source]))
+        statsStream.write( "\t\t %d total bytes (%.2f MB) \n\n" %(sum(stats['sizes'][source]),
+                                                           (sum(stats['sizes'][source]))*1e-6))
+
+    statsStream.write("\n=================================================\n\n")
+
+    statsStream.close()
 
 def write_output(config, output_data, total):
     '''Write configuration file
