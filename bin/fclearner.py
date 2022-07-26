@@ -463,11 +463,16 @@ def filter_instances(instances, perc):
     threshold = perc*instances['count']
     for varkey in instances.keys():
         if varkey != 'count':
+            delete = {}
+    
             for feakey in instances[varkey].keys():
                 if instances[varkey][feakey] < threshold:
-                    del instances[varkey][feakey]
-            if len(instances[varkey].keys()) == 0:
-                del instances[varkey]
+                    delete.append(feakey)
+                    
+            for feakey in delete.keys():
+                del instances[varkey][feakey]
+                if len(instances[varkey].keys()) == 0:
+                    del instances[varkey] 
 
 
     return instances
