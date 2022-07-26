@@ -977,7 +977,7 @@ def loadConfig(parserConfig, caller, debugmode):
     try: 
         parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
         config['Time'] = parserConfig_low['split']['time']
-        if not debugmode:
+        if not debugmode and caller == 'fcparser' or caller == 'fcdeparser':
             if config['Time']['window'] <= 60:
                 print("* Time sampling window: %d minutes" %(config['Time']['window']))
             elif config['Time']['window'] <= 1440:

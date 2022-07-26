@@ -5,8 +5,8 @@ learner -- Program for automatically learning features from the set of variables
 of raw network data using the FaaC parser library.
 
 
-Authors:    Manuel Jurado Vazquez (manjurvaz@ugr.es) 
-            Jose Camacho (josecamacho@ugr.es)
+Authors:    Jose Camacho (josecamacho@ugr.es)
+            Manuel Jurado Vazquez (manjurvaz@ugr.es) 
          
 Last Modification: 26/Jul/2022
 
