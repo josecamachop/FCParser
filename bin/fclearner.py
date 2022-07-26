@@ -461,19 +461,22 @@ def filter_instances(instances, perc):
     '''Filter de data to only common fatures
     '''
     threshold = perc*instances['count']
+    delvar = []
     for varkey in instances.keys():
         if varkey != 'count':
-            delete = []
+            delfea = []
     
             for feakey in instances[varkey].keys():
                 if instances[varkey][feakey] < threshold:
-                    delete.append(feakey)
+                    delfea.append(feakey)
                     
-            for feakey in delete:
+            for feakey in delfea:
                 del instances[varkey][feakey]
                 if len(instances[varkey].keys()) == 0:
-                    del instances[varkey] 
-
+                    delvar.append(varkey)
+                    
+    for varkey in delvar:
+        del instances[varkey] 
 
     return instances
                     
