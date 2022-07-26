@@ -974,41 +974,41 @@ def loadConfig(parserConfig, caller, debugmode):
     
     # Time split parameters   
     #if caller == 'fcparser' or caller == 'fcdeparser':  
-        try: 
-            parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
-            config['Time'] = parserConfig_low['split']['time']
-            if not debugmode:
-                if config['Time']['window'] <= 60:
-                    print("* Time sampling window: %d minutes" %(config['Time']['window']))
-                elif config['Time']['window'] <= 1440:
-                    print("* Time sampling window: %dh %dmin" %(config['Time']['window']/60, config['Time']['window']%60))
-                else:
-                    print('\033[31m'+ "**CONFIG FILE ERROR** Time sampling window above day is not implemented" +'\033[m')
-                    exit(1)
-        except KeyError as key:
-            if key.args[0] == 'split' and not debugmode: 
-                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
-            elif key.args[0] == 'time' and not debugmode: 
-                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Time in SPLIT field")
-            paramWarnings+=1
-            if key.args[0] == 'window' and not debugmode:
-                config['Time']['window'] = 5
+    try: 
+        parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
+        config['Time'] = parserConfig_low['split']['time']
+        if not debugmode:
+            if config['Time']['window'] <= 60:
+                print("* Time sampling window: %d minutes" %(config['Time']['window']))
+            elif config['Time']['window'] <= 1440:
+                print("* Time sampling window: %dh %dmin" %(config['Time']['window']/60, config['Time']['window']%60))
             else:
-                config['Time'] = {'window':5}
+                print('\033[31m'+ "**CONFIG FILE ERROR** Time sampling window above day is not implemented" +'\033[m')
+                exit(1)
+    except KeyError as key:
+        if key.args[0] == 'split' and not debugmode: 
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: SPLIT" +'\033[m')
+        elif key.args[0] == 'time' and not debugmode: 
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Time in SPLIT field")
+        paramWarnings+=1
+        if key.args[0] == 'window' and not debugmode:
+            config['Time']['window'] = 5
+        else:
+            config['Time'] = {'window':5}
                 
-            if not debugmode:
-                print(" * Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
+        if not debugmode:
+            print(" * Setting default sampling time window: %s min." %(config['Time']['window']) +'\033[m')
             
-        try:
-            if 'start' in config['Time']:
-                config['Time']['start'] = datetime.strptime(str(config['Time']['start']), "%Y-%m-%d %H:%M:%S")
-                if not debugmode: print("* Start time: %s" %(config['Time']['start']))
-            if 'end' in config['Time']:
-                config['Time']['end'] = datetime.strptime(str(config['Time']['end']), "%Y-%m-%d %H:%M:%S")
-                if not debugmode: print("* End time: %s" %(config['Time']['end']))
-        except ValueError as val_error:
-            print('\033[31m'+ val_error.args[0] +'\033[m')
-            paramError = True
+    try:
+        if 'start' in config['Time']:
+            config['Time']['start'] = datetime.strptime(str(config['Time']['start']), "%Y-%m-%d %H:%M:%S")
+            if not debugmode: print("* Start time: %s" %(config['Time']['start']))
+        if 'end' in config['Time']:
+            config['Time']['end'] = datetime.strptime(str(config['Time']['end']), "%Y-%m-%d %H:%M:%S")
+            if not debugmode: print("* End time: %s" %(config['Time']['end']))
+    except ValueError as val_error:
+        print('\033[31m'+ val_error.args[0] +'\033[m')
+        paramError = True
             
             
     # Keys parameter
