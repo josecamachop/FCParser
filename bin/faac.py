@@ -973,7 +973,7 @@ def loadConfig(parserConfig, caller, debugmode):
         
     
     # Time split parameters   
-    if caller == 'fcparser' or caller == 'fcdeparser':  
+    #if caller == 'fcparser' or caller == 'fcdeparser':  
         try: 
             parserConfig_low['split'] =  {k.lower(): v for k, v in parserConfig_low['split'].items()}
             config['Time'] = parserConfig_low['split']['time']
