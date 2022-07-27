@@ -51,7 +51,7 @@ def main(call='external',configfile=''):
     output_data = parsing(config, startTime, stats)
 
     # Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
-    output_data = filter_output(output_data, config['EndLperc'])
+    output_data = filter_output(output_data, config['EndLperc'], config['Lperc'])
 
     # write in stats file
     write_stats(config, stats)
@@ -516,18 +516,18 @@ def configSummary(config):
 
 
 
-def filter_output(output_data,perc):
-    '''Filter de data to only common fatures
+def filter_output(output_data,percT, percL):
+    '''Filter de data to only common features
     '''
     for source in output_data.keys():
-        output_data[source] = filter_instances(output_data[source],perc)
+        output_data[source] = filter_instances(output_data[source],percT)
 
 
     return output_data
 
 
 def filter_instances(instances, perc):
-    '''Filter de data to only common fatures
+    '''Filter de data to only common features
     '''
     threshold = perc*instances['count']
     delvar = []
