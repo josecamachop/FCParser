@@ -92,7 +92,6 @@ def offline_parsing(config,startTime,stats):
     to divide files for the different processes. 
     '''
     results = {}
-    final_res = {}
 
     for source in config['SOURCES']:
         results[source] = []
@@ -103,16 +102,8 @@ def offline_parsing(config,startTime,stats):
             
         results[source] = process_multifile(config, source, stats) 
 
-    for source in results:
-        final_res[source] = results[source][0] # combine the outputs of the several processes
-        for result in results[source][1:]:
-            for key in result:
-                if key in final_res[source]:
-                    final_res[source][key].aggregate(result[key])
-                else:
-                    final_res[source][key] = result[key]
 
-    return final_res
+    return results
 
 
 def process_multifile(config, source, stats):
@@ -122,7 +113,7 @@ def process_multifile(config, source, stats):
     Each process is assigned a chunk of file to be processed.
     The results of each process are gathered to be postprocessed. 
     '''
-    results = []
+    results = {}
     count = 0
     lengths = stats['sizes'][source] #filesize
 
@@ -179,14 +170,26 @@ def process_multifile(config, source, stats):
                     processed_lines = job_data[0]
                     obsDict = job_data[1]
                     stats['processed_lines'][source] += processed_lines
-                    results.append(obsDict)
+                    results = combine(results,obsDict)
+                    
             
             pool.close()
             config['Cores'] = ncores_bkp
 
     return results 
-        
-        
+
+def combine(results, obsDict):
+    '''
+    Function to combine the outputs of the several processes
+    '''        
+    for key in obsDict:
+        if key in results:
+            results[key].aggregate(obsDict[key])
+        else:
+            results[key] = obsDict[key]
+    
+    return results 
+            
 def process_file(file, fragStart, fragSize, config, source, stats):
     '''
     Function that uses each process to get data entries from  data using the separator defined
