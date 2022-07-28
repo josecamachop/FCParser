@@ -500,6 +500,8 @@ def write_output(config, output_data, total):
     '''Write configuration file
     '''
 
+    print(output_data)
+    
     contentf = dict()
     contentf['FEATURES'] = list()
 
