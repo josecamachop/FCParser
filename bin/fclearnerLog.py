@@ -235,10 +235,10 @@ def process_log(log, config, source):
                         instances[variable][str(feature)] = 1
                         
         print(instances)
-        print(window)
         print(log_timestamp)
 
-        window = config['Time']['window']            
+        window = config['Time']['window']     
+        print(window)       
         try:
             if config['Keys']:
                 tag = list()
