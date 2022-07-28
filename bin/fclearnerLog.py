@@ -525,24 +525,13 @@ def filter_instances(instances, percT, percL):
     '''Filter de data to only common features
     '''
         
+    holdfea = []
     for tag in instances.keys(): # Local thresholding per window
-        delvar = []
         for varkey in instances[tag].keys():
             if varkey != 'count':
-                delfea = []
-    
                 for feakey in instances[tag][varkey].keys(): 
-                    if instances[tag][varkey][feakey] < percL*instances[tag]['count']:
-                        delfea.append(feakey)
-                    
-                for feakey in delfea:
-                    del instances[tag][varkey][feakey]
-                    if len(instances[tag][varkey].keys()) == 0:
-                        delvar.append(varkey)
-                        
-        for varkey in delvar:
-            del instances[tag][varkey] 
-                    
+                    if instances[tag][varkey][feakey] >= percL*instances[tag]['count']:
+                        holdfea.append(feakey)
                     
     obsDict = {} # Aggregate instances from the list of windows  
     obsDict['count'] = 0
@@ -571,7 +560,7 @@ def filter_instances(instances, percT, percL):
             delfea = []
     
             for feakey in obsDict[varkey].keys():
-                if obsDict[varkey][feakey] < threshold:
+                if obsDict[varkey][feakey] < threshold and feakey not in holdfea:
                     delfea.append(feakey)
                     
             for feakey in delfea:
