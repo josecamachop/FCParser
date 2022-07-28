@@ -238,6 +238,7 @@ def process_log(log, config, source):
 
         window = config['Time']['window']     
         try:
+            print(config)
             if config['Keys']:
                 tag = list()
                 tag2 = normalize_timestamps(log_timestamp, window)
@@ -258,7 +259,7 @@ def process_log(log, config, source):
 
         except: 
             # Exception as err
-            print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
+            # print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
             tag, instances = None, None
             if debugmode:
                 print('\033[31m'+ "This entry log would be ignored due to errors" +'\033[m')
