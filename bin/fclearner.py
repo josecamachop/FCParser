@@ -51,7 +51,7 @@ def main(call='external',configfile=''):
     output_data = parsing(config, startTime, stats)
 
     # Filter output => Only filter during processing, not here, so we identify features that at relevant during a certain interval
-    output_data = filter_output(output_data, config['EndLperc'])
+    output_data = filter_output(output_data, config['EndLperc'], config['Lperc'])
 
     # write in stats file
     write_stats(config, stats)
@@ -90,12 +90,8 @@ def process_multifile(config, source, stats):
     Each process is assigned a chunk of file to be processed.
     The results of each process are gathered to be postprocessed. 
     '''
-    instances = {}
-    for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
-        instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
-
+    results = {}
     count = 0
-    instances['count'] = 0
     lengths = stats['sizes'][source] #filesize
     
     for i in range(len(config['SOURCES'][source]['FILESTRAIN'])):
@@ -131,14 +127,29 @@ def process_multifile(config, source, stats):
                         cont = False
 
                 for job in jobs:
-                    instances = combine(instances,job.get(),config['Lperc'])
+                    job_data = job.get()
+                    processed_lines = job_data[0]
+                    obsDict = job_data[1]
+                    stats['processed_lines'][source] += processed_lines
+                    results = combine(results,obsDict)
 
 
             pool.close()
             config['Cores'] = ncores_bkp
     
-    return instances
+    return results
 
+def combine(results, obsDict):
+    '''
+    Function to combine the outputs of the several processes
+    '''        
+    for key in obsDict:
+        if key in results:
+            results[key].aggregate(obsDict[key])
+        else:
+            results[key] = obsDict[key]
+    
+    return results 
 
 def process_file(file, fragStart, fragSize, config, source):
     '''
@@ -146,7 +157,8 @@ def process_file(file, fragStart, fragSize, config, source):
     in configuration files that will be transformed into observations. This is used only in offline parsing. 
     '''
 
-    instances = {}
+    obsDict = {}
+    processed_lines = 0
     separator = config['RECORD_SEPARATOR'][source]
 
     try:    
@@ -162,19 +174,24 @@ def process_file(file, fragStart, fragSize, config, source):
     finally:
         f.close()
 
-    instances['count'] = 0
     for line in iter_split(lines, separator):  
-        instances = process_log(line, config, source, instances)
+        tag, instances = process_log(line, config, source)
         
+        if tag == 0:
+            tag = file.split("/")[-1]
 
-    return instances
+        if instances is not None:
+            aggregate(obsDict, instances, tag)
+            processed_lines+=1
+            
+    return processed_lines, obsDict
 
 
-def process_log(log, config, source, instances):
+def process_log(log, config, source):
     '''
     Function take on data entry as input an transform it into a preliminary observation
     '''     
-    
+        
     ignore_log = 0      # flag to skip processing this log
     if not log or not log.strip():  
         ignore_log=1    # do not process empty logs or containing only spaces
@@ -184,8 +201,11 @@ def process_log(log, config, source, instances):
         
         record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
 
-        instances['count'] += 1
-        
+        instances = {}
+        for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+            instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
+        instances['count'] = 1
+                
         timearg = config['TIMEARG'][source] # name of variable which contains timestamp
         log_timestamp = record.variables[timearg][0].value
     
@@ -196,7 +216,7 @@ def process_log(log, config, source, instances):
         if 'end' in config['Time']:
             if log_timestamp > config['Time']['end']:
                 ignore_log = 1 
-    
+            
     if not ignore_log:
         
         for variable,features in record.variables.items():
@@ -212,8 +232,45 @@ def process_log(log, config, source, instances):
                     for feature in features:
                         instances[variable][str(feature)] = 1
 
+        window = config['Time']['window']     
+        try:
+            tag2 = normalize_timestamps(log_timestamp, window)
+            tag = tag2.strftime("%Y%m%d%H%M")
+
+        except: 
+            # Exception as err
+            # print("[!] Log failed. Reason: "+ (str(err) + "\nLog entry: " + repr(log[:300])+ "\nRecord value: "+ str(record)))
+            tag, instances = None, None
+            if debugmode:
+                print('\033[31m'+ "This entry log would be ignored due to errors" +'\033[m')
+
                     
-    return instances
+    else:
+        tag, instances = None, None
+        
+    return tag, instances
+
+
+def normalize_timestamps(t, window):
+    '''
+    Function that transform timestamps of data entries to a normalized format. It also do the 
+    time sampling using the time window defined in the configuration file.
+    '''    
+    #try:
+    if window == 0:
+        return 0
+    if window <= 60:
+        new_minute = t.minute - t.minute % window  
+        t = t.replace(minute = new_minute, second = 0)
+    elif window <= 1440:
+        window_m = window % 60  # for simplicity, if window > 60 we only use the hours
+        window_h = int((window - window_m) / 60)
+        new_hour = t.hour - t.hour % window_h  
+        t = t.replace(hour = new_hour, minute = 0, second = 0)                 
+    return t
+    #except Exception as err: print("[!] Normalizing error: "+str(err))
+        
+    return 0
 
 
 def frag(fname, init, separator, size, max_chunk):
@@ -250,30 +307,37 @@ def frag(fname, init, separator, size, max_chunk):
         f.close()
         
 
-def combine(instances, instances_new, perc):
+def aggregate(obsDict, instances_new, tag):
     '''
-    Combine counters
+    Aggregate counters
     '''     
 
-    instances_new = filter_instances(instances_new, perc)
-
-    instances['count'] += instances_new['count']
+    #instances_new = filter_instances(instances_new, perc)
     
-    for variable,features in instances_new.items():
-        if variable != 'count':
-            if variable in instances.keys():
-                for feature in features:
-                    if feature in instances[variable].keys():
-                        instances[variable][feature] += instances_new[variable][feature]
-                    else:
+    if tag in list(obsDict.keys()):
+        instances = obsDict[tag]
+        
+        instances['count'] += instances_new['count']
+        
+        for variable,features in instances_new.items():
+            if variable != 'count':
+                if variable in instances.keys():
+                    for feature in features:
+                        if feature in instances[variable].keys():
+                            instances[variable][feature] += instances_new[variable][feature]
+                        else:
+                            instances[variable][feature] = instances_new[variable][feature]
+                else:
+                    instances[variable] = dict() 
+                    for feature in features:
                         instances[variable][feature] = instances_new[variable][feature]
-            else:
-                instances[variable] = dict() 
-                for feature in features:
-                    instances[variable][feature] = instances_new[variable][feature]
-
-
-    return instances
+                        
+        obsDict[tag] = instances
+        
+    else:
+        obsDict[tag] = instances_new
+        
+    return obsDict
 
 
 def iter_split(line, delimiter):
@@ -447,38 +511,70 @@ def configSummary(config):
 
 
 
-def filter_output(output_data,perc):
-    '''Filter de data to only common fatures
+def filter_output(output_data, percT, percL):
+    '''Filter de data to only common features
     '''
     for source in output_data.keys():
-        output_data[source] = filter_instances(output_data[source],perc)
+        output_data[source] = filter_instances(output_data[source], percT, percL)
 
 
     return output_data
 
 
-def filter_instances(instances, perc):
-    '''Filter de data to only common fatures
+def filter_instances(instances, percT, percL):
+    '''Filter de data to only common features
     '''
-    threshold = perc*instances['count']
+
+                    
+    obsDict = {} # Aggregate instances from the list of windows  
+    obsDict['count'] = 0
+    for tag in instances.keys():             
+        for variable,features in instances[tag].items():
+            if variable != 'count':
+                if variable in obsDict.keys():
+                    for feature in features:
+                        if feature in obsDict[variable].keys():
+                            obsDict[variable][feature] += instances[tag][variable][feature]
+                        else:
+                            obsDict[variable][feature] = instances[tag][variable][feature]
+                else:
+                    obsDict[variable] = dict() 
+                    for feature in features:
+                        obsDict[variable][feature] = instances[tag][variable][feature]
+                        
+            else:
+                obsDict['count'] += instances[tag]['count']
+    
+    holdfea = {}
+    for tag in instances.keys(): # Local thresholding per window
+        for varkey in instances[tag].keys():
+            if varkey != 'count':
+                for feakey in instances[tag][varkey].keys(): 
+                    if instances[tag][varkey][feakey] >= percL*instances[tag]['count']:
+                        if varkey not in holdfea:
+                            holdfea[varkey]=[]
+                        holdfea[varkey].append(feakey)
+                            
+    
+    threshold = percT*obsDict['count'] 
     delvar = []
-    for varkey in instances.keys():
+    for varkey in obsDict.keys():
         if varkey != 'count':
             delfea = []
     
-            for feakey in instances[varkey].keys():
-                if instances[varkey][feakey] < threshold:
+            for feakey in obsDict[varkey].keys():
+                if obsDict[varkey][feakey] < threshold or feakey not in holdfea[varkey]: # only features that exceed the local and global threshold are maintained
                     delfea.append(feakey)
                     
             for feakey in delfea:
-                del instances[varkey][feakey]
-                if len(instances[varkey].keys()) == 0:
+                del obsDict[varkey][feakey]
+                if len(obsDict[varkey].keys()) == 0:
                     delvar.append(varkey)
                     
     for varkey in delvar:
-        del instances[varkey] 
+        del obsDict[varkey] 
 
-    return instances
+    return obsDict
                     
 
 def write_stats(config,stats):
@@ -499,9 +595,9 @@ def write_stats(config,stats):
 def write_output(config, output_data, total):
     '''Write configuration file
     '''
-
-    print(output_data)
     
+    print(output_data)
+
     contentf = dict()
     contentf['FEATURES'] = list()
 
