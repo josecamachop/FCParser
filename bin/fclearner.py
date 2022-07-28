@@ -559,7 +559,7 @@ def filter_instances(instances, percT, percL):
             delfea = []
     
             for feakey in obsDict[varkey].keys():
-                if obsDict[varkey][feakey] < threshold or feakey not in holdfea[varkey]: # only features that exceed the local and global threshold are maintained
+                if obsDict[varkey][feakey] < threshold or varkey not in holdfea or feakey not in holdfea[varkey]: # only features that exceed the local and global threshold are maintained
                     delfea.append(feakey)
                     
             for feakey in delfea:
