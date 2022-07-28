@@ -235,15 +235,14 @@ def process_log(log, config, source):
                         instances[variable][str(feature)] = 1
                         
         print(instances)
-        print(log_timestamp)
 
         window = config['Time']['window']     
-        print(window)       
         try:
             if config['Keys']:
                 tag = list()
                 tag2 = normalize_timestamps(log_timestamp, window)
                 tag.append(tag2.strftime("%Y%m%d%H%M"))
+                print(tag)
                 for i in range(len(config['Keys'])):
                     if len(record.variables[config['Keys'][i]]) > 0:
                         tag.append(str(record.variables[config['Keys'][i]][0]))    # Careful!, only works (intentionally) for the first instance of a variable in a record
