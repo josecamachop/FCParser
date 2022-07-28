@@ -240,7 +240,9 @@ def process_log(log, config, source):
         try:
             if config['Keys']:
                 tag = list()
+                print(log_timestamp)
                 tag2 = normalize_timestamps(log_timestamp, window)
+                print(tag2)
                 tag.append(tag2.strftime("%Y%m%d%H%M"))
                 print(tag)
                 for i in range(len(config['Keys'])):
