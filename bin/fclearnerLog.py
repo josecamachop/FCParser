@@ -205,6 +205,7 @@ def process_log(log, config, source):
         
         record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
 
+        print(record)
         instances['count'] = 1
                 
         timearg = config['TIMEARG'][source] # name of variable which contains timestamp
@@ -262,6 +263,8 @@ def process_log(log, config, source):
     else:
         tag, instances = None, None
         
+    print(tag)
+    print(instances)
     return tag, instances
 
 
@@ -538,8 +541,6 @@ def filter_output(output_data, percT, percL):
 def filter_instances(instances, percT, percL):
     '''Filter de data to only common features
     '''
-    
-    print(instances)
         
     for tag in instances.keys(): # Local thresholding per window
         delvar = []
