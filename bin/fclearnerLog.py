@@ -233,29 +233,11 @@ def process_log(log, config, source):
                     instances[variable] = dict() 
                     for feature in features:
                         instances[variable][str(feature)] = 1
-                        
-        print(instances)
 
         window = config['Time']['window']     
         try:
-            print(config)
-            if config['Keys']:
-                tag = list()
-                tag2 = normalize_timestamps(log_timestamp, window)
-                tag.append(tag2.strftime("%Y%m%d%H%M"))
-                for i in range(len(config['Keys'])):
-                    if len(record.variables[config['Keys'][i]]) > 0:
-                        tag.append(str(record.variables[config['Keys'][i]][0]))    # Careful!, only works (intentionally) for the first instance of a variable in a record
-                if len(tag) > 1:
-                    tag = tuple(tag)
-                else:
-                    tag = tag[0]        
-            else:
-                print(log_timestamp)
-                tag2 = normalize_timestamps(log_timestamp, window)
-                print(tag2)
-                tag = tag2.strftime("%Y%m%d%H%M")
-                print(tag)
+            tag2 = normalize_timestamps(log_timestamp, window)
+            tag = tag2.strftime("%Y%m%d%H%M")
 
         except: 
             # Exception as err
