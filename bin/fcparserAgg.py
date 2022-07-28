@@ -113,7 +113,7 @@ def process_multifile(config, source, stats):
     Each process is assigned a chunk of file to be processed.
     The results of each process are gathered to be postprocessed. 
     '''
-    results = []
+    results = {}
     count = 0
     lengths = stats['sizes'][source] #filesize
 
@@ -182,12 +182,11 @@ def combine(results, obsDict):
     '''
     Function to combine the outputs of the several processes
     '''        
-    for result in obsDict:
-        for key in result:
-            if key in results:
-                results[key].aggregate(result[key])
-            else:
-                results[key] = result[key]
+    for key in obsDict:
+        if key in results:
+            results[key].aggregate(obsDict[key])
+        else:
+            results[key] = obsDict[key]
     
     return results 
             
