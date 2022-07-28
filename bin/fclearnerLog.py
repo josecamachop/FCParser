@@ -545,14 +545,13 @@ def filter_instances(instances, percT, percL):
             else:
                 obsDict['count'] += instances[tag]['count']
     
-    holdfea = []
+    holdfea = {}
     for tag in instances.keys(): # Local thresholding per window
         for varkey in instances[tag].keys():
             if varkey != 'count':
                 for feakey in instances[tag][varkey].keys(): 
                     if instances[tag][varkey][feakey] >= percL*instances[tag]['count']:# and instances[tag][varkey][feakey] >= percL*obsDict['count']/len(instances.keys()):
                         if varkey not in holdfea:
-                            holdfea.append(varkey)
                             holdfea[varkey]=[]
                         holdfea[varkey].append(feakey)
                             
