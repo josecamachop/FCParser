@@ -240,11 +240,8 @@ def process_log(log, config, source):
         try:
             if config['Keys']:
                 tag = list()
-                print(log_timestamp)
                 tag2 = normalize_timestamps(log_timestamp, window)
-                print(tag2)
                 tag.append(tag2.strftime("%Y%m%d%H%M"))
-                print(tag)
                 for i in range(len(config['Keys'])):
                     if len(record.variables[config['Keys'][i]]) > 0:
                         tag.append(str(record.variables[config['Keys'][i]][0]))    # Careful!, only works (intentionally) for the first instance of a variable in a record
@@ -253,8 +250,11 @@ def process_log(log, config, source):
                 else:
                     tag = tag[0]        
             else:
+                print(log_timestamp)
                 tag2 = normalize_timestamps(log_timestamp, window)
+                print(tag2)
                 tag = tag2.strftime("%Y%m%d%H%M")
+                print(tag)
 
         except: 
             # Exception as err
