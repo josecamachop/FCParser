@@ -526,7 +526,7 @@ def filter_instances(instances, percT, percL):
     '''
 
                     
-    obsDict = {} # Aggregate instances from the list of windows  
+    obsDict = {} # Aggregate instances from the list of windows: we do it before so that we can combine the local and global thresholding with an AND or an OR  
     obsDict['count'] = 0
     for tag in instances.keys():             
         for variable,features in instances[tag].items():
@@ -563,7 +563,7 @@ def filter_instances(instances, percT, percL):
             delfea = []
     
             for feakey in obsDict[varkey].keys():
-                if obsDict[varkey][feakey] < threshold and feakey not in holdfea[varkey]:
+                if obsDict[varkey][feakey] < threshold or feakey not in holdfea[varkey]: # So far we prefer to use an OR
                     delfea.append(feakey)
                     
             for feakey in delfea:
