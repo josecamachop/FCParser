@@ -143,11 +143,8 @@ def combine(results, obsDict):
     '''
     Function to combine the outputs of the several processes
     '''        
-    for key in obsDict:
-        if key in results:
-            results[key].aggregate(obsDict[key])
-        else:
-            results[key] = obsDict[key]
+    for tag in obsDict:
+        results = aggregate(results, obsDict[tag], tag)
     
     return results 
 
@@ -524,8 +521,7 @@ def filter_output(output_data, percT, percL):
 def filter_instances(instances, percT, percL):
     '''Filter de data to only common features
     '''
-
-                    
+              
     obsDict = {} # Aggregate instances from the list of windows  
     obsDict['count'] = 0
     for tag in instances.keys():             
