@@ -90,12 +90,7 @@ def process_multifile(config, source, stats):
     Each process is assigned a chunk of file to be processed.
     The results of each process are gathered to be postprocessed. 
     '''
-    instances = {}
-    for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
-        instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
-
-    
-    results = []
+    results = {}
     count = 0
     lengths = stats['sizes'][source] #filesize
     
@@ -136,7 +131,7 @@ def process_multifile(config, source, stats):
                     processed_lines = job_data[0]
                     obsDict = job_data[1]
                     stats['processed_lines'][source] += processed_lines
-                    results.append(obsDict)
+                    results = combine(results,obsDict)
 
 
             pool.close()
@@ -144,6 +139,17 @@ def process_multifile(config, source, stats):
     
     return results
 
+def combine(results, obsDict):
+    '''
+    Function to combine the outputs of the several processes
+    '''        
+    for key in obsDict:
+        if key in results:
+            results[key].aggregate(obsDict[key])
+        else:
+            results[key] = obsDict[key]
+    
+    return results 
 
 def process_file(file, fragStart, fragSize, config, source):
     '''
@@ -175,7 +181,7 @@ def process_file(file, fragStart, fragSize, config, source):
             tag = file.split("/")[-1]
 
         if instances is not None:
-            combine(obsDict, instances, tag)
+            aggregate(obsDict, instances, tag)
             processed_lines+=1
             
     return processed_lines, obsDict
@@ -187,6 +193,9 @@ def process_log(log, config, source):
     '''     
     
     instances = {}
+    for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+        instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
+        
     ignore_log = 0      # flag to skip processing this log
     if not log or not log.strip():  
         ignore_log=1    # do not process empty logs or containing only spaces
@@ -312,9 +321,9 @@ def frag(fname, init, separator, size, max_chunk):
         f.close()
         
 
-def combine(obsDict, instances_new, tag):
+def aggregate(obsDict, instances_new, tag):
     '''
-    Combine counters
+    Aggregate counters
     '''     
 
     #instances_new = filter_instances(instances_new, perc)
@@ -516,38 +525,78 @@ def configSummary(config):
 
 
 
-def filter_output(output_data,percT, percL):
+def filter_output(output_data, percT, percL):
     '''Filter de data to only common features
     '''
     for source in output_data.keys():
-        output_data[source] = filter_instances(output_data[source],percT)
+        output_data[source] = filter_instances(output_data[source], percT, percL)
 
 
     return output_data
 
 
-def filter_instances(instances, perc):
+def filter_instances(instances, percT, percL):
     '''Filter de data to only common features
     '''
-    threshold = perc*instances['count']
+    
+    for tag in instances.keys(): # Local thresholding per window
+        delvar = []
+        for varkey in instances[tag].keys():
+            if varkey != 'count':
+                delfea = []
+    
+                for feakey in instances[tag][varkey].keys(): 
+                    if instances[tag][varkey][feakey] < percL*instances[tag]['count']:
+                        delfea.append(feakey)
+                    
+                for feakey in delfea:
+                    del instances[tag][varkey][feakey]
+                    if len(instances[tag][varkey].keys()) == 0:
+                        delvar.append(varkey)
+                        
+        for varkey in delvar:
+            del instances[tag][varkey] 
+                    
+                    
+    obsDict = {} # Aggregate instances from the list of windows  
+    obsDict['count'] = 0
+    for tag in instances.keys():             
+        for variable,features in instances[tag].items():
+            if variable != 'count':
+                if variable in obsDict.keys():
+                    for feature in features:
+                        if feature in obsDict[variable].keys():
+                            obsDict[variable][feature] += instances[tag][variable][feature]
+                        else:
+                            obsDict[variable][feature] = instances[tag][variable][feature]
+                else:
+                    obsDict[variable] = dict() 
+                    for feature in features:
+                        obsDict[variable][feature] = instances[tag][variable][feature]
+                        
+            else:
+                obsDict['count'] += instances[tag]['count']
+    
+    
+    threshold = percT*obsDict['count'] 
     delvar = []
-    for varkey in instances.keys():
+    for varkey in obsDict.keys():
         if varkey != 'count':
             delfea = []
     
-            for feakey in instances[varkey].keys():
-                if instances[varkey][feakey] < threshold:
+            for feakey in obsDict[varkey].keys():
+                if obsDict[varkey][feakey] < threshold:
                     delfea.append(feakey)
                     
             for feakey in delfea:
-                del instances[varkey][feakey]
-                if len(instances[varkey].keys()) == 0:
+                del obsDict[varkey][feakey]
+                if len(obsDict[varkey].keys()) == 0:
                     delvar.append(varkey)
                     
     for varkey in delvar:
-        del instances[varkey] 
+        del obsDict[varkey] 
 
-    return instances
+    return obsDict
                     
 
 def write_stats(config,stats):
