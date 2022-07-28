@@ -266,9 +266,6 @@ def process_log(log,config, source):
         record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
         if debugmode: faac.debugProgram('fcparser.process_log.record', [record])
         
-        obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
-        if debugmode: faac.debugProgram('fcparser.process_log.observation', [obs])
-        
         timearg = config['TIMEARG'][source] # name of variable which contains timestamp 
         log_timestamp = record.variables[timearg][0].value
     
@@ -281,6 +278,9 @@ def process_log(log,config, source):
                 ignore_log = 1 
     
     if not ignore_log:
+        obs = faac.Observation.fromRecord(record, config['FEATURES'][source])
+        if debugmode: faac.debugProgram('fcparser.process_log.observation', [obs])
+        
         window = config['Time']['window']            
         try:
             if config['Keys']:

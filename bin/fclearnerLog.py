@@ -235,8 +235,9 @@ def process_log(log, config, source):
                         instances[variable][str(feature)] = 1
                         
         print(instances)
-                        
-    if not ignore_log:
+        print(window)
+        print(log_timestamp)
+
         window = config['Time']['window']            
         try:
             if config['Keys']:
