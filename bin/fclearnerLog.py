@@ -191,10 +191,6 @@ def process_log(log, config, source):
     '''
     Function take on data entry as input an transform it into a preliminary observation
     '''     
-    
-    instances = {}
-    for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
-        instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
         
     ignore_log = 0      # flag to skip processing this log
     if not log or not log.strip():  
@@ -205,7 +201,9 @@ def process_log(log, config, source):
         
         record = faac.Record(log,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
 
-        print(record)
+        instances = {}
+        for variable in range(len(config['SOURCES'][source]['CONFIG']['VARIABLES'])):
+            instances[config['SOURCES'][source]['CONFIG']['VARIABLES'][variable]['name']] = {}
         instances['count'] = 1
                 
         timearg = config['TIMEARG'][source] # name of variable which contains timestamp
@@ -218,7 +216,9 @@ def process_log(log, config, source):
         if 'end' in config['Time']:
             if log_timestamp > config['Time']['end']:
                 ignore_log = 1 
-    
+        
+        print(record)
+            
     if not ignore_log:
         
         for variable,features in record.variables.items():
@@ -233,6 +233,8 @@ def process_log(log, config, source):
                     instances[variable] = dict() 
                     for feature in features:
                         instances[variable][str(feature)] = 1
+                        
+        print(instances)
                         
     if not ignore_log:
         window = config['Time']['window']            
