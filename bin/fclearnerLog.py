@@ -539,6 +539,8 @@ def filter_instances(instances, percT, percL):
     '''Filter de data to only common features
     '''
     
+    print(instances)
+        
     for tag in instances.keys(): # Local thresholding per window
         delvar = []
         for varkey in instances[tag].keys():
