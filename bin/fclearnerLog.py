@@ -216,8 +216,6 @@ def process_log(log, config, source):
         if 'end' in config['Time']:
             if log_timestamp > config['Time']['end']:
                 ignore_log = 1 
-        
-        print(record)
             
     if not ignore_log:
         
@@ -250,8 +248,6 @@ def process_log(log, config, source):
     else:
         tag, instances = None, None
         
-    print(tag)
-    print(instances)
     return tag, instances
 
 
