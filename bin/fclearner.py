@@ -210,9 +210,15 @@ def process_log(log, config, source):
         if 'start' in config['Time']:
             if log_timestamp < config['Time']['start']:
                 ignore_log = 1
+                print('log < start')
+                print(log_timestamp)
+                print(config['Time']['start'])
         if 'end' in config['Time']:
             if log_timestamp > config['Time']['end']:
                 ignore_log = 1 
+                print('log > end')
+                print(log_timestamp)
+                print(config['Time']['end'])
             
     if not ignore_log:
         
@@ -592,7 +598,7 @@ def write_output(config, output_data, total):
     '''Write configuration file
     '''
     
-    print(output_data)
+    #print(output_data)
 
     contentf = dict()
     contentf['FEATURES'] = list()
