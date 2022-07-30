@@ -1130,9 +1130,9 @@ def loadConfig(parserConfig, caller, debugmode):
                     
         if caller == 'fclearner': 
             try:
-                config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learner'])
+                config['SOURCES'][source]['FILESTRAIN'] = glob.glob(dataSources[source]['learning'])
                 if not config['SOURCES'][source]['FILESTRAIN']:
-                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['learner']) +'\033[m')
+                    print('\033[31m'+ "**CONFIG FILE ERROR** Unable to find file: %s" %(dataSources[source]['learning']) +'\033[m')
                     paramError = True
             except:
                 if 'FILES' in config['SOURCES'][source] and config['SOURCES'][source]['FILES']:
