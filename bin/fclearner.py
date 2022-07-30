@@ -658,7 +658,7 @@ def write_output(config, output_data, total):
         try:
             f = open(config['SOURCES'][source]['CONFILE'], 'a')
             f.write('\n\n')
-            yaml.dump(contentf, f, default_flow_style=False)
+            yaml.dump(contentf, f, default_flow_style=False, sort_keys=False)
         except:
                 print ("Problem writing YAML file")
                 quit()
