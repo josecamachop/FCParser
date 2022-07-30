@@ -94,7 +94,7 @@ def process_multifile(config, source, stats):
     count = 0
     lengths = stats['sizes'][source] #filesize
     
-    print config['SOURCES'][source]['FILESTRAIN']
+    print(config['SOURCES'][source]['FILESTRAIN'])
     
     for i in range(len(config['SOURCES'][source]['FILESTRAIN'])):
         input_path = config['SOURCES'][source]['FILESTRAIN'][i]
