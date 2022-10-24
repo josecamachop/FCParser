@@ -1644,5 +1644,14 @@ def frag(fname, init, separator, size, max_chunk):
     finally:
         f.close()        
         
-        
+ 
+def iter_split(line, delimiter):
+    start = 0
+    line_size = len(line)
+    delimiter_size = len(delimiter)
+    while start<line_size:
+        end = line.find(delimiter, start)
+        yield line[start:end]
+        if end == -1: break
+        start = end + delimiter_size
         

@@ -274,16 +274,22 @@ def process_file(file, fragStart, fragSize, config, source, timestamp_pos, forma
     feat_appear = []
     feat_appear_names = []
 
-    if file.endswith('.gz'):
-        filep = gzip.open(file,'r')
-    else:
-        filep = open(file,'r')
+    try:    
+        if file.endswith('.gz'):                    
+            f = gzip.open(file, 'r', newline="")
+        else:
+            f = open(file, 'r', newline="")
+
+        f.seek(fragStart)
+        lines = f.read(fragSize)
+        #if debugmode: print("[Loaded set of %d logs]\n" %(len(lines.split(separator))))
             
-    # Multiprocessing
-    line = filep.readline()
-    # First read to generate a list with the number of depars_features present in each line
+    finally:
+        f.close()
+            
+        
     nline=0   
-    while line:
+    for line in faac.iter_split(lines, separator):  
         nline+=1  
         try:
             t = getStructuredTime(line, timestamp_pos, config['TSFORMAT'][source])  # timestamp in that line
@@ -305,10 +311,7 @@ def process_file(file, fragStart, fragSize, config, source, timestamp_pos, forma
             print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
             feat_appear.append(0)
             feat_appear_names.append([])
-                    
-        line = filep.readline()
-        
-    filep.close()
+
             
     return (feat_appear, feat_appear_names, nline)
 

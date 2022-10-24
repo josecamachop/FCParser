@@ -171,7 +171,7 @@ def process_file(file, fragStart, fragSize, config, source):
     finally:
         f.close()
 
-    for line in iter_split(lines, separator):  
+    for line in faac.iter_split(lines, separator):  
         tag, instances = process_log(line, config, source)
         
         if tag == 0:
@@ -301,17 +301,6 @@ def aggregate(obsDict, instances_new, tag):
         obsDict[tag] = instances_new
         
     return obsDict
-
-
-def iter_split(line, delimiter):
-    start = 0
-    line_size = len(line)
-    delimiter_size = len(delimiter)
-    while start<line_size:
-        end = line.find(delimiter, start)
-        yield line[start:end]
-        if end == -1: break
-        start = end + delimiter_size
 
  
 def getTag(filename):

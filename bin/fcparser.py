@@ -219,7 +219,7 @@ def process_file(file, fragStart, fragSize, config, source, stats):
         f.close()
         
    
-    for line in iter_split(lines, separator):  
+    for line in faac.iter_split(lines, separator):  
 
         if debugmode:
             if read_input:
@@ -369,15 +369,7 @@ def fuseObs_offline(resultado):
     return fused_res
 
 
-def iter_split(line, delimiter):
-    start = 0
-    line_size = len(line)
-    delimiter_size = len(delimiter)
-    while start<line_size:
-        end = line.find(delimiter, start)
-        yield line[start:end]
-        if end == -1: break
-        start = end + delimiter_size
+
 
 
 def add_observation(obsDict,obs,tag):
