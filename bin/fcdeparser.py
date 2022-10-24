@@ -228,10 +228,10 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
         if not debugmode:
             for nfeatures in indices[file]:
                 if indices[file][nfeatures]:
-                    output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
+                    output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'a')
                     for line_index in indices[file][nfeatures]:
                         line = linecache.getline(file, line_index+1) # index starting by 1 with linecache function
-                        output_file.write(line + "\n")
+                        output_file.write(line)
                         count_structured += 1
                     output_file.close()
                 
@@ -392,7 +392,7 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
         if not debugmode:
             for nfeatures in range(len(depars_features),features_threshold,-1):
                 if indices[file][nfeatures]:
-                    output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'w')
+                    output_file = open(OUTDIR + "output_%s_%sfeat" %(source,nfeatures),'a')
                     for line_indices in indices[file][nfeatures]:
                         log=""
                         for index in range(line_indices[0], 1+line_indices[1]):
