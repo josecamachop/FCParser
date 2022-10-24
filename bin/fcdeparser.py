@@ -170,9 +170,9 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
             # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
             for fragStart,fragSize in frag(input_file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
                 if not debugmode:
-                    jobs.append( pool.apply_async(process_file,[input_file,fragStart,fragSize,config, source, timestamp_pos, formated_timestamps]) )
+                    jobs.append( pool.apply_async(process_file,[file,fragStart,fragSize,config, source, timestamp_pos, formated_timestamps]) )
                 else:
-                    feat_appear_f, feat_appear_names_f, nline_f = process_file(input_file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps)
+                    feat_appear_f, feat_appear_names_f, nline_f = process_file(file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps)
                     feat_appear[file].append(feat_appear_f)
                     feat_appear_names[file].append(feat_appear_names_f)
                     nline+=nline_f
@@ -269,12 +269,16 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
     return (count_structured, count_tot)
 
-def process_file(filep, fragStart, fragSize, config, source, timestamp_pos, formated_timestamps):
+def process_file(file, fragStart, fragSize, config, source, timestamp_pos, formated_timestamps):
     
     feat_appear = []
     feat_appear_names = []
 
-
+    if file.endswith('.gz'):
+        filep = gzip.open(file,'r')
+    else:
+        filep = open(file,'r')
+            
     # Multiprocessing
     line = filep.readline()
     # First read to generate a list with the number of depars_features present in each line
@@ -303,6 +307,8 @@ def process_file(filep, fragStart, fragSize, config, source, timestamp_pos, form
             feat_appear_names.append([])
                     
         line = filep.readline()
+        
+    filep.close()
             
     return (feat_appear, feat_appear_names, nline)
 
