@@ -168,7 +168,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
             nline=0
             jobs = list()
             # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
-            for fragStart,fragSize in frag(input_file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
+            for fragStart,fragSize in faac.frag(file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
                 if not debugmode:
                     jobs.append( pool.apply_async(process_file,[file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel,VARIABLES]) )
                 else:
@@ -518,29 +518,6 @@ def format_timestamps(timestamps, source_format):
 
     return timestamps_formated
 
-
-def frag(filep, init, separator, size, max_chunk):
-    '''
-    Function to fragment files in chunks to be parallel processed for structured files by lines
-    '''
-    #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
-    
-    filep.seek(init)
-    end = filep.tell()
-    init = end
-    separator_size = len(separator)
-    while end-init < max_chunk:
-        start = end
-        tmp = filep.read(size)
-        i = tmp.rfind(separator)
-        if i == -1:
-            yield start, len(tmp)
-            break
-        filep.seek(start+i+separator_size)
-        end = filep.tell()
-        #print("Frag: "+str([start, i, end]))
-
-        yield start, end-start
 
         
 def stats( count_structured, count_tots, count_unstructured, count_totu, OUTDIR, OUTSTATS, startTime):

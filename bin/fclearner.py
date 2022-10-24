@@ -117,7 +117,7 @@ def process_multifile(config, source, stats):
             while cont:         # cleans memory from processes
                 jobs = list()
                 # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
-                for fragStart,fragSize in frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
+                for fragStart,fragSize in faac.frag(input_path,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])),config['Csize']):
                     jobs.append( pool.apply_async(process_file,(input_path,fragStart,fragSize,config, source)) )
                 else:
                     if fragStart+fragSize < lengths[i]:
@@ -268,40 +268,6 @@ def normalize_timestamps(t, window):
     #except Exception as err: print("[!] Normalizing error: "+str(err))
         
     return 0
-
-
-def frag(fname, init, separator, size, max_chunk):
-    '''
-    Function to fragment files in chunks to be parallel processed for structured files by lines
-    '''
-    #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
-    
-    try:
-        if fname.endswith('.gz'):                    
-            f = gzip.open(fname, 'r', newline="")
-        else:
-            f = open(fname, 'r', newline="")
-
-
-        f.seek(init)
-        end = f.tell()
-        init = end
-        separator_size = len(separator)
-        while end-init < max_chunk:
-            start = end
-            tmp = f.read(size)
-            i = tmp.rfind(separator)
-            if i == -1:
-                yield start, len(tmp)
-                break
-            f.seek(start+i+separator_size)
-            end = f.tell()
-            #print("Frag: "+str([start, i, end]))
-
-            yield start, end-start
-
-    finally:
-        f.close()
         
 
 def aggregate(obsDict, instances_new, tag):
