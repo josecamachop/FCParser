@@ -13,10 +13,12 @@ Last Modification: 24/Oct/2022
 
 import multiprocessing as mp
 import argparse
+import os
 import gzip
 import re
 import time
 import faac
+import math
 from datetime import datetime 
 import linecache
 from sys import version_info
@@ -142,7 +144,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
     count_structured = 0    # structured logs found during deparsing process
     count_tot = 0           # total logs
     feat_appear = {}
-    feat_appear_names = {}
+    feat_appear_names = {}    
     
     for file in sourcepath:
         feat_appear[file] = []
@@ -158,38 +160,46 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
         # Multiprocessing
         pool = mp.Pool(config['Cores'])
+        cont = True
+        init = 0
+        length = os.path.getsize(file) 
+        remain = length
         while cont:                          # cleans memory from processes
-                jobs = list()
-                # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
-                for fragStart,fragSize in frag(input_file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
-                    if not debugmode:
-                        jobs.append( pool.apply_async(process_file,[input_file,fragStart,fragSize,config, source]) )
-                    else:
-                        feat_appear_f, feat_appear_names_f = process_file(input_path,fragStart,fragSize,config,source)
-                        feat_appear[file].append(feat_appear_f)
-                        feat_appear_names[file].append(feat_appear_names_f)
-                
+            nline=0
+            jobs = list()
+            # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
+            for fragStart,fragSize in frag(input_file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
+                if not debugmode:
+                    jobs.append( pool.apply_async(process_file,[input_file,fragStart,fragSize,config, source, timestamp_pos, formated_timestamps]) )
                 else:
-                    if fragStart+fragSize < lengths[i]:
-                        remain = lengths[i] - fragStart+fragSize
-                        init = fragStart+fragSize 
-                    else:
-                        if not debugmode:
-                            cont = False
-                        else:
-                            print('\033[33m'+ "* End of file %s *" %(input_path) +'\033[m')
-                            print("Loading file again...")
-                            init=0
-                            remain = lengths[i] 
-                            global user_input; user_input = None
-
-                            
-                for job in jobs:
-                    job_data = job.get()
-                    feat_appear_f = job_data[0]
-                    feat_appear_names_f = job_data[1]
+                    feat_appear_f, feat_appear_names_f, nline_f = process_file(input_file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps)
                     feat_appear[file].append(feat_appear_f)
                     feat_appear_names[file].append(feat_appear_names_f)
+                    nline+=nline_f
+                
+            else:
+                if fragStart+fragSize < length:
+                    remain = length - fragStart+fragSize
+                    init = fragStart+fragSize 
+                else:
+                    if not debugmode:
+                        cont = False
+                    else:
+                        print('\033[33m'+ "* End of file %s *" %(file) +'\033[m')
+                        print("Loading file again...")
+                        init=0
+                        remain = length
+                        global user_input; user_input = None
+
+                            
+            for job in jobs:
+                job_data = job.get()
+                feat_appear_f = job_data[0]
+                feat_appear_names_f = job_data[1]
+                nline_f = job_data[2]
+                feat_appear[file].append(feat_appear_f)
+                feat_appear_names[file].append(feat_appear_names_f)
+                nline+=nline_f
                     
                 
         input_file.close()
@@ -259,7 +269,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
     return (count_structured, count_tot)
 
-def process_file(filep, fragStart, fragSize, config, source):
+def process_file(filep, fragStart, fragSize, config, source, timestamp_pos, formated_timestamps):
     
     feat_appear = []
     feat_appear_names = []
@@ -294,7 +304,7 @@ def process_file(filep, fragStart, fragSize, config, source):
                     
         line = filep.readline()
             
-    return (feat_appear, feat_appear_names)
+    return (feat_appear, feat_appear_names, nline)
 
 def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps):
     '''
@@ -551,7 +561,7 @@ def stats( count_structured, count_tots, count_unstructured, count_totu, OUTDIR,
 
     except IOError as e:
         print ("Stats file error: " + str(e))
-
+    
 
 def prettyTime(elapsed):
     '''
