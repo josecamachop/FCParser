@@ -261,40 +261,40 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
 def process_file(filep, fragStart, fragSize, config, source):
     
-        feat_appear = []
-        feat_appear_names = []
+    feat_appear = []
+    feat_appear_names = []
 
 
-        # Multiprocessing
-        line = filep.readline()
-        # First read to generate a list with the number of depars_features present in each line
-        nline=0   
-        while line:
-            nline+=1  
-            try:
-                t = getStructuredTime(line, timestamp_pos, config['TSFORMAT'][source])  # timestamp in that line
+    # Multiprocessing
+    line = filep.readline()
+    # First read to generate a list with the number of depars_features present in each line
+    nline=0   
+    while line:
+        nline+=1  
+        try:
+            t = getStructuredTime(line, timestamp_pos, config['TSFORMAT'][source])  # timestamp in that line
 
-                # extract amount of features that appear in the line if its timestamp is included in formated_timestamps
-                if t.strip() in formated_timestamps or not formated_timestamps:
-                    record = faac.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
-                    obs = faac.Observation.fromRecord(record, FEATURES_sel)         # to make default features counter work properly, use config['FEATURES'][source] instead of FEATURES_sel (but execution will be significantly slower)
-                    feature_count, matched_features = search_features_str(obs, VARIABLES)
-                    feat_appear.append(feature_count)
-                    feat_appear_names.append(matched_features)
+            # extract amount of features that appear in the line if its timestamp is included in formated_timestamps
+            if t.strip() in formated_timestamps or not formated_timestamps:
+                record = faac.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
+                obs = faac.Observation.fromRecord(record, FEATURES_sel)         # to make default features counter work properly, use config['FEATURES'][source] instead of FEATURES_sel (but execution will be significantly slower)
+                feature_count, matched_features = search_features_str(obs, VARIABLES)
+                feat_appear.append(feature_count)
+                feat_appear_names.append(matched_features)
                     
-                else:
-                    # it is necessary to fill with zeros so that indices match the lines later
-                    feat_appear.append(0) 
-                    feat_appear_names.append([])
-                    
-            except Exception as error:
-                print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
-                feat_appear.append(0)
+            else:
+                # it is necessary to fill with zeros so that indices match the lines later
+                feat_appear.append(0) 
                 feat_appear_names.append([])
+                
+        except Exception as error:
+            print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
+            feat_appear.append(0)
+            feat_appear_names.append([])
                     
-            line = filep.readline()
+        line = filep.readline()
             
-        return (feat_appear, feat_appear_names)
+    return (feat_appear, feat_appear_names)
 
 def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps):
     '''
@@ -509,23 +509,22 @@ def frag(filep, init, separator, size, max_chunk):
     '''
     #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
     
-    try:
-        filep.seek(init)
+    filep.seek(init)
+    end = filep.tell()
+    init = end
+    separator_size = len(separator)
+    while end-init < max_chunk:
+        start = end
+        tmp = filep.read(size)
+        i = tmp.rfind(separator)
+        if i == -1:
+            yield start, len(tmp)
+            break
+        filep.seek(start+i+separator_size)
         end = filep.tell()
-        init = end
-        separator_size = len(separator)
-        while end-init < max_chunk:
-            start = end
-            tmp = filep.read(size)
-            i = tmp.rfind(separator)
-            if i == -1:
-                yield start, len(tmp)
-                break
-            filep.seek(start+i+separator_size)
-            end = filep.tell()
-            #print("Frag: "+str([start, i, end]))
+        #print("Frag: "+str([start, i, end]))
 
-            yield start, end-start
+        yield start, end-start
 
         
 def stats( count_structured, count_tots, count_unstructured, count_totu, OUTDIR, OUTSTATS, startTime):
