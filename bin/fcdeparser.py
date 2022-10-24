@@ -273,6 +273,7 @@ def process_file(file, fragStart, fragSize, config, source, timestamp_pos, forma
     
     feat_appear = []
     feat_appear_names = []
+    separator = config['RECORD_SEPARATOR'][source]
 
     try:    
         if file.endswith('.gz'):                    
