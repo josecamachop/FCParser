@@ -5,18 +5,19 @@ data related to anomalies in comparison to masive amounts of extracted data
 
 Authors:  Manuel Jurado Vázquez (manjurvaz@ugr.es)
           Jose Manuel Garcia Gimenez (jgarciag@ugr.es)
+          Jose Camacho (josecamacho@ugr.es)
          
-Last Modification: 27/May/2021
+Last Modification: 24/Oct/2022
 
 """
 
+import multiprocessing as mp
 import argparse
-import time
 import gzip
-import yaml
+import re
+import time
 import faac
 from datetime import datetime 
-import re
 import linecache
 from sys import version_info
 
@@ -155,33 +156,42 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
         if debugmode:
             faac.debugProgram('fcdeparser.load_message', [file])
 
-        line = input_file.readline()
-        # First read to generate a list with the number of depars_features present in each line
-        nline=0   
-        while line:
-            nline+=1  
-            try:
-                t = getStructuredTime(line, timestamp_pos, config['TSFORMAT'][source])  # timestamp in that line
-
-                # extract amount of features that appear in the line if its timestamp is included in formated_timestamps
-                if t.strip() in formated_timestamps or not formated_timestamps:
-                    record = faac.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
-                    obs = faac.Observation.fromRecord(record, FEATURES_sel)         # to make default features counter work properly, use config['FEATURES'][source] instead of FEATURES_sel (but execution will be significantly slower)
-                    feature_count, matched_features = search_features_str(obs, VARIABLES)
-                    feat_appear[file].append(feature_count)
-                    feat_appear_names[file].append(matched_features)
-                    
+        # Multiprocessing
+        pool = mp.Pool(config['Cores'])
+        while cont:                          # cleans memory from processes
+                jobs = list()
+                # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
+                for fragStart,fragSize in frag(input_file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
+                    if not debugmode:
+                        jobs.append( pool.apply_async(process_file,[input_file,fragStart,fragSize,config, source]) )
+                    else:
+                        feat_appear_f, feat_appear_names_f = process_file(input_path,fragStart,fragSize,config,source)
+                        feat_appear[file].append(feat_appear_f)
+                        feat_appear_names[file].append(feat_appear_names_f)
+                
                 else:
-                    # it is necessary to fill with zeros so that indices match the lines later
-                    feat_appear[file].append(0) 
-                    feat_appear_names[file].append([])
+                    if fragStart+fragSize < lengths[i]:
+                        remain = lengths[i] - fragStart+fragSize
+                        init = fragStart+fragSize 
+                    else:
+                        if not debugmode:
+                            cont = False
+                        else:
+                            print('\033[33m'+ "* End of file %s *" %(input_path) +'\033[m')
+                            print("Loading file again...")
+                            init=0
+                            remain = lengths[i] 
+                            global user_input; user_input = None
+
+                            
+                for job in jobs:
+                    job_data = job.get()
+                    feat_appear_f = job_data[0]
+                    feat_appear_names_f = job_data[1]
+                    feat_appear[file].append(feat_appear_f)
+                    feat_appear_names[file].append(feat_appear_names_f)
                     
-            except Exception as error:
-                print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
-                feat_appear[file].append(0)
-                feat_appear_names[file].append([])
-                    
-            line = input_file.readline()
+                
         input_file.close()
         count_tot+=nline    # add nlines of this source to total lines counter
         
@@ -249,6 +259,48 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
     return (count_structured, count_tot)
 
+def process_file(filep, fragStart, fragSize, config, source):
+    
+        feat_appear = []
+        feat_appear_names = []
+
+
+        # Multiprocessing
+        pool = mp.Pool(config['Cores'])
+        while cont:                          # cleans memory from processes
+                jobs = list()
+               
+                for fragStart,fragSize in frag(filep,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
+                
+        line = filep.readline()
+        # First read to generate a list with the number of depars_features present in each line
+        nline=0   
+        while line:
+            nline+=1  
+            try:
+                t = getStructuredTime(line, timestamp_pos, config['TSFORMAT'][source])  # timestamp in that line
+
+                # extract amount of features that appear in the line if its timestamp is included in formated_timestamps
+                if t.strip() in formated_timestamps or not formated_timestamps:
+                    record = faac.Record(line,config['SOURCES'][source]['CONFIG']['VARIABLES'], config['STRUCTURED'][source], config['TSFORMAT'][source], config['All'])
+                    obs = faac.Observation.fromRecord(record, FEATURES_sel)         # to make default features counter work properly, use config['FEATURES'][source] instead of FEATURES_sel (but execution will be significantly slower)
+                    feature_count, matched_features = search_features_str(obs, VARIABLES)
+                    feat_appear.append(feature_count)
+                    feat_appear_names.append(matched_features)
+                    
+                else:
+                    # it is necessary to fill with zeros so that indices match the lines later
+                    feat_appear.append(0) 
+                    feat_appear_names.append([])
+                    
+            except Exception as error:
+                print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
+                feat_appear.append(0)
+                feat_appear_names.append([])
+                    
+            line = filep.readline()
+            
+        return (feat_appear, feat_appear_names)
 
 def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps):
     '''
@@ -388,7 +440,7 @@ def unstr_deparsing(config, sourcepath, deparsInput, source, formated_timestamps
         else:
             input_file = open(file,'r')  
             
-        
+
         if not debugmode:
             for nfeatures in range(len(depars_features),features_threshold,-1):
                 if indices[file][nfeatures]:
@@ -457,6 +509,31 @@ def format_timestamps(timestamps, source_format):
     return timestamps_formated
 
 
+def frag(filep, init, separator, size, max_chunk):
+    '''
+    Function to fragment files in chunks to be parallel processed for structured files by lines
+    '''
+    #print ("File pos: %d, size: %d, max_chunk: %d", init, size, max_chunk)
+    
+    try:
+        filep.seek(init)
+        end = filep.tell()
+        init = end
+        separator_size = len(separator)
+        while end-init < max_chunk:
+            start = end
+            tmp = filep.read(size)
+            i = tmp.rfind(separator)
+            if i == -1:
+                yield start, len(tmp)
+                break
+            filep.seek(start+i+separator_size)
+            end = filep.tell()
+            #print("Frag: "+str([start, i, end]))
+
+            yield start, end-start
+
+        
 def stats( count_structured, count_tots, count_unstructured, count_totu, OUTDIR, OUTSTATS, startTime):
     '''
     Print and write stats from the deparsing process
@@ -610,18 +687,6 @@ def getArguments():
     parser.add_argument('-d', '-g', '--debug', action='store_true', help="Run fcdeparser in debug mode")
     args = parser.parse_args()
     return args
-
-
-def getConfiguration(config_file):
-    '''
-    Function to extract configurations from yaml files. 
-    This info is stored into a dictionary.
-    '''
-
-    stream = open(config_file, 'r')
-    conf = yaml.safe_load(stream) # conf = yaml.load(stream)
-    stream.close()
-    return conf
 
 
 def initMessage(deparsInput, debugmode):

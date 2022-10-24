@@ -11,7 +11,7 @@ Authors:    Manuel Jurado Vazquez (manjurvaz@ugr.es)
             Alejandro Perez Villegas (alextoni@gmail.com)
             Jose Camacho (josecamacho@ugr.es)
          
-Last Modification: 27/May/2021
+Last Modification: 24/Oct/2021
 
 """
 import multiprocessing as mp
@@ -25,10 +25,7 @@ import faac
 import math
 from collections import OrderedDict
 from math import floor
-from sys import version_info
-#import datetime
-#import subprocess
-#import copy    
+from sys import version_info   
 
 
 def main(call='external',configfile=''):
