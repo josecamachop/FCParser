@@ -266,12 +266,6 @@ def process_file(filep, fragStart, fragSize, config, source):
 
 
         # Multiprocessing
-        pool = mp.Pool(config['Cores'])
-        while cont:                          # cleans memory from processes
-                jobs = list()
-               
-                for fragStart,fragSize in frag(filep,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
-                
         line = filep.readline()
         # First read to generate a list with the number of depars_features present in each line
         nline=0   
