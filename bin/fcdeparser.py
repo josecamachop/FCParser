@@ -170,9 +170,9 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
             # Initially, data is split into chunks with size: min(filesize, max_chunk) / Ncores
             for fragStart,fragSize in frag(input_file,init,config['RECORD_SEPARATOR'][source], int(math.ceil(float(min(remain,config['Csize']))/config['Cores'])), config['Csize']):
                 if not debugmode:
-                    jobs.append( pool.apply_async(process_file,[file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel]) )
+                    jobs.append( pool.apply_async(process_file,[file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel,VARIABLES]) )
                 else:
-                    feat_appear_f, feat_appear_names_f, nline_f = process_file(file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel)
+                    feat_appear_f, feat_appear_names_f, nline_f = process_file(file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel,VARIABLES)
                     feat_appear[file].append(feat_appear_f)
                     feat_appear_names[file].append(feat_appear_names_f)
                     nline+=nline_f
@@ -269,7 +269,7 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
 
     return (count_structured, count_tot)
 
-def process_file(file, fragStart, fragSize, config, source, timestamp_pos, formated_timestamps, FEATURES_sel):
+def process_file(file, fragStart, fragSize, config, source, timestamp_pos, formated_timestamps, FEATURES_sel, VARIABLES):
     
     feat_appear = []
     feat_appear_names = []
