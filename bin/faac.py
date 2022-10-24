@@ -938,25 +938,24 @@ def loadConfig(parserConfig, caller, debugmode):
             
             
     # Number of cores used by the program
-    if caller == 'fcparser' or caller == 'fclearner': 
-        if debugmode:
-            config['Cores'] = 1
-        else:
-            try: 
-                config['Cores'] = int(parserConfig_low['processes'])
-                print("* Cores: "+str(config['Cores']))
+    if debugmode:
+        config['Cores'] = 1
+    else:
+        try: 
+            config['Cores'] = int(parserConfig_low['processes'])
+            print("* Cores: "+str(config['Cores']))
         
-            except:
-                # If Ncores not specified, use 80% of maximum possible cores of the system 
-                config['Cores'] = max(1, floor(0.8*mp.cpu_count))    
-                print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
-                print(" * Setting 80% cpu of the system: " + str(config['Cores']) +' cores\033[m')
-                paramWarnings += 1
+        except:
+            # If Ncores not specified, use 80% of maximum possible cores of the system 
+            config['Cores'] = max(1, floor(0.8*mp.cpu_count))    
+            print('\033[33m'+ "**CONFIG FILE WARNING** missing field: Processes")
+            print(" * Setting 80% cpu of the system: " + str(config['Cores']) +' cores\033[m')
+            paramWarnings += 1
             
             
     # Chunk size parameter (only for offline mode)
     try:
-        if caller == 'fcparser' and online is False or caller == 'fclearner':
+        if online is False:
             try: 
                 config['Csize'] = 1024 * 1024 * int(parserConfig_low['max_chunk'])
                 if not debugmode:
