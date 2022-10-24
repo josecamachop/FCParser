@@ -173,8 +173,8 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
                     jobs.append( pool.apply_async(process_file,[file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel,VARIABLES]) )
                 else:
                     feat_appear_f, feat_appear_names_f, nline_f = process_file(file,fragStart,fragSize,config,source,timestamp_pos,formated_timestamps,FEATURES_sel,VARIABLES)
-                    feat_appear[file].append(feat_appear_f)
-                    feat_appear_names[file].append(feat_appear_names_f)
+                    feat_appear[file].extend(feat_appear_f)
+                    feat_appear_names[file].extend(feat_appear_names_f)
                     nline+=nline_f
                 
             else:
@@ -197,8 +197,8 @@ def stru_deparsing(config, sourcepath, deparsInput, source, formated_timestamps)
                 feat_appear_f = job_data[0]
                 feat_appear_names_f = job_data[1]
                 nline_f = job_data[2]
-                feat_appear[file].append(feat_appear_f)
-                feat_appear_names[file].append(feat_appear_names_f)
+                feat_appear[file].extend(feat_appear_f)
+                feat_appear_names[file].extend(feat_appear_names_f)
                 nline+=nline_f
                     
                 
