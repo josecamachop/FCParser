@@ -309,7 +309,7 @@ def process_file(file, fragStart, fragSize, config, source, timestamp_pos, forma
                 feat_appear_names.append([])
                 
         except Exception as error:
-            print ('\033[33m'+ "Error finding features in line %d: %s" %(nline,error) +'\033[m')
+            print ('\033[33m'+ "Error finding features in line %d (from position %d): %s" %(nline,fragStart,error) +'\033[m')
             feat_appear.append(0)
             feat_appear_names.append([])
 
