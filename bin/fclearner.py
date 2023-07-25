@@ -204,15 +204,18 @@ def process_log(log, config, source):
         instances['count'] = 1
                 
         timearg = config['TIMEARG'][source] # name of variable which contains timestamp
-        log_timestamp = record.variables[timearg][0].value
-    
-        # Check if log_timestamp will be considered according to time sampling parameters
-        if 'start' in config['Time']:
-            if log_timestamp < config['Time']['start']:
-                ignore_log = 1
-        if 'end' in config['Time']:
-            if log_timestamp > config['Time']['end']:
-                ignore_log = 1 
+        if record.variables[timearg][0] is not None:
+            log_timestamp = record.variables[timearg][0].value
+
+            # Check if log_timestamp will be considered according to time sampling parameters
+            if 'start' in config['Time']:
+                if log_timestamp < config['Time']['start']:
+                    ignore_log = 1
+            if 'end' in config['Time']:
+                if log_timestamp > config['Time']['end']:
+                    ignore_log = 1
+        else:
+            ignore_log = 1
             
     if not ignore_log:
         
