@@ -1,18 +1,18 @@
 
 # FCParser
 
-Parser for data streams composed of variate (structured and unstructured) sources.
+Parser for data streams composed of disparate (structured and unstructured) sources.
 
-Contact persons: José Camacho Páez (josecamacho@ugr.es)
+Contact person: José Camacho Páez (josecamacho@ugr.es)
 
 Last modification of this document: 11/Feb/22
 
 
 ## Presentation
 
-The FaaC parser library allows a comfortable, general and highly configurable parsing
-of network data originating from different sources. It has been designed to transform
-large amounts of heterogeneus network data into a single time-resolved stream of data
+The FaaC parser library allows a simple, general and highly configurable parsing
+of data originating from different sources. It has been designed to transform
+large amounts of heterogeneus data into a single time-resolved stream of data
 features suitable for the analysis with multivariate techniques and other machine 
 learning tools, hopefully without losing relevant information in the process.
 
